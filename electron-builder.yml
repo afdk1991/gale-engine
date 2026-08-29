@@ -1,0 +1,19 @@
+appId: com.galeengine.app
+productName: 疾风引擎
+directories:
+  output: release
+files:
+  - out/**
+  - package.json
+electronLanguages:
+  - zh-CN
+compression: maximum
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  artifactName: 疾风引擎-${version}-setup.exe
