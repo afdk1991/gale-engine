@@ -8,7 +8,14 @@ const settingsService = createSettingsService(store as unknown as StorageAdapter
 
 function registerIpc(): void {
   ipcMain.handle('settings:get', () => settingsService.get())
-  ipcMain.handle('settings:set', (_event, patch) => settingsService.set(patch ?? {}))
+  ipcMain.handle('settings:set', (_event, patch) => {
+    try {
+      return settingsService.set(patch ?? {})
+    } catch (error) {
+      console.error('settings:set 持久化失败，返回当前设置', error)
+      return settingsService.get()
+    }
+  })
 }
 
 function createWindow(): void {
@@ -23,6 +30,8 @@ function createWindow(): void {
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
+      // sandbox 保持关闭：preload 仅使用 contextBridge/ipcRenderer（沙箱可用），
+      // 但后续里程碑可能需要在 preload 引入 Node 能力；M6 加固时统一复查
       sandbox: false
     }
   })
@@ -30,9 +39,15 @@ function createWindow(): void {
   win.on('ready-to-show', () => win.show())
 
   if (process.env.ELECTRON_RENDERER_URL) {
-    void win.loadURL(process.env.ELECTRON_RENDERER_URL)
+    win.loadURL(process.env.ELECTRON_RENDERER_URL).catch((error) => {
+      console.error('加载渲染页面失败', error)
+      win.show()
+    })
   } else {
-    void win.loadFile(join(__dirname, '../renderer/index.html'))
+    win.loadFile(join(__dirname, '../renderer/index.html')).catch((error) => {
+      console.error('加载渲染页面失败', error)
+      win.show()
+    })
   }
 }
 
