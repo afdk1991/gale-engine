@@ -24,6 +24,7 @@ const appearances = [
           :key="a.value"
           class="seg-btn"
           :class="{ on: themeController.appearance.value === a.value }"
+          :aria-pressed="themeController.appearance.value === a.value"
           @click="themeController.setAppearance(a.value)"
         >
           {{ a.label }}
@@ -39,9 +40,10 @@ const appearances = [
           :key="key"
           class="color"
           :class="{ on: themeController.accent.value === key }"
+          :aria-pressed="themeController.accent.value === key"
           @click="themeController.setAccent(key)"
         >
-          <span class="swatch" :style="{ background: ACCENTS[key].bg }">
+          <span class="swatch" aria-hidden="true" :style="{ background: ACCENTS[key].bg }">
             {{ themeController.accent.value === key ? '✓' : '' }}
           </span>
           <span class="name">{{ ACCENTS[key].label }}</span>
