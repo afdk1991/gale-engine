@@ -1,0 +1,93 @@
+<script setup lang="ts">
+const navItems = [
+  { path: '/', label: '首页', icon: 'home' },
+  { path: '/monitor', label: '硬件监控', icon: 'activity' },
+  { path: '/optimizer', label: '优化中心', icon: 'sliders' },
+  { path: '/game', label: '游戏模式', icon: 'gamepad' },
+  { path: '/toolbox', label: '工具箱', icon: 'toolbox' },
+  { path: '/history', label: '优化记录', icon: 'history' },
+  { path: '/settings', label: '设置', icon: 'settings' }
+] as const
+</script>
+
+<template>
+  <nav class="sidebar">
+    <div class="brand">
+      <span class="brand-mark"></span>
+      <span class="brand-name">疾风引擎</span>
+    </div>
+    <RouterLink
+      v-for="item in navItems"
+      :key="item.path"
+      :to="item.path"
+      class="nav-item"
+      exact-active-class="active"
+    >
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path v-if="item.icon === 'home'" d="M3 10.5 12 3l9 7.5V21h-6v-6h-6v6H3z" />
+        <path v-else-if="item.icon === 'activity'" d="M3 12h4l3-7 4 14 3-7h4" />
+        <g v-else-if="item.icon === 'sliders'">
+          <path d="M4 7h16M4 12h16M4 17h16" />
+          <circle cx="9" cy="7" r="2" fill="currentColor" stroke="none" />
+          <circle cx="15" cy="12" r="2" fill="currentColor" stroke="none" />
+          <circle cx="7" cy="17" r="2" fill="currentColor" stroke="none" />
+        </g>
+        <g v-else-if="item.icon === 'gamepad'">
+          <rect x="2.5" y="7" width="19" height="10" rx="5" />
+          <path d="M7 10v4M5 12h4" />
+          <circle cx="16" cy="13" r="1" fill="currentColor" stroke="none" />
+        </g>
+        <g v-else-if="item.icon === 'toolbox'">
+          <rect x="3" y="8" width="18" height="11" rx="2" />
+          <path d="M9 8V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18" />
+        </g>
+        <g v-else-if="item.icon === 'history'">
+          <path d="M4 5v5h5" />
+          <path d="M4.3 10A8 8 0 1 1 6 16.9" />
+          <path d="M12 8v4l3 2" />
+        </g>
+        <g v-else-if="item.icon === 'settings'">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1" />
+        </g>
+      </svg>
+      <span>{{ item.label }}</span>
+    </RouterLink>
+  </nav>
+</template>
+
+<style scoped>
+.sidebar {
+  width: 200px;
+  flex-shrink: 0;
+  background: var(--bg-tertiary);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 16px 10px;
+  gap: 2px;
+}
+.brand { display: flex; align-items: center; gap: 10px; padding: 4px 10px 18px; }
+.brand-mark { width: 26px; height: 26px; border-radius: 8px; background: var(--accent-bg); }
+.brand-name { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 13.5px;
+  transition: background 0.15s, color 0.15s;
+}
+.nav-item:hover { background: var(--accent-soft); color: var(--text-primary); }
+.nav-item.active {
+  background: var(--bg-secondary);
+  color: var(--accent);
+  font-weight: 600;
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.icon { width: 17px; height: 17px; flex-shrink: 0; }
+</style>
