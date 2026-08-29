@@ -5,6 +5,9 @@ const api: GaleApi = {
   settings: {
     get: () => ipcRenderer.invoke('settings:get'),
     set: (patch) => ipcRenderer.invoke('settings:set', patch)
+  },
+  monitor: {
+    snapshot: () => ipcRenderer.invoke('monitor:snapshot')
   }
 }
 

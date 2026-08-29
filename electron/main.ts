@@ -2,9 +2,11 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import Store from 'electron-store'
 import { createSettingsService, type StorageAdapter } from './services/settings'
+import { createMonitorService } from './services/monitor'
 
 const store = new Store()
 const settingsService = createSettingsService(store as unknown as StorageAdapter)
+const monitorService = createMonitorService()
 
 function registerIpc(): void {
   ipcMain.handle('settings:get', () => settingsService.get())
@@ -16,6 +18,7 @@ function registerIpc(): void {
       return settingsService.get()
     }
   })
+  ipcMain.handle('monitor:snapshot', () => monitorService.snapshot())
 }
 
 function createWindow(): void {

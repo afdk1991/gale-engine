@@ -7,9 +7,54 @@ export interface ThemeSettings {
   accent: AccentKey
 }
 
+// ---- Monitor（硬件监控）----
+export interface CpuSnapshot {
+  /** 整体负载 0-100 */
+  load: number
+  /** 每核负载 0-100 */
+  cores: number[]
+}
+
+export interface MemSnapshot {
+  used: number
+  total: number
+  percent: number
+}
+
+export interface DiskSnapshot {
+  mount: string
+  used: number
+  total: number
+  percent: number
+}
+
+export interface NetSnapshot {
+  /** 接收速率 bytes/s */
+  rxSec: number
+  /** 发送速率 bytes/s */
+  txSec: number
+}
+
+export interface SystemSnapshot {
+  cpu: CpuSnapshot
+  mem: MemSnapshot
+  disks: DiskSnapshot[]
+  net: NetSnapshot
+  /** CPU 温度（°C），不支持时为 null */
+  temp: number | null
+  /** 电量百分比，无电池时为 null */
+  battery: number | null
+  uptimeSec: number
+  /** 采样时间戳 */
+  at: number
+}
+
 export interface GaleApi {
   settings: {
     get(): Promise<ThemeSettings>
     set(patch: Partial<ThemeSettings>): Promise<ThemeSettings>
+  }
+  monitor: {
+    snapshot(): Promise<SystemSnapshot>
   }
 }
