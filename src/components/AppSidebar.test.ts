@@ -35,4 +35,13 @@ describe('AppSidebar', () => {
     const hrefs = wrapper.findAll('.nav-item').map((item) => item.attributes('href'))
     expect(hrefs).toEqual(['#/', '#/monitor', '#/optimizer', '#/game', '#/toolbox', '#/history', '#/settings'])
   })
+
+  it('exact-active-class 精确高亮当前路由', async () => {
+    const wrapper = mountSidebar()
+    await wrapper.vm.$router.push('/monitor')
+    await wrapper.vm.$nextTick()
+    const items = wrapper.findAll('.nav-item')
+    expect(items[1].classes()).toContain('active')
+    expect(items[0].classes()).not.toContain('active')
+  })
 })

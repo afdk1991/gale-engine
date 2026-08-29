@@ -15,5 +15,5 @@ export const router = createRouter({
 })
 
 router.afterEach((to) => {
-  document.title = `${String(to.meta.title ?? '')} - 疾风引擎`
+  document.title = to.meta.title ? `${String(to.meta.title)} - 疾风引擎` : '疾风引擎'
 })
