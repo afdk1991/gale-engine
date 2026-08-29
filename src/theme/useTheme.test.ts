@@ -120,4 +120,20 @@ describe('createThemeController', () => {
     media.trigger()
     expect(doc.documentElement.dataset.theme).toBe('light')
   })
+
+  it('显式模式忽略系统主题变化', async () => {
+    const media = fakeMedia(true)
+    const doc = fakeDoc()
+    const controller = createThemeController({
+      loadSettings: async () => defaults,
+      saveSettings: async (p) => ({ ...defaults, ...p }),
+      media,
+      doc
+    })
+    await controller.init()
+    await controller.setAppearance('light')
+    media.matches = false
+    media.trigger()
+    expect(doc.documentElement.dataset.theme).toBe('light')
+  })
 })
