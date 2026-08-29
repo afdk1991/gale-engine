@@ -5,6 +5,8 @@ import { createSettingsService, type StorageAdapter } from './services/settings'
 import { createMonitorService } from './services/monitor'
 import { createHistoryService } from './services/history'
 import { createOptimizerService } from './services/optimizer'
+import { createGameModeService } from './services/gamemode'
+import { createToolboxService } from './services/toolbox'
 import { createPowershellRunner } from './services/shell'
 
 const store = new Store()
@@ -12,6 +14,8 @@ const settingsService = createSettingsService(store as unknown as StorageAdapter
 const monitorService = createMonitorService()
 const historyService = createHistoryService(store as unknown as StorageAdapter)
 const optimizerService = createOptimizerService(createPowershellRunner())
+const gameModeService = createGameModeService(createPowershellRunner(), store as unknown as StorageAdapter)
+const toolboxService = createToolboxService(createPowershellRunner())
 
 function registerIpc(): void {
   ipcMain.handle('settings:get', () => settingsService.get())
@@ -33,6 +37,13 @@ function registerIpc(): void {
   ipcMain.handle('optimizer:toggleStartup', (_event, id, enable, command) =>
     optimizerService.toggleStartup(id, Boolean(enable), command)
   )
+  ipcMain.handle('gameMode:status', () => gameModeService.status())
+  ipcMain.handle('gameMode:boost', () => gameModeService.boost())
+  ipcMain.handle('gameMode:restore', () => gameModeService.restore())
+  ipcMain.handle('toolbox:flushDns', () => toolboxService.flushDns())
+  ipcMain.handle('toolbox:emptyRecycleBin', () => toolboxService.emptyRecycleBin())
+  ipcMain.handle('toolbox:clearClipboard', () => toolboxService.clearClipboard())
+  ipcMain.handle('toolbox:toggleDarkMode', (_event, enable) => toolboxService.toggleDarkMode(Boolean(enable)))
 }
 
 function createWindow(): void {

@@ -19,6 +19,17 @@ const api: GaleApi = {
     runCleanup: (items) => ipcRenderer.invoke('optimizer:runCleanup', items),
     listStartup: () => ipcRenderer.invoke('optimizer:listStartup'),
     toggleStartup: (id, enable, command) => ipcRenderer.invoke('optimizer:toggleStartup', id, enable, command)
+  },
+  gameMode: {
+    status: () => ipcRenderer.invoke('gameMode:status'),
+    boost: () => ipcRenderer.invoke('gameMode:boost'),
+    restore: () => ipcRenderer.invoke('gameMode:restore')
+  },
+  toolbox: {
+    flushDns: () => ipcRenderer.invoke('toolbox:flushDns'),
+    emptyRecycleBin: () => ipcRenderer.invoke('toolbox:emptyRecycleBin'),
+    clearClipboard: () => ipcRenderer.invoke('toolbox:clearClipboard'),
+    toggleDarkMode: (enable) => ipcRenderer.invoke('toolbox:toggleDarkMode', enable)
   }
 }
 

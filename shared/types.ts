@@ -68,6 +68,17 @@ export interface GaleApi {
     listStartup(): Promise<StartupItem[]>
     toggleStartup(id: string, enable: boolean, command?: string): Promise<StartupItem[]>
   }
+  gameMode: {
+    status(): Promise<GameModeStatus>
+    boost(): Promise<GameModeStatus>
+    restore(): Promise<GameModeStatus>
+  }
+  toolbox: {
+    flushDns(): Promise<ToolResult>
+    emptyRecycleBin(): Promise<ToolResult>
+    clearClipboard(): Promise<ToolResult>
+    toggleDarkMode(enable: boolean): Promise<ToolResult>
+  }
 }
 
 // ---- History（优化记录）----
@@ -107,4 +118,23 @@ export interface StartupItem {
   command: string
   location: 'HKCU' | 'HKLM'
   enabled: boolean
+}
+
+// ---- GameMode（游戏模式）----
+export interface GameModeStatus {
+  /** 当前激活的电源计划 GUID */
+  active: string
+  /** 当前电源计划名称（本地化，可能为 ''） */
+  activeName: string
+  /** 是否已处于游戏模式（高性能计划） */
+  boosted: boolean
+  /** boost 之前记录的上一计划 GUID，未记录为 null */
+  previous: string | null
+}
+
+// ---- Toolbox（工具箱）----
+export interface ToolResult {
+  ok: boolean
+  /** 成功提示或失败原因 */
+  message: string
 }
