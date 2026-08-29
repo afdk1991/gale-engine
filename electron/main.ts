@@ -3,10 +3,12 @@ import { join } from 'path'
 import Store from 'electron-store'
 import { createSettingsService, type StorageAdapter } from './services/settings'
 import { createMonitorService } from './services/monitor'
+import { createHistoryService } from './services/history'
 
 const store = new Store()
 const settingsService = createSettingsService(store as unknown as StorageAdapter)
 const monitorService = createMonitorService()
+const historyService = createHistoryService(store as unknown as StorageAdapter)
 
 function registerIpc(): void {
   ipcMain.handle('settings:get', () => settingsService.get())
@@ -19,6 +21,9 @@ function registerIpc(): void {
     }
   })
   ipcMain.handle('monitor:snapshot', () => monitorService.snapshot())
+  ipcMain.handle('history:list', () => historyService.list())
+  ipcMain.handle('history:add', (_event, entry) => historyService.add(entry ?? {}))
+  ipcMain.handle('history:clear', () => historyService.clear())
 }
 
 function createWindow(): void {

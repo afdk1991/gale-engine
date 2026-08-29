@@ -57,4 +57,21 @@ export interface GaleApi {
   monitor: {
     snapshot(): Promise<SystemSnapshot>
   }
+  history: {
+    list(): Promise<HistoryEntry[]>
+    add(entry: { type: HistoryType; label: string; detail?: string }): Promise<HistoryEntry>
+    clear(): Promise<void>
+  }
+}
+
+// ---- History（优化记录）----
+export type HistoryType = 'cleanup' | 'startup' | 'gameMode' | 'toolbox' | 'optimize'
+
+export interface HistoryEntry {
+  id: string
+  type: HistoryType
+  label: string
+  detail?: string
+  /** 时间戳（ms） */
+  at: number
 }

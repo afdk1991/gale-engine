@@ -8,6 +8,11 @@ const api: GaleApi = {
   },
   monitor: {
     snapshot: () => ipcRenderer.invoke('monitor:snapshot')
+  },
+  history: {
+    list: () => ipcRenderer.invoke('history:list'),
+    add: (entry) => ipcRenderer.invoke('history:add', entry),
+    clear: () => ipcRenderer.invoke('history:clear')
   }
 }
 
