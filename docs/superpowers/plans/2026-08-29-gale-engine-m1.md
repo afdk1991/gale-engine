@@ -1466,7 +1466,7 @@ Expected: 以上 5 项全部通过。Ctrl+C 退出。
 - [ ] **Step 3: 全量测试 + 类型检查 + Commit**
 
 Run: `npx vitest run`
-Expected: 全部 PASS（4 个测试文件、20 个测试：settings 6 + tokens 6 + useTheme 6 + AppSidebar 2）。
+Expected: 全部 PASS（4 个测试文件、21 个测试：settings 6 + tokens 6 + useTheme 7 + AppSidebar 2）。
 
 Run: `npm run typecheck`
 Expected: 退出码 0。
@@ -1537,7 +1537,7 @@ git tag v0.1.0
 
 ## M1 完成定义（DoD）
 
-- [ ] `npx vitest run` 全部通过（4 个测试文件、20 个测试）
+- [ ] `npx vitest run` 全部通过（4 个测试文件、21 个测试）
 - [ ] `npm run typecheck` 退出码 0
 - [ ] `npm run dev` 下：7 页路由正常、主题 3 模式 × 6 色即时切换且重启保持
 - [ ] `release/疾风引擎-0.1.0-setup.exe` 安装后冒烟通过
