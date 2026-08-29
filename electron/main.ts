@@ -4,11 +4,14 @@ import Store from 'electron-store'
 import { createSettingsService, type StorageAdapter } from './services/settings'
 import { createMonitorService } from './services/monitor'
 import { createHistoryService } from './services/history'
+import { createOptimizerService } from './services/optimizer'
+import { createPowershellRunner } from './services/shell'
 
 const store = new Store()
 const settingsService = createSettingsService(store as unknown as StorageAdapter)
 const monitorService = createMonitorService()
 const historyService = createHistoryService(store as unknown as StorageAdapter)
+const optimizerService = createOptimizerService(createPowershellRunner())
 
 function registerIpc(): void {
   ipcMain.handle('settings:get', () => settingsService.get())
@@ -24,6 +27,12 @@ function registerIpc(): void {
   ipcMain.handle('history:list', () => historyService.list())
   ipcMain.handle('history:add', (_event, entry) => historyService.add(entry ?? {}))
   ipcMain.handle('history:clear', () => historyService.clear())
+  ipcMain.handle('optimizer:scanCleanup', () => optimizerService.scanCleanup())
+  ipcMain.handle('optimizer:runCleanup', (_event, items) => optimizerService.runCleanup(items ?? []))
+  ipcMain.handle('optimizer:listStartup', () => optimizerService.listStartup())
+  ipcMain.handle('optimizer:toggleStartup', (_event, id, enable, command) =>
+    optimizerService.toggleStartup(id, Boolean(enable), command)
+  )
 }
 
 function createWindow(): void {

@@ -13,6 +13,12 @@ const api: GaleApi = {
     list: () => ipcRenderer.invoke('history:list'),
     add: (entry) => ipcRenderer.invoke('history:add', entry),
     clear: () => ipcRenderer.invoke('history:clear')
+  },
+  optimizer: {
+    scanCleanup: () => ipcRenderer.invoke('optimizer:scanCleanup'),
+    runCleanup: (items) => ipcRenderer.invoke('optimizer:runCleanup', items),
+    listStartup: () => ipcRenderer.invoke('optimizer:listStartup'),
+    toggleStartup: (id, enable, command) => ipcRenderer.invoke('optimizer:toggleStartup', id, enable, command)
   }
 }
 

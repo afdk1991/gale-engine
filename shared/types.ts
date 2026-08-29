@@ -62,6 +62,12 @@ export interface GaleApi {
     add(entry: { type: HistoryType; label: string; detail?: string }): Promise<HistoryEntry>
     clear(): Promise<void>
   }
+  optimizer: {
+    scanCleanup(): Promise<CleanupPlan[]>
+    runCleanup(items: { id: string; path: string; kind: OptimizerTargetKind }[]): Promise<CleanupResult[]>
+    listStartup(): Promise<StartupItem[]>
+    toggleStartup(id: string, enable: boolean, command?: string): Promise<StartupItem[]>
+  }
 }
 
 // ---- History（优化记录）----
@@ -74,4 +80,31 @@ export interface HistoryEntry {
   detail?: string
   /** 时间戳（ms） */
   at: number
+}
+
+// ---- Optimizer（优化中心）----
+export type OptimizerTargetKind = 'temp' | 'recycle' | 'browser'
+
+export interface CleanupPlan {
+  id: string
+  kind: OptimizerTargetKind
+  label: string
+  path: string
+  sizeBytes: number
+  /** 是否 safe 白名单路径（仅 safe 项允许清理） */
+  safe: boolean
+}
+
+export interface CleanupResult {
+  id: string
+  ok: boolean
+  error?: string
+}
+
+export interface StartupItem {
+  id: string
+  name: string
+  command: string
+  location: 'HKCU' | 'HKLM'
+  enabled: boolean
 }
