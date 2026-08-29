@@ -24,14 +24,13 @@ export function normalizeSettings(raw: unknown): ThemeSettings {
 }
 
 export function createSettingsService(storage: StorageAdapter) {
-  return {
-    get(): ThemeSettings {
-      return normalizeSettings(storage.get('theme', DEFAULT_SETTINGS))
-    },
-    set(patch: Partial<ThemeSettings>): ThemeSettings {
-      const next = normalizeSettings({ ...this.get(), ...patch })
-      storage.set('theme', next)
-      return next
-    }
+  const get = (): ThemeSettings => normalizeSettings(storage.get('theme', DEFAULT_SETTINGS))
+
+  const set = (patch: Partial<ThemeSettings>): ThemeSettings => {
+    const next = normalizeSettings({ ...get(), ...patch })
+    storage.set('theme', next)
+    return next
   }
+
+  return { get, set }
 }

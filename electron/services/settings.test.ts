@@ -26,6 +26,7 @@ describe('normalizeSettings', () => {
   it('非对象输入整体回退默认值', () => {
     expect(normalizeSettings('junk')).toEqual(DEFAULT_SETTINGS)
     expect(normalizeSettings(null)).toEqual(DEFAULT_SETTINGS)
+    expect(normalizeSettings({})).toEqual(DEFAULT_SETTINGS)
   })
 })
 
