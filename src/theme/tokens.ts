@@ -24,7 +24,7 @@ export const ACCENTS: Record<AccentKey, AccentToken> = {
 export const ACCENT_ORDER: AccentKey[] = ['blue', 'cyan', 'violet', 'green', 'orange', 'gradient']
 
 export function isAccentKey(value: unknown): value is AccentKey {
-  return typeof value === 'string' && value in ACCENTS
+  return typeof value === 'string' && Object.hasOwn(ACCENTS, value)
 }
 
 /** system 模式依据系统偏好解析为 light / dark */

@@ -29,6 +29,8 @@ describe('isAccentKey', () => {
     expect(isAccentKey('blue')).toBe(true)
     expect(isAccentKey('gradient')).toBe(true)
     expect(isAccentKey('neon')).toBe(false)
+    expect(isAccentKey('toString')).toBe(false)
+    expect(isAccentKey('constructor')).toBe(false)
     expect(isAccentKey(42)).toBe(false)
   })
 })
