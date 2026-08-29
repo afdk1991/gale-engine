@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>疾风引擎 — Windows 桌面优化加速引擎</title>
+  <meta name="description" content="疾风引擎：硬件监控、垃圾清理、启动项管理、游戏模式与系统工具箱，一站式 Windows 性能优化。" />
+  <style>
+    :root {
+      --accent: #2f7cf6;
+      --accent-2: #19c3a6;
+      --ink: #0f172a;
+      --ink-2: #475569;
+      --ink-3: #94a3b8;
+      --bg: #f7f9fc;
+      --card: #ffffff;
+      --border: #e6ebf2;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.6;
+    }
+    a { color: inherit; text-decoration: none; }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+    /* Nav */
+    .nav { display: flex; align-items: center; justify-content: space-between; padding: 18px 0; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; }
+    .brand-mark { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+    .nav-links { display: flex; gap: 22px; font-size: 14px; color: var(--ink-2); }
+    .nav-links a:hover { color: var(--accent); }
+
+    /* Hero */
+    .hero { text-align: center; padding: 72px 0 56px; }
+    .badge { display: inline-block; font-size: 12px; color: var(--accent); background: #e8f0ff; border: 1px solid #d3e2ff; padding: 4px 12px; border-radius: 999px; margin-bottom: 18px; }
+    .hero h1 { font-size: 46px; font-weight: 800; letter-spacing: -0.5px; }
+    .hero .grad { background: linear-gradient(135deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .hero p { font-size: 17px; color: var(--ink-2); max-width: 620px; margin: 16px auto 0; }
+    .cta { margin-top: 32px; display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; padding: 12px 26px; border-radius: 10px; transition: transform .12s, box-shadow .12s; }
+    .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; box-shadow: 0 8px 20px rgba(47,124,246,.28); }
+    .btn-primary:hover { transform: translateY(-2px); }
+    .btn-ghost { background: #fff; color: var(--ink); border: 1px solid var(--border); }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Features */
+    .section { padding: 48px 0; }
+    .section h2 { font-size: 28px; font-weight: 800; text-align: center; }
+    .section .sub { text-align: center; color: var(--ink-2); margin-top: 8px; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 34px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 22px; transition: box-shadow .15s, transform .15s; }
+    .card:hover { box-shadow: 0 10px 26px rgba(15,23,42,.07); transform: translateY(-3px); }
+    .card .ico { width: 40px; height: 40px; border-radius: 10px; background: #eef4ff; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 14px; }
+    .card h3 { font-size: 16px; font-weight: 700; }
+    .card p { font-size: 13.5px; color: var(--ink-2); margin-top: 6px; }
+
+    /* Changelog */
+    .log { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 28px; margin-top: 30px; max-width: 760px; margin-left: auto; margin-right: auto; }
+    .log-item { border-left: 3px solid var(--accent); padding-left: 16px; margin-bottom: 22px; }
+    .log-item:last-child { margin-bottom: 0; }
+    .log-version { font-weight: 700; font-size: 15px; }
+    .log-date { font-size: 12px; color: var(--ink-3); margin-left: 8px; }
+    .log ul { margin: 8px 0 0 18px; font-size: 13.5px; color: var(--ink-2); }
+    .log li { margin: 3px 0; }
+
+    /* Footer */
+    .footer { text-align: center; color: var(--ink-3); font-size: 13px; padding: 40px 0 56px; }
+    .req { display: inline-block; font-size: 12px; color: var(--ink-2); background: #eef2f7; border: 1px solid var(--border); padding: 6px 14px; border-radius: 8px; margin-top: 18px; }
+    code { background: #eef2f7; padding: 1px 6px; border-radius: 5px; font-size: 12.5px; color: #1f3a6e; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+    @media (max-width: 760px) {
+      .grid { grid-template-columns: 1fr; }
+      .hero h1 { font-size: 34px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav class="nav">
+      <div class="brand"><span class="brand-mark"></span> 疾风引擎</div>
+      <div class="nav-links">
+        <a href="#features">功能</a>
+        <a href="#changelog">更新日志</a>
+        <a href="#download">下载</a>
+      </div>
+    </nav>
+
+    <header class="hero" id="download">
+      <span class="badge">v0.1.0 · 稳定预览版</span>
+      <h1>让 Windows 跑得 <span class="grad">更快更稳</span></h1>
+      <p>硬件监控、垃圾清理、启动项管理、游戏模式与系统工具箱，集成在一个轻量桌面应用里。</p>
+      <div class="cta">
+        <a class="btn btn-primary" href="#get">⬇ 获取安装包</a>
+        <a class="btn btn-ghost" href="#changelog">查看更新日志</a>
+      </div>
+      <div class="req">系统要求：Windows 10 / 11 64 位 · 无需联网即可使用</div>
+    </header>
+
+    <section class="section" id="features">
+      <h2>核心功能</h2>
+      <p class="sub">六大模块覆盖日常性能优化全流程</p>
+      <div class="grid">
+        <div class="card">
+          <div class="ico">📊</div>
+          <h3>硬件监控</h3>
+          <p>实时采集 CPU / 内存 / 磁盘 / 网络负载、温度与电量，每秒刷新。</p>
+        </div>
+        <div class="card">
+          <div class="ico">🧹</div>
+          <h3>垃圾清理</h3>
+          <p>扫描 Temp 与回收站占用，白名单安全清理，逐项回执、失败隔离。</p>
+        </div>
+        <div class="card">
+          <div class="ico">⚡</div>
+          <h3>启动项管理</h3>
+          <p>集中管理 HKCU / HKLM 开机启动项，一键启用 / 禁用。</p>
+        </div>
+        <div class="card">
+          <div class="ico">🎮</div>
+          <h3>游戏模式</h3>
+          <p>一键切换高性能电源计划，退出时自动还原，安全可逆。</p>
+        </div>
+        <div class="card">
+          <div class="ico">🧰</div>
+          <h3>系统工具箱</h3>
+          <p>刷新 DNS、清空回收站、清空剪贴板、切换深色模式，幂等安全。</p>
+        </div>
+        <div class="card">
+          <div class="ico">🕘</div>
+          <h3>优化记录</h3>
+          <p>每次清理 / 模式切换自动留痕，时间线一目了然。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="get">
+      <h2>如何获取安装包</h2>
+      <p class="sub">两种方式，任选其一</p>
+      <div class="grid">
+        <div class="card">
+          <div class="ico">🛠️</div>
+          <h3>方式一：本地一键构建</h3>
+          <p>克隆仓库后运行 <code>scripts/package-win.cmd</code>（需 Node 与 7-Zip），自动产出 <code>release/疾风引擎-0.1.0-setup.exe</code>。镜像源已默认指向国内 npmmirror，无需翻墙。</p>
+        </div>
+        <div class="card">
+          <div class="ico">📦</div>
+          <h3>方式二：Release 下载</h3>
+          <p>在项目的 Release 页面获取预编译安装包（NSIS，支持自定义安装目录），双击即可安装。</p>
+        </div>
+        <div class="card">
+          <div class="ico">✅</div>
+          <h3>安装与验证</h3>
+          <p>安装后从桌面 / 开始菜单启动，按 <code>docs/smoke-test-checklist.md</code> 逐项核验六大模块功能。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="changelog">
+      <h2>更新日志</h2>
+      <p class="sub">v0.1.0 发版说明</p>
+      <div class="log">
+        <div class="log-item">
+          <div><span class="log-version">v0.1.0</span><span class="log-date">2026-08-30</span></div>
+          <ul>
+            <li>新增硬件监控模块：CPU / 内存 / 磁盘 / 网络实时仪表盘</li>
+            <li>新增优化记录模块：操作时间线持久化与清空</li>
+            <li>新增优化中心：垃圾清理（Temp / 回收站）+ 启动项管理</li>
+            <li>新增游戏模式：高性能电源计划一键切换与还原</li>
+            <li>新增系统工具箱：刷新 DNS / 清空回收站 / 清空剪贴板 / 深色模式</li>
+            <li>产出 NSIS 安装包，支持自定义安装目录</li>
+          </ul>
+        </div>
+        <div class="log-item">
+          <div><span class="log-version">已知限制</span></div>
+          <ul>
+            <li>沙箱环境无法运行 GUI，所有交互需在 Windows 实机按冒烟清单核验</li>
+            <li>进程挂起类激进优化暂未纳入，避免影响系统稳定性</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div>疾风引擎 · 基于 Electron + Vue 3 构建</div>
+      <div style="margin-top:8px">© 2026 GaleEngine · 仅供学习与个人优化使用</div>
+    </footer>
+  </div>
+</body>
+</html>
