@@ -171,4 +171,10 @@ function updateText(s: AppUpdateResult): string {
 .btn-primary { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); font-weight: 600; }
 .row-line { font-size: 13px; color: var(--text-secondary); margin: 0 0 12px; }
 .switch-line { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); cursor: pointer; }
+
+@media (max-width: 640px) {
+  .card { padding: 14px; max-width: 100%; }
+  .colors { gap: 10px; }
+  .swatch { width: 30px; height: 30px; }
+}
 </style>

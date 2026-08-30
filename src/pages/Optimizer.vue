@@ -218,4 +218,12 @@ onMounted(() => {
 .btn.primary:hover:not(:disabled) { opacity: 0.9; }
 .btn.danger { background: #ef4444; color: #fff; border-color: transparent; }
 .btn.small { padding: 5px 12px; font-size: 12px; flex-shrink: 0; }
+
+@media (max-width: 640px) {
+  .block { padding: 14px; }
+  .plan-row { flex-wrap: wrap; gap: 6px; }
+  .plan-size { order: 3; width: 100%; }
+  .startup { flex-wrap: wrap; gap: 8px; }
+  .actions { flex-direction: column; }
+}
 </style>

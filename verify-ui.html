@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>疾风引擎 - UI 视觉验证</title>
+  <!-- 引入构建产物的真实 CSS（样式与生产完全一致） -->
+  <link rel="stylesheet" href="./out/renderer/assets/index-B-jhz83c.css">
+  <link rel="stylesheet" href="./out/renderer/assets/Home-C01tVvTM.css">
+  <link rel="stylesheet" href="./out/renderer/assets/Monitor--JChmvkF.css">
+  <link rel="stylesheet" href="./out/renderer/assets/History-BWCPrvFD.css">
+  <link rel="stylesheet" href="./out/renderer/assets/Optimizer-EDg1Ep2b.css">
+  <link rel="stylesheet" href="./out/renderer/assets/Settings-hvUVgHvj.css">
+  <style>
+    /* 验证页面专用：并排展示所有页面 */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', 'Microsoft YaHei', system-ui, sans-serif;
+      background: #e8eaed;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      font-size: 22px;
+      color: #1f2329;
+      margin-bottom: 16px;
+      padding: 12px;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    }
+    .verify-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+      gap: 20px;
+      max-width: 1800px;
+      margin: 0 auto;
+    }
+    .frame {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.08);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .frame-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      background: #f7f8fa;
+      border-bottom: 1px solid #e2e5ea;
+      font-size: 13px;
+      font-weight: 600;
+      color: #6b7280;
+    }
+    .frame-header .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+    }
+    .dot-red { background: #ef4444; }
+    .dot-yellow { background: #f59e0b; }
+    .dot-green { background: #10b981; }
+    .frame-body {
+      flex: 1;
+      overflow: auto;
+      /* 模拟 app 布局：侧边栏 + 内容区 */
+      display: flex;
+      min-height: 480px;
+    }
+    /* 模拟侧边栏 */
+    .mock-sidebar {
+      width: 200px;
+      flex-shrink: 0;
+      background: #f0f2f6;
+      border-right: 1px solid #e2e5ea;
+      display: flex;
+      flex-direction: column;
+      padding: 16px 10px;
+      gap: 2px;
+      transition: width 0.2s ease, padding 0.2s ease;
+    }
+    .mock-brand { display: flex; align-items: center; gap: 10px; padding: 4px 10px 18px; }
+    .mock-brand-mark { width: 26px; height: 26px; border-radius: 8px; background: #3b82f6; }
+    .mock-brand-name { font-size: 15px; font-weight: 700; color: #1f2329; }
+    .mock-nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 12px; border-radius: 8px;
+      color: #6b7280; text-decoration: none; font-size: 13.5px;
+    }
+    .mock-nav-item.active { background: #fff; color: #3b82f6; font-weight: 600; box-shadow: inset 2px 0 0 #3b82f6; }
+    .mock-nav-item:hover { background: rgba(59,130,246,.12); color: #1f2329; }
+    .mock-icon { width: 17px; height: 17px; flex-shrink: 0; }
+    /* 模拟内容区 */
+    .mock-page {
+      flex: 1; padding: 24px 28px; overflow-y: auto;
+      background: #f7f8fa;
+    }
+
+    /* ---- Home 页面还原 ---- */
+    .hero {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 24px; border-radius: 16px; padding: 26px 28px;
+      color: #fff; background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      box-shadow: 0 4px 12px rgba(0,0,0,.08); margin-bottom: 18px;
+    }
+    .hero-brand { display: flex; align-items: center; gap: 10px; }
+    .hero-mark { width: 30px; height: 30px; border-radius: 9px; background: rgba(255,255,255,.25); }
+    .hero-name { font-size: 22px; font-weight: 800; letter-spacing: .5px; }
+    .hero-ver { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: rgba(255,255,255,.2); }
+    .hero-sub { margin: 12px 0 16px; font-size: 13.5px; opacity: .92; max-width: 460px; line-height: 1.6; }
+    .hero-actions { display: flex; gap: 10px; }
+    .hero-btn { font-size: 13px; padding: 9px 18px; border-radius: 9px; background: #fff; color: #1f2329; text-decoration: none; font-weight: 600; }
+    .hero-btn.ghost { background: rgba(255,255,255,.16); color: #fff; }
+    .hero-score { display: flex; flex-direction: column; align-items: center; gap: 6px; flex-shrink: 0; }
+    .score-ring { width: 92px; height: 92px; border-radius: 50%; display: flex; align-items: baseline; justify-content: center; background: rgba(255,255,255,.18); border: 3px solid rgba(255,255,255,.55); }
+    .score-num { font-size: 38px; font-weight: 800; line-height: 1; }
+    .score-unit { font-size: 13px; margin-left: 2px; opacity: .9; }
+    .score-label { font-size: 13px; font-weight: 600; }
+    .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 22px; }
+    .stat { background: #fff; border: 1px solid #e2e5ea; border-radius: 12px; padding: 14px 16px; }
+    .stat-label { font-size: 12px; color: #6b7280; }
+    .stat-value { display: block; font-size: 22px; font-weight: 700; color: #1f2329; margin-top: 4px; }
+    .stat-value i { font-size: 13px; font-style: normal; color: #9ca3af; margin-left: 2px; }
+    .stat-value.sm { font-size: 16px; }
+    .stat-bar { height: 6px; background: #f0f2f6; border-radius: 4px; overflow: hidden; margin-top: 10px; }
+    .stat-bar span { display: block; height: 100%; background: #3b82f6; border-radius: 4px; }
+    .section-title { font-size: 15px; font-weight: 600; color: #1f2329; margin: 4px 0 12px; }
+    .modules { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    .module { display: flex; flex-direction: column; gap: 4px; background: #fff; border: 1px solid #e2e5ea; border-radius: 12px; padding: 16px; text-decoration: none; transition: border-color .15s, transform .12s, box-shadow .15s; }
+    .module:hover { border-color: #3b82f6; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+    .module-icon { font-size: 22px; }
+    .module-name { font-size: 14px; font-weight: 600; color: #1f2329; margin-top: 4px; }
+    .module-desc { font-size: 12px; color: #9ca3af; line-height: 1.5; }
+
+    /* ---- Monitor 页面还原 ---- */
+    .page-header { margin-bottom: 20px; }
+    .page-header h1 { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+    .page-header p { font-size: 13px; color: #6b7280; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; max-width: 720px; }
+    .card { background: #fff; border: 1px solid #e2e5ea; border-radius: 12px; padding: 18px; }
+    .card-title { font-size: 13px; font-weight: 600; color: #6b7280; margin-bottom: 10px; }
+    .big { font-size: 40px; font-weight: 700; color: #3b82f6; line-height: 1; }
+    .unit { font-size: 18px; margin-left: 4px; color: #6b7280; }
+    .sub { font-size: 13px; color: #6b7280; margin-top: 6px; }
+    .muted { color: #9ca3af; font-size: 12px; }
+    .cores { margin-top: 12px; display: flex; flex-direction: column; gap: 5px; }
+    .core { display: flex; align-items: center; gap: 8px; }
+    .core-bar { flex: 1; height: 6px; background: #f0f2f6; border-radius: 4px; overflow: hidden; }
+    .core-bar span { display: block; height: 100%; background: #3b82f6; border-radius: 4px; }
+    .core-label { font-size: 11px; color: #9ca3af; width: 64px; text-align: right; }
+    .bar { height: 8px; background: #f0f2f6; border-radius: 4px; overflow: hidden; margin-top: 10px; }
+    .bar span { display: block; height: 100%; background: #3b82f6; border-radius: 4px; }
+    .net-line { font-size: 14px; color: #1f2329; margin: 4px 0; }
+    .disks { grid-column: 1 / -1; }
+    .disk { margin-bottom: 12px; }
+    .disk-head { display: flex; justify-content: space-between; font-size: 12px; color: #6b7280; margin-bottom: 4px; }
+    .error { color: #ef4444; font-size: 13px; }
+    .hint { color: #9ca3af; font-size: 13px; }
+
+    /* ---- History 页面还原 ---- */
+    .history-card { background: #fff; border: 1px solid #e2e5ea; border-radius: 12px; padding: 18px; max-width: 640px; }
+    .list-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .count { font-size: 13px; color: #6b7280; }
+    .clear { border: 1px solid #e2e5ea; background: transparent; color: #6b7280; border-radius: 8px; padding: 6px 12px; font-size: 13px; cursor: pointer; }
+    .clear:disabled { opacity: .5; cursor: not-allowed; }
+    .list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+    .item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #e2e5ea; }
+    .item:last-child { border-bottom: none; }
+    .badge { flex-shrink: 0; font-size: 11px; padding: 3px 8px; border-radius: 6px; background: rgba(59,130,246,.12); color: #3b82f6; font-weight: 600; }
+    .body { flex: 1; min-width: 0; }
+    .label { font-size: 13.5px; color: #1f2329; }
+    .detail { font-size: 12px; color: #9ca3af; margin-top: 2px; word-break: break-all; }
+    .time { font-size: 12px; color: #9ca3af; flex-shrink: 0; }
+    .empty { font-size: 13px; color: #9ca3af; padding: 12px 0; }
+
+    /* ---- Optimizer 页面还原 ---- */
+    .block { background: #fff; border: 1px solid #e2e5ea; border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+    .block-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .btn { font-size: 13px; padding: 7px 16px; border-radius: 8px; border: 1px solid #e2e5ea; background: #f0f2f6; color: #1f2329; cursor: pointer; }
+    .btn:hover:not(:disabled) { background: rgba(59,130,246,.12); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn.primary { background: #3b82f6; color: #fff; border-color: transparent; }
+    .plan-list, .startup-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+    .plan-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; background: #f0f2f6; cursor: pointer; }
+    .plan-kind { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: rgba(59,130,246,.12); color: #3b82f6; flex-shrink: 0; }
+    .plan-label { flex: 1; font-size: 13px; color: #1f2329; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .plan-size { font-size: 12px; color: #6b7280; flex-shrink: 0; }
+    .startup { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 8px; background: #f0f2f6; }
+    .startup-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .startup-name { font-size: 13px; color: #1f2329; font-weight: 600; }
+    .startup-loc { font-size: 11px; padding: 1px 6px; border-radius: 4px; background: #fff; color: #6b7280; align-self: flex-start; }
+    .startup-cmd { font-size: 11px; color: #9ca3af; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .actions { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+    .result { font-size: 12px; color: #6b7280; }
+
+    /* ---- Settings 页面还原 ---- */
+    .settings-card { background: #fff; border: 1px solid #e2e5ea; border-radius: 12px; padding: 18px; margin-bottom: 14px; max-width: 560px; }
+    .seg { display: flex; gap: 8px; }
+    .seg-btn { flex: 1; padding: 8px 0; border: 1px solid #e2e5ea; background: transparent; color: #6b7280; border-radius: 8px; font-size: 13px; cursor: pointer; }
+    .seg-btn.on { border-color: #3b82f6; color: #3b82f6; background: rgba(59,130,246,.12); font-weight: 600; }
+    .colors { display: flex; gap: 14px; flex-wrap: wrap; }
+    .color { display: flex; flex-direction: column; align-items: center; gap: 6px; background: none; border: none; cursor: pointer; }
+    .swatch { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 14px; }
+    .color.on .swatch { outline: 2px solid #1f2329; outline-offset: 2px; }
+    .name { font-size: 12px; color: #6b7280; }
+    .color.on .name { color: #3b82f6; font-weight: 600; }
+    .hint { font-size: 13px; color: #9ca3af; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+    .row-line { font-size: 13px; color: #6b7280; margin: 0 0 12px; }
+    .switch-line { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #6b7280; cursor: pointer; }
+
+    /* ---- GameMode / Toolbox 简化还原 ---- */
+    .game-card { background: #fff; border: 1px solid #e2e5ea; border-radius: 12px; padding: 20px; max-width: 720px; }
+    .state { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; background: #9ca3af; flex-shrink: 0; }
+    .dot.on { background: #3b82f6; box-shadow: 0 0 0 4px rgba(59,130,246,.12); }
+    .state-title { font-size: 16px; font-weight: 700; color: #1f2329; }
+    .state-sub { font-size: 13px; color: #6b7280; margin-top: 2px; }
+    .game-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn.ghost { background: transparent; }
+    .note { font-size: 12px; color: #9ca3af; margin-top: 14px; max-width: 720px; line-height: 1.6; }
+    code { background: #f0f2f6; padding: 1px 5px; border-radius: 4px; font-size: .9em; font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace; }
+
+    .toolbox-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; max-width: 720px; }
+    .tool-card { background: #fff; border: 1px solid #e2e5ea; border-radius: 12px; padding: 18px; }
+    .desc { font-size: 12px; color: #9ca3af; margin-bottom: 12px; min-height: 32px; }
+    .t-row { display: flex; gap: 8px; }
+    .t-result { font-size: 12px; color: #3b82f6; margin-top: 10px; }
+
+    /* 响应式：验证框架 */
+    @media (max-width: 900px) {
+      .modules { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .verify-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 600px) {
+      .hero { flex-direction: column; align-items: flex-start; }
+      .modules { grid-template-columns: 1fr; }
+      .stats { grid-template-columns: 1fr 1fr; }
+      .grid { grid-template-columns: 1fr; }
+      .toolbox-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <h1>疾风引擎 v0.2.0 — UI 视觉验证（浅色模式）</h1>
+  <div class="verify-grid">
+
+    <!-- ========== HOME ========== -->
+    <div class="frame">
+      <div class="frame-header"><span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span> Home.vue — 首页仪表盘</div>
+      <div class="frame-body">
+        <div class="mock-sidebar">
+          <div class="mock-brand"><div class="mock-brand-mark"></div><span class="mock-brand-name">疾风引擎</span></div>
+          <a class="mock-nav-item active">首页</a>
+          <a class="mock-nav-item">硬件监控</a>
+          <a class="mock-nav-item">优化中心</a>
+          <a class="mock-nav-item">游戏模式</a>
+          <a class="mock-nav-item">工具箱</a>
+          <a class="mock-nav-item">优化记录</a>
+          <a class="mock-nav-item">设置</a>
+        </div>
+        <div class="mock-page">
+          <div class="hero hero.ok">
+            <div class="hero-main">
+              <div class="hero-brand">
+                <span class="hero-mark"></span>
+                <span class="hero-name">疾风引擎</span>
+                <span class="hero-ver">v0.2.0</span>
+              </div>
+              <p class="hero-sub">一站式系统优化与硬件监控，让电脑持续保持最佳状态</p>
+              <div class="hero-actions">
+                <a class="hero-btn" href="#">硬件监控</a>
+                <a class="hero-btn ghost" href="#">优化中心</a>
+              </div>
+            </div>
+            <div class="hero-score">
+              <div class="score-ring"><span class="score-num">82</span><span class="score-unit">分</span></div>
+              <span class="score-label">流畅</span>
+            </div>
+          </div>
+          <div class="stats">
+            <div class="stat"><span class="stat-label">CPU</span><span class="stat-value">23<i>%</i></span><div class="stat-bar"><span style="width:23%"></span></div></div>
+            <div class="stat"><span class="stat-label">内存</span><span class="stat-value">58<i>%</i></span><div class="stat-bar"><span style="width:58%"></span></div></div>
+            <div class="stat"><span class="stat-label">网络 ↓</span><span class="stat-value sm">128 KB/s</span></div>
+            <div class="stat"><span class="stat-label">网络 ↑</span><span class="stat-value sm">42 KB/s</span></div>
+          </div>
+          <h2 class="section-title">功能模块</h2>
+          <div class="modules">
+            <a class="module" href="#"><span class="module-icon">📊</span><span class="module-name">硬件监控</span><span class="module-desc">实时采集 CPU、内存、磁盘与网络负载</span></a>
+            <a class="module" href="#"><span class="module-icon">🧹</span><span class="module-name">优化中心</span><span class="module-desc">一键清理系统垃圾、管理开机启动项</span></a>
+            <a class="module" href="#"><span class="module-icon">🎮</span><span class="module-name">游戏模式</span><span class="module-desc">切换高性能电源计划，释放系统性能</span></a>
+            <a class="module" href="#"><span class="module-icon">🧰</span><span class="module-name">工具箱</span><span class="module-desc">刷新 DNS、清空回收站等系统小工具</span></a>
+            <a class="module" href="#"><span class="module-icon">🕘</span><span class="module-name">优化记录</span><span class="module-desc">查看全部清理与优化的历史留痕</span></a>
+            <a class="module" href="#"><span class="module-icon">⚙️</span><span class="module-name">设置</span><span class="module-desc">外观主题、自动更新与开机自启</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== MONITOR ========== -->
+    <div class="frame">
+      <div class="frame-header"><span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span> Monitor.vue — 硬件监控</div>
+      <div class="frame-body">
+        <div class="mock-sidebar">
+          <div class="mock-brand"><div class="mock-brand-mark"></div><span class="mock-brand-name">疾风引擎</span></div>
+          <a class="mock-nav-item">首页</a>
+          <a class="mock-nav-item active">硬件监控</a>
+          <a class="mock-nav-item">优化中心</a>
+          <a class="mock-nav-item">游戏模式</a>
+          <a class="mock-nav-item">工具箱</a>
+          <a class="mock-nav-item">优化记录</a>
+          <a class="mock-nav-item">设置</a>
+        </div>
+        <div class="mock-page">
+          <header class="page-header"><h1>硬件监控</h1><p>实时采集 CPU / 内存 / 磁盘 / 网络负载（每秒刷新）</p></header>
+          <div class="grid">
+            <div class="card metric"><h2 class="card-title">CPU 负载</h2><div class="big">23<span class="unit">%</span></div><div class="cores"><div class="core"><div class="core-bar"><span style="width:18%"></span></div><span class="core-label">#0 18%</span></div><div class="core"><div class="core-bar"><span style="width:28%"></span></div><span class="core-label">#1 28%</span></div><div class="core"><div class="core-bar"><span style="width:15%"></span></div><span class="core-label">#2 15%</span></div><div class="core"><div class="core-bar"><span style="width:31%"></span></div><span class="core-label">#3 31%</span></div></div></div>
+            <div class="card metric"><h2 class="card-title">内存</h2><div class="big">58<span class="unit">%</span></div><p class="sub">9.4 / 16.0 GB</p><div class="bar"><span style="width:58%"></span></div></div>
+            <div class="card metric"><h2 class="card-title">网络</h2><p class="net-line">↓ 128 KB/s</p><p class="net-line">↑ 42 KB/s</p></div>
+            <div class="card metric"><h2 class="card-title">温度 / 电量</h2><p class="sub">52 °C</p><p class="sub">电量 87%</p><p class="sub">运行时长 3h 22m</p></div>
+            <div class="card disks"><h2 class="card-title">磁盘</h2><div class="disk"><div class="disk-head"><span>C:</span><span class="muted">168.2 / 512.0 GB</span></div><div class="bar"><span style="width:33%"></span></div></div><div class="disk"><div class="disk-head"><span>D:</span><span class="muted">320.5 / 500.0 GB</span></div><div class="bar"><span style="width:64%"></span></div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== HISTORY ========== -->
+    <div class="frame">
+      <div class="frame-header"><span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span> History.vue — 优化记录</div>
+      <div class="frame-body">
+        <div class="mock-sidebar">
+          <div class="mock-brand"><div class="mock-brand-mark"></div><span class="mock-brand-name">疾风引擎</span></div>
+          <a class="mock-nav-item">首页</a>
+          <a class="mock-nav-item">硬件监控</a>
+          <a class="mock-nav-item">优化中心</a>
+          <a class="mock-nav-item">游戏模式</a>
+          <a class="mock-nav-item">工具箱</a>
+          <a class="mock-nav-item active">优化记录</a>
+          <a class="mock-nav-item">设置</a>
+        </div>
+        <div class="mock-page">
+          <header class="page-header"><h1>优化记录</h1><p>所有清理、优化与模式切换操作都会在此留痕</p></header>
+          <div class="history-card">
+            <div class="list-head"><span class="count">共 4 条</span><button class="clear">清空记录</button></div>
+            <ul class="list">
+              <li class="item"><span class="badge">工具</span><div class="body"><div class="label">刷新 DNS</div><div class="detail">DNS 缓存已清空</div></div><span class="time">2 分钟前</span></li>
+              <li class="item"><span class="badge">清理</span><div class="body"><div class="label">清理 3 项垃圾</div><div class="detail">临时文件、回收站、浏览器</div></div><span class="time">15 分钟前</span></li>
+              <li class="item"><span class="badge">游戏模式</span><div class="body"><div class="label">进入游戏模式</div><div class="detail">高性能电源计划已激活</div></div><span class="time">1 小时前</span></li>
+              <li class="item"><span class="badge">启动项</span><div class="body"><div class="label">禁用启动项：SomeApp</div><div class="detail">C:\Program Files\SomeApp\app.exe</div></div><span class="time">3 小时前</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== OPTIMIZER ========== -->
+    <div class="frame">
+      <div class="frame-header"><span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span> Optimizer.vue — 优化中心</div>
+      <div class="frame-body">
+        <div class="mock-sidebar">
+          <div class="mock-brand"><div class="mock-brand-mark"></div><span class="mock-brand-name">疾风引擎</span></div>
+          <a class="mock-nav-item">首页</a>
+          <a class="mock-nav-item">硬件监控</a>
+          <a class="mock-nav-item active">优化中心</a>
+          <a class="mock-nav-item">游戏模式</a>
+          <a class="mock-nav-item">工具箱</a>
+          <a class="mock-nav-item">优化记录</a>
+          <a class="mock-nav-item">设置</a>
+        </div>
+        <div class="mock-page">
+          <header class="page-header"><h1>优化中心</h1><p>扫描并清理系统垃圾，管理开机启动项</p></header>
+          <div class="block">
+            <div class="block-head"><h2 class="card-title">垃圾清理</h2><button class="btn">重新扫描</button></div>
+            <ul class="plan-list">
+              <li class="plan"><label class="plan-row"><input type="checkbox" checked /><span class="plan-kind">临时文件</span><span class="plan-label">%TEMP%\Chrome Cache</span><span class="plan-size">248.3 MB</span></label></li>
+              <li class="plan"><label class="plan-row"><input type="checkbox" checked /><span class="plan-kind" style="background:#fef3c7;color:#b45309">回收站</span><span class="plan-label">回收站</span><span class="plan-size">1.2 GB</span></label></li>
+              <li class="plan disabled"><label class="plan-row"><input type="checkbox" disabled /><span class="plan-kind">临时文件</span><span class="plan-label">C:\Windows\Temp</span><span class="plan-size">86.1 MB</span><span style="font-size:11px;color:#b91c1c;background:#fee2e2;padding:2px 8px;border-radius:999px">非安全</span></label></li>
+            </ul>
+            <div class="actions"><button class="btn primary">清理选中项（2）</button><span class="result">上次：已清理 5/5 项</span></div>
+          </div>
+          <div class="block">
+            <div class="block-head"><h2 class="card-title">启动项管理</h2><button class="btn">刷新</button></div>
+            <ul class="startup-list">
+              <li class="startup"><div class="startup-info"><span class="startup-name">SomeApp</span><span class="startup-loc">HKCU</span><span class="startup-cmd">C:\Program Files\SomeApp\app.exe --minimize</span></div><button class="btn small danger">禁用</button></li>
+              <li class="startup"><div class="startup-info"><span class="startup-name">AnotherTool</span><span class="startup-loc">HKLM</span><span class="startup-cmd">"C:\Program Files\AnotherTool\tool.exe"</span></div><button class="btn small primary">启用</button></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== SETTINGS ========== -->
+    <div class="frame">
+      <div class="frame-header"><span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span> Settings.vue — 设置</div>
+      <div class="frame-body">
+        <div class="mock-sidebar">
+          <div class="mock-brand"><div class="mock-brand-mark"></div><span class="mock-brand-name">疾风引擎</span></div>
+          <a class="mock-nav-item">首页</a>
+          <a class="mock-nav-item">硬件监控</a>
+          <a class="mock-nav-item">优化中心</a>
+          <a class="mock-nav-item">游戏模式</a>
+          <a class="mock-nav-item">工具箱</a>
+          <a class="mock-nav-item">优化记录</a>
+          <a class="mock-nav-item active">设置</a>
+        </div>
+        <div class="mock-page">
+          <header class="page-header"><h1>设置</h1><p>主题定制与偏好配置</p></header>
+          <div class="settings-card"><h2 class="card-title">外观模式</h2><div class="seg"><button class="seg-btn">跟随系统</button><button class="seg-btn on">浅色</button><button class="seg-btn">深色</button></div></div>
+          <div class="settings-card"><h2 class="card-title">主题色</h2><div class="colors">
+            <button class="color on"><span class="swatch" style="background:#3b82f6">✓</span><span class="name">默认蓝</span></button>
+            <button class="color"><span class="swatch" style="background:#8b5cf6"></span><span class="name">紫罗兰</span></button>
+            <button class="color"><span class="swatch" style="background:#ec4899"></span><span class="name">玫红</span></button>
+            <button class="color"><span class="swatch" style="background:#f97316"></span><span class="name">橙色</span></button>
+            <button class="color"><span class="swatch" style="background:#10b981"></span><span class="name">翠绿</span></button>
+          </div></div>
+          <div class="settings-card"><h2 class="card-title">关于与更新</h2><p class="row-line">当前版本：<strong>v0.2.0</strong></p><div class="row"><button class="btn">检查更新</button></div><p class="hint">当前已是最新版本</p></div>
+          <div class="settings-card"><h2 class="card-title">开机自启</h2><label class="switch-line"><input type="checkbox" /><span>登录 Windows 时自动启动疾风引擎</span></label></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== GAMEMODE ========== -->
+    <div class="frame">
+      <div class="frame-header"><span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span> GameMode.vue — 游戏模式</div>
+      <div class="frame-body">
+        <div class="mock-sidebar">
+          <div class="mock-brand"><div class="mock-brand-mark"></div><span class="mock-brand-name">疾风引擎</span></div>
+          <a class="mock-nav-item">首页</a>
+          <a class="mock-nav-item">硬件监控</a>
+          <a class="mock-nav-item">优化中心</a>
+          <a class="mock-nav-item active">游戏模式</a>
+          <a class="mock-nav-item">工具箱</a>
+          <a class="mock-nav-item">优化记录</a>
+          <a class="mock-nav-item">设置</a>
+        </div>
+        <div class="mock-page">
+          <header class="page-header"><h1>游戏模式</h1><p>一键切换高性能电源计划，释放系统性能</p></header>
+          <div class="game-card">
+            <div class="state"><span class="dot"></span><div><div class="state-title">当前为普通模式</div><div class="state-sub">当前计划：平衡 (Power Saver)</div></div></div>
+            <div class="game-actions"><button class="btn primary">进入游戏模式</button><button class="btn" disabled>退出游戏模式</button><button class="btn ghost">刷新状态</button></div>
+            <p class="note">游戏模式通过 <code>powercfg /setactive</code> 切换到系统「高性能」电源计划，退出时自动还原进入前的计划；切换仅影响电源策略，不涉及进程终止，安全可逆。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== TOOLBOX ========== -->
+    <div class="frame">
+      <div class="frame-header"><span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span> Toolbox.vue — 工具箱</div>
+      <div class="frame-body">
+        <div class="mock-sidebar">
+          <div class="mock-brand"><div class="mock-brand-mark"></div><span class="mock-brand-name">疾风引擎</span></div>
+          <a class="mock-nav-item">首页</a>
+          <a class="mock-nav-item">硬件监控</a>
+          <a class="mock-nav-item">优化中心</a>
+          <a class="mock-nav-item">游戏模式</a>
+          <a class="mock-nav-item active">工具箱</a>
+          <a class="mock-nav-item">优化记录</a>
+          <a class="mock-nav-item">设置</a>
+        </div>
+        <div class="mock-page">
+          <header class="page-header"><h1>工具箱</h1><p>一组安全、幂等的系统小工具</p></header>
+          <div class="toolbox-grid">
+            <div class="tool-card tool"><h2 class="card-title">刷新 DNS</h2><p class="desc">清除本地 DNS 解析缓存（ipconfig /flushdns）</p><button class="btn">刷新 DNS</button><p class="t-result">✓ DNS 缓存已清空</p></div>
+            <div class="tool-card tool"><h2 class="card-title">清空回收站</h2><p class="desc">永久删除回收站中的文件</p><button class="btn">清空回收站</button></div>
+            <div class="tool-card tool"><h2 class="card-title">清空剪贴板</h2><p class="desc">清除当前剪贴板内容</p><button class="btn">清空剪贴板</button></div>
+            <div class="tool-card tool"><h2 class="card-title">深色模式</h2><p class="desc">切换 Windows 应用深色/浅色主题（注册表）</p><div class="t-row"><button class="btn">深色</button><button class="btn">浅色</button></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

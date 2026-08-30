@@ -111,4 +111,10 @@ onMounted(load)
 .time { font-size: 12px; color: var(--text-tertiary); flex-shrink: 0; }
 .empty { font-size: 13px; color: var(--text-tertiary); padding: 12px 0; }
 .error { color: #ef4444; font-size: 13px; }
+
+@media (max-width: 640px) {
+  .card { padding: 14px; }
+  .item { flex-wrap: wrap; gap: 8px; }
+  .time { width: 100%; }
+}
 </style>

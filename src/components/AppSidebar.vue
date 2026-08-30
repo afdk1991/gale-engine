@@ -67,6 +67,7 @@ const navItems = [
   flex-direction: column;
   padding: 16px 10px;
   gap: 2px;
+  transition: width 0.2s ease, padding 0.2s ease;
 }
 .brand { display: flex; align-items: center; gap: 10px; padding: 4px 10px 18px; }
 .brand-mark { width: 26px; height: 26px; border-radius: 8px; background: var(--accent-bg); }
@@ -90,4 +91,12 @@ const navItems = [
   box-shadow: inset 2px 0 0 var(--accent);
 }
 .icon { width: 17px; height: 17px; flex-shrink: 0; }
+
+@media (max-width: 720px) {
+  .sidebar { width: 60px; padding: 16px 6px; align-items: center; }
+  .brand { padding: 4px 0 18px; justify-content: center; }
+  .brand-name { display: none; }
+  .nav-item { justify-content: center; padding: 11px 0; gap: 0; }
+  .nav-item span { display: none; }
+}
 </style>
