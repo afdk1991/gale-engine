@@ -89,7 +89,7 @@
     </nav>
 
     <header class="hero" id="download">
-      <span class="badge">v0.1.0 · 稳定预览版</span>
+      <span class="badge">v0.2.0 · 功能预览版</span>
       <h1>让 Windows 跑得 <span class="grad">更快更稳</span></h1>
       <p>硬件监控、垃圾清理、启动项管理、游戏模式与系统工具箱，集成在一个轻量桌面应用里。</p>
       <div class="cta">
@@ -143,7 +143,7 @@
         <div class="card">
           <div class="ico">🛠️</div>
           <h3>方式一：本地一键构建</h3>
-          <p>克隆仓库后运行 <code>scripts/package-win.cmd</code>（需 Node 与 7-Zip），自动产出 <code>release/疾风引擎-0.1.0-setup.exe</code>。镜像源已默认指向国内 npmmirror，无需翻墙。</p>
+          <p>克隆仓库后运行 <code>scripts/package-win.cmd</code>（需 Node 与 7-Zip），自动产出 <code>release/疾风引擎-0.2.0-setup.exe</code>。镜像源已默认指向国内 npmmirror，无需翻墙。</p>
         </div>
         <div class="card">
           <div class="ico">📦</div>
@@ -160,16 +160,25 @@
 
     <section class="section" id="changelog">
       <h2>更新日志</h2>
-      <p class="sub">v0.1.0 发版说明</p>
+      <p class="sub">v0.2.0 发版说明</p>
       <div class="log">
+        <div class="log-item">
+          <div><span class="log-version">v0.2.0</span><span class="log-date">2026-08-30</span></div>
+          <ul>
+            <li>新增硬件监控模块：CPU / 内存 / 磁盘 / 网络实时仪表盘（每秒刷新）</li>
+            <li>新增优化记录模块：操作时间线持久化与清空</li>
+            <li>新增优化中心：垃圾清理（Temp / 回收站，白名单安全清理）+ 启动项管理（HKCU / HKLM）</li>
+            <li>新增游戏模式：高性能电源计划一键切换与还原</li>
+            <li>新增系统工具箱：刷新 DNS / 清空回收站 / 清空剪贴板 / 深色模式</li>
+            <li>落地页与发布流水线（tag 触发 GitHub Actions 构建发布）</li>
+          </ul>
+        </div>
         <div class="log-item">
           <div><span class="log-version">v0.1.0</span><span class="log-date">2026-08-30</span></div>
           <ul>
-            <li>新增硬件监控模块：CPU / 内存 / 磁盘 / 网络实时仪表盘</li>
-            <li>新增优化记录模块：操作时间线持久化与清空</li>
-            <li>新增优化中心：垃圾清理（Temp / 回收站）+ 启动项管理</li>
-            <li>新增游戏模式：高性能电源计划一键切换与还原</li>
-            <li>新增系统工具箱：刷新 DNS / 清空回收站 / 清空剪贴板 / 深色模式</li>
+            <li>工程骨架：Electron + Vue 3 + TypeScript（electron-vite 多进程构建）</li>
+            <li>主窗口（1080×720）与 7 个占位页面、左侧导航</li>
+            <li>设置模块：3 外观 × 6 强调色主题，electron-store 持久化</li>
             <li>产出 NSIS 安装包，支持自定义安装目录</li>
           </ul>
         </div>
@@ -178,6 +187,7 @@
           <ul>
             <li>沙箱环境无法运行 GUI，所有交互需在 Windows 实机按冒烟清单核验</li>
             <li>进程挂起类激进优化暂未纳入，避免影响系统稳定性</li>
+            <li>清理解/启动项/电源计划等真实 Windows 操作需在 Windows 实机验证</li>
           </ul>
         </div>
       </div>
