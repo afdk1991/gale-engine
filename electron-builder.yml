@@ -17,3 +17,11 @@ nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
   artifactName: 疾风引擎-${version}-setup.exe
+
+# 自动更新源：指向 GitHub Releases（.github/workflows/release.yml 在打 v* tag 时自动发布）。
+# 发布前请将 owner 改为你的 GitHub 用户名 / 组织；repo 与仓库名一致即可。
+# 应用内「设置 → 检查更新」会读取此配置（嵌入的 resources/app-update.yml）。
+publish:
+  - provider: github
+    owner: YOUR_GITHUB_OWNER
+    repo: gale-engine

@@ -30,6 +30,13 @@ const api: GaleApi = {
     emptyRecycleBin: () => ipcRenderer.invoke('toolbox:emptyRecycleBin'),
     clearClipboard: () => ipcRenderer.invoke('toolbox:clearClipboard'),
     toggleDarkMode: (enable) => ipcRenderer.invoke('toolbox:toggleDarkMode', enable)
+  },
+  app: {
+    getVersion: () => ipcRenderer.invoke('app:getVersion'),
+    checkUpdate: () => ipcRenderer.invoke('app:checkUpdate'),
+    installUpdate: () => ipcRenderer.invoke('app:installUpdate'),
+    getAutoLaunch: () => ipcRenderer.invoke('app:getAutoLaunch'),
+    setAutoLaunch: (enable) => ipcRenderer.invoke('app:setAutoLaunch', enable)
   }
 }
 

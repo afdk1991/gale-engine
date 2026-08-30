@@ -8,6 +8,9 @@ import { createOptimizerService } from './services/optimizer'
 import { createGameModeService } from './services/gamemode'
 import { createToolboxService } from './services/toolbox'
 import { createPowershellRunner } from './services/shell'
+import { createUpdateService } from './services/update'
+import { createElectronUpdaterApi } from './services/update.electron'
+import { createAutoLaunchService, createElectronLoginItemApi } from './services/autolaunch'
 
 const store = new Store()
 const settingsService = createSettingsService(store as unknown as StorageAdapter)
@@ -16,6 +19,8 @@ const historyService = createHistoryService(store as unknown as StorageAdapter)
 const optimizerService = createOptimizerService(createPowershellRunner())
 const gameModeService = createGameModeService(createPowershellRunner(), store as unknown as StorageAdapter)
 const toolboxService = createToolboxService(createPowershellRunner())
+const updateService = createUpdateService(createElectronUpdaterApi())
+const autoLaunchService = createAutoLaunchService(createElectronLoginItemApi(app))
 
 function registerIpc(): void {
   ipcMain.handle('settings:get', () => settingsService.get())
@@ -44,6 +49,13 @@ function registerIpc(): void {
   ipcMain.handle('toolbox:emptyRecycleBin', () => toolboxService.emptyRecycleBin())
   ipcMain.handle('toolbox:clearClipboard', () => toolboxService.clearClipboard())
   ipcMain.handle('toolbox:toggleDarkMode', (_event, enable) => toolboxService.toggleDarkMode(Boolean(enable)))
+  ipcMain.handle('app:getVersion', () => app.getVersion())
+  ipcMain.handle('app:checkUpdate', () => updateService.checkUpdate())
+  ipcMain.handle('app:installUpdate', () => {
+    updateService.installUpdate()
+  })
+  ipcMain.handle('app:getAutoLaunch', () => autoLaunchService.get())
+  ipcMain.handle('app:setAutoLaunch', (_event, enable) => autoLaunchService.set(Boolean(enable)))
 }
 
 function createWindow(): void {

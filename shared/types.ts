@@ -79,6 +79,18 @@ export interface GaleApi {
     clearClipboard(): Promise<ToolResult>
     toggleDarkMode(enable: boolean): Promise<ToolResult>
   }
+  app: {
+    /** 当前应用版本（来自 package.json） */
+    getVersion(): Promise<string>
+    /** 检查更新（自动下载可用更新），返回结果摘要 */
+    checkUpdate(): Promise<AppUpdateResult>
+    /** 退出并安装已下载的更新 */
+    installUpdate(): Promise<void>
+    /** 读取开机自启状态 */
+    getAutoLaunch(): Promise<boolean>
+    /** 设置开机自启，返回设置后的状态 */
+    setAutoLaunch(enable: boolean): Promise<boolean>
+  }
 }
 
 // ---- History（优化记录）----
@@ -137,4 +149,14 @@ export interface ToolResult {
   ok: boolean
   /** 成功提示或失败原因 */
   message: string
+}
+
+// ---- App（关于 / 自动更新 / 开机自启）----
+export interface AppUpdateResult {
+  /** up-to-date=已是最新；available=有可用更新；error=检查失败 */
+  status: 'up-to-date' | 'available' | 'error'
+  /** 可用更新版本号（status==='available' 时） */
+  version?: string
+  /** 失败原因（status==='error' 时） */
+  error?: string
 }
