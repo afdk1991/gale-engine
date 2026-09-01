@@ -128,6 +128,9 @@ onUnmounted(() => {
 .net-line { font-size: 14px; color: var(--text-primary); margin: 4px 0; }
 .disks { grid-column: 1 / -1; }
 .disk { margin-bottom: 12px; }
+@media (max-width: 640px) {
+  .grid { grid-template-columns: 1fr; }
+}
 .disk-head { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
 .error { color: #ef4444; font-size: 13px; }
 .hint { color: var(--text-tertiary); font-size: 13px; }

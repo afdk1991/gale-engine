@@ -111,4 +111,11 @@ onMounted(() => {
 .hint { color: var(--accent); font-size: 13px; }
 .note { font-size: 12px; color: var(--text-tertiary); margin-top: 14px; max-width: 720px; line-height: 1.6; }
 code { background: var(--bg-tertiary); padding: 1px 5px; border-radius: 4px; }
+
+@media (max-width: 640px) {
+  .card { max-width: 100%; padding: 16px; }
+  .note { max-width: 100%; }
+  .actions { flex-direction: column; }
+  .actions .btn { width: 100%; text-align: center; }
+}
 </style>

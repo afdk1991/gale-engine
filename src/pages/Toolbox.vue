@@ -99,4 +99,7 @@ function feedback(key: string): string {
 .result { font-size: 12px; color: var(--accent); margin-top: 10px; }
 .result.bad { color: #ef4444; }
 .error { color: #ef4444; font-size: 13px; }
+@media (max-width: 640px) {
+  .grid { grid-template-columns: 1fr; }
+}
 </style>
