@@ -16,7 +16,10 @@ win:
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
-  artifactName: 疾风引擎-${version}-setup.exe
+  # 必须用 ASCII 文件名：electron-builder 在 latest.yml 中对非 ASCII artifactName
+  # 会生成净化名（gale-engine-setup-x.y.z.exe），与实际产物名不一致会导致
+  # electron-updater 下载 404。安装界面展示名仍取 productName（疾风引擎）。
+  artifactName: gale-engine-${version}-setup.exe
 
 # 自动更新源：指向 GitHub Releases（.github/workflows/release.yml 在打 v* tag 时自动发布）。
 # 发布前请将 owner 改为你的 GitHub 用户名 / 组织；repo 与仓库名一致即可。

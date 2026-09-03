@@ -9,6 +9,7 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "package": "electron-vite build && electron-builder --win",
+    "package:ci": "electron-vite build && electron-builder --win --publish never",
     "test": "vitest run",
     "typecheck": "vue-tsc --noEmit"
   },
