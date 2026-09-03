@@ -7,6 +7,8 @@ import { createHistoryService } from './services/history'
 import { createOptimizerService } from './services/optimizer'
 import { createGameModeService } from './services/gamemode'
 import { createToolboxService } from './services/toolbox'
+import { createProcessService } from './services/process'
+import { createNetworkService } from './services/network'
 import { createPowershellRunner } from './services/shell'
 import { createUpdateService } from './services/update'
 import { createElectronUpdaterApi } from './services/update.electron'
@@ -19,6 +21,8 @@ const historyService = createHistoryService(store as unknown as StorageAdapter)
 const optimizerService = createOptimizerService(createPowershellRunner())
 const gameModeService = createGameModeService(createPowershellRunner(), store as unknown as StorageAdapter)
 const toolboxService = createToolboxService(createPowershellRunner())
+const processService = createProcessService(createPowershellRunner())
+const networkService = createNetworkService(createPowershellRunner())
 const updateService = createUpdateService(createElectronUpdaterApi())
 const autoLaunchService = createAutoLaunchService(createElectronLoginItemApi(app))
 
@@ -49,6 +53,13 @@ function registerIpc(): void {
   ipcMain.handle('toolbox:emptyRecycleBin', () => toolboxService.emptyRecycleBin())
   ipcMain.handle('toolbox:clearClipboard', () => toolboxService.clearClipboard())
   ipcMain.handle('toolbox:toggleDarkMode', (_event, enable) => toolboxService.toggleDarkMode(Boolean(enable)))
+  ipcMain.handle('process:list', (_event, sort) => processService.list(sort))
+  ipcMain.handle('process:kill', (_event, pid) => processService.kill(Number(pid)))
+  ipcMain.handle('process:suspend', (_event, pid) => processService.suspend(Number(pid)))
+  ipcMain.handle('process:resume', (_event, pid) => processService.resume(Number(pid)))
+  ipcMain.handle('process:priority', (_event, pid, level) => processService.priority(Number(pid), level))
+  ipcMain.handle('network:ping', (_event, host, count) => networkService.ping(host, count))
+  ipcMain.handle('network:interfaces', () => networkService.interfaces())
   ipcMain.handle('app:getVersion', () => app.getVersion())
   ipcMain.handle('app:checkUpdate', () => updateService.checkUpdate())
   ipcMain.handle('app:installUpdate', () => {

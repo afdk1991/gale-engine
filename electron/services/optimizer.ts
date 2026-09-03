@@ -13,6 +13,16 @@ function allowedTempRoots(): string[] {
   return [temp, `${sysroot}\\Temp`].filter(Boolean)
 }
 
+/** 允许的浏览器缓存根目录（仅 %LOCALAPPDATA% 下指定浏览器的 User Data） */
+function allowedBrowserRoots(): string[] {
+  const local = process.env.LOCALAPPDATA || ''
+  if (!local) return []
+  return [
+    `${local}\\Google\\Chrome\\User Data`,
+    `${local}\\Microsoft\\Edge\\User Data`
+  ].filter(Boolean)
+}
+
 const SCAN_SCRIPT = `
 $temps = @($env:TEMP, "$env:SystemRoot\\Temp") | Where-Object { $_ -and (Test-Path $_) }
 $plans = @()
@@ -28,6 +38,20 @@ try {
   foreach ($i in $rb.Items()) { $sz += $i.Size }
   $plans += [pscustomobject]@{ id="recycle"; kind="recycle"; label="回收站"; path="RecycleBin"; size=[int]$sz; safe=$true }
 } catch {}
+$browsers = @(
+  @{ name = 'Chrome'; base = "$env:LOCALAPPDATA\\Google\\Chrome\\User Data\\Default" },
+  @{ name = 'Edge';   base = "$env:LOCALAPPDATA\\Microsoft\\Edge\\User Data\\Default" }
+)
+foreach ($b in $browsers) {
+  foreach ($sub in @('Cache', 'Code Cache')) {
+    $p = Join-Path $b.base $sub
+    if (Test-Path $p) {
+      $sz = (Get-ChildItem $p -Recurse -Force -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum -ErrorAction SilentlyContinue).Sum
+      $b64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($p))
+      $plans += [pscustomobject]@{ id="browser:$b64"; kind="browser"; label="$($b.name) 缓存：$sub"; path=$p; size=[int]($sz ?? 0); safe=$true }
+    }
+  }
+}
 $plans | ConvertTo-Json -Compress
 `
 
@@ -92,7 +116,7 @@ export function createOptimizerService(runner: ExecRunner) {
   const runCleanup = async (
     items: { id: string; path: string; kind: OptimizerTargetKind }[]
   ): Promise<CleanupResult[]> => {
-    const roots = allowedTempRoots()
+    const roots = [...allowedTempRoots(), ...allowedBrowserRoots()]
     const isSafePath = (p: string): boolean =>
       roots.some((r) => p === r || p.startsWith(r + '\\') || p.startsWith(r + '/'))
     const results: CleanupResult[] = []

@@ -31,6 +31,17 @@ const api: GaleApi = {
     clearClipboard: () => ipcRenderer.invoke('toolbox:clearClipboard'),
     toggleDarkMode: (enable) => ipcRenderer.invoke('toolbox:toggleDarkMode', enable)
   },
+  process: {
+    list: (sort) => ipcRenderer.invoke('process:list', sort),
+    kill: (pid) => ipcRenderer.invoke('process:kill', pid),
+    suspend: (pid) => ipcRenderer.invoke('process:suspend', pid),
+    resume: (pid) => ipcRenderer.invoke('process:resume', pid),
+    priority: (pid, level) => ipcRenderer.invoke('process:priority', pid, level)
+  },
+  network: {
+    ping: (host, count) => ipcRenderer.invoke('network:ping', host, count),
+    interfaces: () => ipcRenderer.invoke('network:interfaces')
+  },
   app: {
     getVersion: () => ipcRenderer.invoke('app:getVersion'),
     checkUpdate: () => ipcRenderer.invoke('app:checkUpdate'),

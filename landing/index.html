@@ -158,9 +158,9 @@
   <main>
     <section class="hero" id="download">
       <div class="wrap">
-        <span class="badge">v0.2.0 · 功能预览版</span>
+        <span class="badge">v0.3.0 · 深度优化版</span>
         <h1>让 Windows 跑得 <span class="grad">更快更稳</span></h1>
-        <p>硬件监控、垃圾清理、启动项管理、游戏模式与系统工具箱，集成在一个轻量桌面应用里。</p>
+        <p>硬件监控、进程管理、垃圾清理、游戏模式与网络诊断，集成在一个轻量桌面应用里。</p>
         <div class="cta">
           <a class="btn btn-primary" href="#get">⬇ 获取安装包</a>
           <a class="btn btn-ghost" href="#changelog">查看更新日志</a>
@@ -180,9 +180,14 @@
             <p>实时采集 CPU / 内存 / 磁盘 / 网络负载、温度与电量，每秒刷新。</p>
           </div>
           <div class="card reveal">
+            <div class="ico" aria-hidden="true">⚙️</div>
+            <h3>进程管理</h3>
+            <p>查看进程 CPU / 内存占用，结束、挂起 / 恢复进程，调整优先级（系统进程已保护）。</p>
+          </div>
+          <div class="card reveal">
             <div class="ico" aria-hidden="true">🧹</div>
             <h3>垃圾清理</h3>
-            <p>扫描 Temp 与回收站占用，白名单安全清理，逐项回执、失败隔离。</p>
+            <p>扫描 Temp、回收站与浏览器缓存占用，白名单安全清理，逐项回执、失败隔离。</p>
           </div>
           <div class="card reveal">
             <div class="ico" aria-hidden="true">⚡</div>
@@ -193,6 +198,11 @@
             <div class="ico" aria-hidden="true">🎮</div>
             <h3>游戏模式</h3>
             <p>一键切换高性能电源计划，退出时自动还原，安全可逆。</p>
+          </div>
+          <div class="card reveal">
+            <div class="ico" aria-hidden="true">🌐</div>
+            <h3>网络诊断</h3>
+            <p>Ping 延迟测试（最小 / 平均 / 最大 / 丢包率）与本机网卡信息。</p>
           </div>
           <div class="card reveal">
             <div class="ico" aria-hidden="true">🧰</div>
@@ -216,7 +226,7 @@
           <div class="card reveal">
             <div class="ico" aria-hidden="true">🛠️</div>
             <h3>方式一：本地一键构建</h3>
-            <p>克隆仓库后运行 <code>scripts/package-win.cmd</code>（需 Node 与 7-Zip），自动产出 <code>release/gale-engine-0.2.0-setup.exe</code>。镜像源已默认指向国内 npmmirror，无需翻墙。</p>
+            <p>克隆仓库后运行 <code>scripts/package-win.cmd</code>（需 Node 与 7-Zip），自动产出 <code>release/gale-engine-0.3.0-setup.exe</code>。镜像源已默认指向国内 npmmirror，无需翻墙。</p>
           </div>
           <div class="card reveal">
             <div class="ico" aria-hidden="true">📦</div>
@@ -235,8 +245,17 @@
     <section class="section" id="changelog">
       <div class="wrap">
         <h2>更新日志</h2>
-        <p class="sub">v0.2.0 发版说明</p>
+        <p class="sub">v0.3.0 发版说明</p>
         <div class="log reveal">
+          <div class="log-item">
+            <div><span class="log-version">v0.3.0</span><span class="log-date">2026-09-03</span></div>
+            <ul>
+              <li>新增进程管理：CPU / 内存占用排序，结束、挂起 / 恢复进程，调整优先级（系统进程保护）</li>
+              <li>新增网络诊断：Ping 延迟测试（最小 / 平均 / 最大 / 丢包率）与网卡信息</li>
+              <li>垃圾清理扩展：支持 Chrome / Edge 浏览器缓存清理</li>
+              <li>9 个页面，100 项自动化测试全绿</li>
+            </ul>
+          </div>
           <div class="log-item">
             <div><span class="log-version">v0.2.0</span><span class="log-date">2026-08-30</span></div>
             <ul>

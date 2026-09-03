@@ -2,6 +2,8 @@
 const navItems = [
   { path: '/', label: '首页', icon: 'home' },
   { path: '/monitor', label: '硬件监控', icon: 'activity' },
+  { path: '/process', label: '进程管理', icon: 'cpu' },
+  { path: '/network', label: '网络诊断', icon: 'network' },
   { path: '/optimizer', label: '优化中心', icon: 'sliders' },
   { path: '/game', label: '游戏模式', icon: 'gamepad' },
   { path: '/toolbox', label: '工具箱', icon: 'toolbox' },
@@ -27,6 +29,16 @@ const navItems = [
            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path v-if="item.icon === 'home'" d="M3 10.5 12 3l9 7.5V21h-6v-6h-6v6H3z" />
         <path v-else-if="item.icon === 'activity'" d="M3 12h4l3-7 4 14 3-7h4" />
+        <g v-else-if="item.icon === 'cpu'">
+          <rect x="7" y="7" width="10" height="10" rx="1.5" />
+          <path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3" />
+        </g>
+        <g v-else-if="item.icon === 'network'">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M5 12a7 7 0 0 1 14 0" />
+          <path d="M2.5 12a9.5 9.5 0 0 1 19 0" />
+          <path d="M12 21l2-3h-4z" fill="currentColor" stroke="none" />
+        </g>
         <g v-else-if="item.icon === 'sliders'">
           <path d="M4 7h16M4 12h16M4 17h16" />
           <circle cx="9" cy="7" r="2" fill="currentColor" stroke="none" />

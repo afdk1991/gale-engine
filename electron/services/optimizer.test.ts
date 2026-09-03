@@ -37,16 +37,19 @@ const fail = (stderr = 'err'): { stdout: string; stderr: string; code: number } 
 
 const ORIG_TEMP = process.env.TEMP
 const ORIG_SYSTEMROOT = process.env.SystemRoot
+const ORIG_LOCALAPPDATA = process.env.LOCALAPPDATA
 
 beforeAll(() => {
   // 固化安全白名单根，避免测试机真实环境变量影响断言
   process.env.TEMP = 'C:\\TESTTEMP'
   process.env.SystemRoot = 'C:\\WIN'
+  process.env.LOCALAPPDATA = 'C:\\TESTLOCAL'
 })
 
 afterAll(() => {
   process.env.TEMP = ORIG_TEMP
   process.env.SystemRoot = ORIG_SYSTEMROOT
+  process.env.LOCALAPPDATA = ORIG_LOCALAPPDATA
 })
 
 describe('scanCleanup', () => {
@@ -71,6 +74,16 @@ describe('scanCleanup', () => {
     const { runner } = recordingRunner(() => ok('not json at all'))
     const plans = await createOptimizerService(runner).scanCleanup()
     expect(plans).toEqual([])
+  })
+
+  it('解析浏览器缓存项（kind=browser）', async () => {
+    const raw = [
+      { id: 'browser:xyz', kind: 'browser', label: 'Chrome 缓存：Cache', path: 'C:\\TESTLOCAL\\Google\\Chrome\\User Data\\Default\\Cache', size: 2048, safe: true }
+    ]
+    const { runner } = recordingRunner(() => ({ ...ok(), stdout: JSON.stringify(raw) }))
+    const plans = await createOptimizerService(runner).scanCleanup()
+    expect(plans[0].kind).toBe('browser')
+    expect(plans[0].sizeBytes).toBe(2048)
   })
 })
 
@@ -115,6 +128,25 @@ describe('runCleanup', () => {
     expect(res).toHaveLength(2)
     expect(res[0].ok).toBe(true)
     expect(res[1].ok).toBe(false)
+  })
+
+  it('浏览器缓存白名单路径放行并执行 Remove-Item', async () => {
+    const { runner, calls } = recordingRunner(() => ok())
+    const res = await createOptimizerService(runner).runCleanup([
+      { id: 'browser:1', path: 'C:\\TESTLOCAL\\Google\\Chrome\\User Data\\Default\\Cache', kind: 'browser' }
+    ])
+    expect(res[0].ok).toBe(true)
+    expect(calls.some((c) => c.script.includes('Remove-Item'))).toBe(true)
+  })
+
+  it('非白名单浏览器路径（如 Edge 之外目录）被拒绝', async () => {
+    const { runner, calls } = recordingRunner(() => fail('should-not-run'))
+    const res = await createOptimizerService(runner).runCleanup([
+      { id: 'bad', path: 'C:\\TESTLOCAL\\SomeOtherApp\\Cache', kind: 'browser' }
+    ])
+    expect(res[0].ok).toBe(false)
+    expect(res[0].error).toContain('安全白名单')
+    expect(calls).toHaveLength(0)
   })
 })
 
