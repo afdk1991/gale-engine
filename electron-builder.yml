@@ -13,6 +13,10 @@ win:
     - target: nsis
       arch:
         - x64
+  # 代码签名：构建时设置环境变量即自动签名（无需改本文件）——
+  #   CSC_LINK=<证书 p12 文件路径或 base64>、CSC_KEY_PASSWORD=<证书密码>
+  # 无证书时跳过签名（当前状态），Windows SmartScreen 会提示"未知发布者"，属预期。
+  # 图标：默认取 build/icon.ico（由 scripts/generate-icon.mjs 生成，可复现）。
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
