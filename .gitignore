@@ -2,6 +2,9 @@ node_modules/
 dist/
 out/
 release/
+release-build/
+.verify-shots/
+.workbuddy/
 .superpowers/
 *.log
 .edgeone/
