@@ -30,5 +30,5 @@ nsis:
 # 应用内「设置 → 检查更新」会读取此配置（嵌入的 resources/app-update.yml）。
 publish:
   - provider: github
-    owner: YOUR_GITHUB_OWNER
+    owner: addk1991
     repo: gale-engine
