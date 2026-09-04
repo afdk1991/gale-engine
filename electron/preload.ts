@@ -9,6 +9,9 @@ const api: GaleApi = {
   monitor: {
     snapshot: () => ipcRenderer.invoke('monitor:snapshot')
   },
+  hardware: {
+    info: () => ipcRenderer.invoke('hardware:info')
+  },
   history: {
     list: () => ipcRenderer.invoke('history:list'),
     add: (entry) => ipcRenderer.invoke('history:add', entry),

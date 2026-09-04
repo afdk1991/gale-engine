@@ -5,6 +5,7 @@ export const router = createRouter({
   routes: [
     { path: '/', name: 'home', component: () => import('../pages/Home.vue'), meta: { title: '首页' } },
     { path: '/monitor', name: 'monitor', component: () => import('../pages/Monitor.vue'), meta: { title: '硬件监控' } },
+    { path: '/hardware', name: 'hardware', component: () => import('../pages/Hardware.vue'), meta: { title: '硬件信息' } },
     { path: '/process', name: 'process', component: () => import('../pages/Process.vue'), meta: { title: '进程管理' } },
     { path: '/network', name: 'network', component: () => import('../pages/Network.vue'), meta: { title: '网络诊断' } },
     { path: '/optimizer', name: 'optimizer', component: () => import('../pages/Optimizer.vue'), meta: { title: '优化中心' } },

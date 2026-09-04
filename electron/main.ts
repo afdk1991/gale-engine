@@ -3,6 +3,7 @@ import { join } from 'path'
 import Store from 'electron-store'
 import { createSettingsService, type StorageAdapter } from './services/settings'
 import { createMonitorService } from './services/monitor'
+import { createHardwareService } from './services/hardware'
 import { createHistoryService } from './services/history'
 import { createOptimizerService } from './services/optimizer'
 import { createGameModeService } from './services/gamemode'
@@ -23,6 +24,7 @@ const platform = detectPlatform()
 const store = new Store()
 const settingsService = createSettingsService(store as unknown as StorageAdapter)
 const monitorService = createMonitorService()
+const hardwareService = createHardwareService()
 const historyService = createHistoryService(store as unknown as StorageAdapter)
 const optimizerService = createOptimizerService(runner)
 const gameModeService = createGameModeService(runner, store as unknown as StorageAdapter)
@@ -46,6 +48,7 @@ function registerIpc(): void {
     }
   })
   ipcMain.handle('monitor:snapshot', () => monitorService.snapshot())
+  ipcMain.handle('hardware:info', () => hardwareService.info())
   ipcMain.handle('history:list', () => historyService.list())
   ipcMain.handle('history:add', (_event, entry) => historyService.add(entry ?? {}))
   ipcMain.handle('history:clear', () => historyService.clear())

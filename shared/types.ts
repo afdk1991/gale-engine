@@ -49,6 +49,141 @@ export interface SystemSnapshot {
   at: number
 }
 
+// ---- Hardware（硬件型号规格，静态硬件信息，区别于实时监控快照）----
+// 适用于 x86 / x64 / arm64 架构；基于 systeminformation 跨平台采集，
+// 部分字段（内存条布局、磁盘布局）需管理员/root 权限，无权限时返回空数组或 ''。
+
+/** 主板 + BIOS 信息 */
+export interface HardwareMotherboard {
+  /** 主板型号，无法获取为 '' */
+  model: string
+  /** 主板厂商 */
+  vendor: string
+  /** 主板版本/修订号 */
+  version: string
+  /** BIOS 厂商 */
+  biosVendor: string
+  /** BIOS 版本 */
+  biosVersion: string
+  /** BIOS 发布日期，无为 '' */
+  biosDate: string
+}
+
+/** CPU 型号规格 */
+export interface HardwareCpu {
+  /** CPU 厂商（如 Intel / AMD / Apple） */
+  vendor: string
+  /** CPU 品牌/型号（如 Intel Core i7-12700K） */
+  brand: string
+  /** 架构标识：x64 / ia32(x86) / arm64 / unknown */
+  arch: string
+  /** 物理核心数 */
+  physicalCores: number
+  /** 逻辑核心数（含超线程） */
+  cores: number
+  /** 基础频率 GHz，不可获取为 null */
+  speedGHz: number | null
+}
+
+/** 单条内存规格 */
+export interface HardwareMemoryStick {
+  /** 内存条型号/料号 */
+  model: string
+  /** 厂商 */
+  vendor: string
+  /** 单条容量 bytes */
+  size: number
+  /** 频率 MHz，不可获取为 null */
+  speedMHz: number | null
+  /** 内存类型（DDR4 / DDR5 / LPDDR 等），无 '' */
+  type: string
+}
+
+/** 内存总览 */
+export interface HardwareMemory {
+  /** 总容量 bytes */
+  total: number
+  /** 内存条布局（需管理员/root 权限，无权限为空数组） */
+  sticks: HardwareMemoryStick[]
+}
+
+/** 显卡控制器规格 */
+export interface HardwareGraphicsController {
+  /** 显卡型号 */
+  model: string
+  /** 厂商（如 NVIDIA / AMD / Intel） */
+  vendor: string
+  /** 显存 MB，不可获取为 null */
+  vramMB: number | null
+  /** 总线类型（PCIe / Integrated / USB 等），无 '' */
+  bus: string
+}
+
+/** 显示器规格 */
+export interface HardwareDisplay {
+  /** 显示器型号 */
+  model: string
+  /** 厂商 */
+  vendor: string
+  /** 分辨率宽 px */
+  resolutionX: number
+  /** 分辨率高 px */
+  resolutionY: number
+  /** 尺寸英寸，不可获取为 null */
+  sizeInch: number | null
+}
+
+/** 硬盘物理规格 */
+export interface HardwareDisk {
+  /** 硬盘型号 */
+  model: string
+  /** 厂商 */
+  vendor: string
+  /** 容量 bytes */
+  size: number
+  /** 类型（HDD / SSD / NVMe 等） */
+  type: string
+  /** 接口类型（SATA / NVMe / USB 等），无 '' */
+  interfaceType: string
+}
+
+/**
+ * 电源规格。
+ * 台式机 PSU（电源供应器）通常无标准软件接口读取型号（需 PMBus/SMBus 服务器电源），
+ * 此时 model 为 ''、type 为 'unknown'；
+ * 笔记本电池型号从电池信息读取，type 为 'battery'。
+ */
+export interface HardwarePower {
+  /** 电源/电池型号，台式机 PSU 不可获取为 '' */
+  model: string
+  /** 厂商 */
+  vendor: string
+  /** 'battery'（笔记本电池）/ 'psu'（台式机电源，需 PMBus）/ 'unknown' */
+  type: string
+  /** 额定功率 W（PSU）或电池容量设计 Wh，不可获取为 null */
+  powerW: number | null
+}
+
+/** 硬件型号信息聚合 */
+export interface HardwareInfo {
+  /** 主板 + BIOS */
+  motherboard: HardwareMotherboard
+  /** CPU */
+  cpu: HardwareCpu
+  /** 内存 */
+  memory: HardwareMemory
+  /** 显卡控制器列表（可能多卡，含集显+独显） */
+  graphics: HardwareGraphicsController[]
+  /** 显示器列表（可能多屏） */
+  displays: HardwareDisplay[]
+  /** 硬盘物理列表 */
+  disks: HardwareDisk[]
+  /** 电源（台式机通常不可获取，笔记本取电池） */
+  power: HardwarePower
+  /** 采集时间戳 */
+  at: number
+}
+
 export interface GaleApi {
   settings: {
     get(): Promise<ThemeSettings>
@@ -56,6 +191,10 @@ export interface GaleApi {
   }
   monitor: {
     snapshot(): Promise<SystemSnapshot>
+  }
+  hardware: {
+    /** 采集静态硬件型号规格（主板/CPU/内存/显卡/显示器/硬盘/电源） */
+    info(): Promise<HardwareInfo>
   }
   history: {
     list(): Promise<HistoryEntry[]>

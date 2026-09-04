@@ -2,6 +2,7 @@
 const navItems = [
   { path: '/', label: '首页', icon: 'home' },
   { path: '/monitor', label: '硬件监控', icon: 'activity' },
+  { path: '/hardware', label: '硬件信息', icon: 'chip' },
   { path: '/process', label: '进程管理', icon: 'cpu' },
   { path: '/network', label: '网络诊断', icon: 'network' },
   { path: '/optimizer', label: '优化中心', icon: 'sliders' },
@@ -32,6 +33,11 @@ const navItems = [
            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path v-if="item.icon === 'home'" d="M3 10.5 12 3l9 7.5V21h-6v-6h-6v6H3z" />
         <path v-else-if="item.icon === 'activity'" d="M3 12h4l3-7 4 14 3-7h4" />
+        <g v-else-if="item.icon === 'chip'">
+          <rect x="5" y="5" width="14" height="14" rx="2" />
+          <rect x="9" y="9" width="6" height="6" rx="1" />
+          <path d="M9 2v2M12 2v2M15 2v2M9 20v2M12 20v2M15 20v2M2 9h2M2 12h2M2 15h2M20 9h2M20 12h2M20 15h2" />
+        </g>
         <g v-else-if="item.icon === 'cpu'">
           <rect x="7" y="7" width="10" height="10" rx="1.5" />
           <path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3" />
