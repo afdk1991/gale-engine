@@ -90,6 +90,24 @@ export interface GaleApi {
     clearClipboard(): Promise<ToolResult>
     toggleDarkMode(enable: boolean): Promise<ToolResult>
   }
+  firewall: {
+    profiles(): Promise<FirewallProfile[]>
+    listRules(): Promise<FirewallRule[]>
+    setProfileEnabled(profile: string, enable: boolean): Promise<ToolResult>
+    toggleRule(name: string, enable: boolean): Promise<ToolResult>
+  }
+  tasks: {
+    list(): Promise<ScheduledTask[]>
+    setEnabled(path: string, name: string, enable: boolean): Promise<ToolResult>
+    run(path: string, name: string): Promise<ToolResult>
+    stop(path: string, name: string): Promise<ToolResult>
+  }
+  winServices: {
+    list(): Promise<WinService[]>
+    start(name: string): Promise<ToolResult>
+    stop(name: string): Promise<ToolResult>
+    setStartupType(name: string, startType: ServiceStartupType): Promise<ToolResult>
+  }
   app: {
     /** 当前应用版本（来自 package.json） */
     getVersion(): Promise<string>
@@ -211,4 +229,58 @@ export interface NetInterface {
   ip: string
   /** 连接状态描述（如 已连接 / 未连接） */
   status: string
+}
+
+// ---- Firewall（防火墙）----
+export interface FirewallProfile {
+  /** Domain / Private / Public */
+  name: string
+  enabled: boolean
+  /** 入站默认动作（Allow / Block） */
+  inbound: string
+  /** 出站默认动作（Allow / Block） */
+  outbound: string
+}
+
+export interface FirewallRule {
+  /** 规则名（唯一标识，用于启停操作） */
+  name: string
+  displayName: string
+  enabled: boolean
+  /** Inbound / Outbound */
+  direction: string
+  /** Allow / Block */
+  action: string
+  /** 生效的配置文件（Domain,Private,Public 等） */
+  profile: string
+}
+
+// ---- Tasks（计划任务）----
+export interface ScheduledTask {
+  /** 任务路径（\ 开头，\ 表示根目录） */
+  path: string
+  /** 任务名 */
+  name: string
+  /** Ready / Running / Disabled */
+  state: string
+  /** 上次运行时间（本地化字符串，无记录为 ''） */
+  lastRunTime: string
+  /** 下次运行时间（无计划为 ''） */
+  nextRunTime: string
+}
+
+// ---- WinServices（Windows 服务）----
+export type ServiceStartupType = 'auto' | 'manual' | 'disabled'
+
+export interface WinService {
+  name: string
+  displayName: string
+  /** Running / Stopped / Paused 等 */
+  status: string
+  /** Automatic / Manual / Disabled */
+  startType: string
+  /** 当前是否可停止（系统关键服务为 false） */
+  canStop: boolean
+  /** 是否系统关键服务（拒绝停止） */
+  protected: boolean
 }

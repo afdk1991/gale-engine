@@ -5,6 +5,34 @@
 
 ---
 
+## v0.4.0 — 2026-09-04（M4 系统深度管理里程碑）
+
+在 v0.3.0 基础上，新增**计划任务**、**服务管理**、**防火墙**三大系统级模块。服务层延续可注入依赖范式，vitest 142 项全绿，所有用户输入（任务路径 / 服务名 / 规则名）经字符白名单校验防 PowerShell 注入。
+
+### 新增功能
+- **计划任务（Tasks）**：
+  - 任务列表：枚举全部计划任务及其状态（Ready/Running/Disabled）、上次/下次运行时间，支持名称/路径筛选。
+  - 启用 / 禁用任务（Enable-/Disable-ScheduledTask）、立即运行（Start-ScheduledTask）、结束运行中任务（Stop-ScheduledTask）。
+- **服务管理（WinServices）**：
+  - 服务列表：Win32_Service 查询（前 400 条），状态、启动类型、是否可停止、系统关键服务标记。
+  - 启动 / 停止服务（停止前二次确认）；启动类型切换（自动/手动/禁用，Set-Service）。
+  - 系统关键服务保护：RpcSs / DcomLaunch / Winmgmt / Schedule / EventLog 等 10 项一律拒绝停止（JS 白名单 + PowerShell 端 AcceptStop/名单双保险）。
+- **防火墙（Firewall）**：
+  - 三个配置文件（Domain/Private/Public）开关状态与出入站默认动作，一键切换开关（Set-NetFirewallProfile）。
+  - 规则列表（按显示名排序取前 200 条）+ 筛选，单条规则启用/禁用（Enable-/Disable-NetFirewallRule）。
+
+### 工程
+- IPC 新增 12 个 handler（firewall 4 + tasks 4 + winServices 4），preload 桥接同步扩展，共 41 个 handler。
+- 新增 3 个页面（服务管理 / 计划任务 / 防火墙）与 3 个导航项，共 12 个页面。
+- vitest 由 100 项增至 142 项；AppSidebar 测试同步更新。
+
+### 已知限制
+- 修改防火墙配置 / 停止部分服务需要管理员权限，普通权限下失败会返回明确错误信息。
+- 规则列表仅展示前 200 条（按显示名排序），海量规则场景建议使用筛选。
+- 计划任务未过滤 \Microsoft\ 内部维护任务，建议按路径筛选查看第三方任务。
+
+---
+
 ## v0.3.0 — 2026-09-03（M3 深度优化里程碑）
 
 在 v0.2.0 基础上，新增**进程管理**与**网络诊断**两大模块，并补齐浏览器缓存清理。服务层延续可注入依赖范式，纯函数 vitest 覆盖（100 项全绿），核心 PowerShell 命令在真实 Windows 直测通过。

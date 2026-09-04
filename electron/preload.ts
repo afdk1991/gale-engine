@@ -42,6 +42,24 @@ const api: GaleApi = {
     ping: (host, count) => ipcRenderer.invoke('network:ping', host, count),
     interfaces: () => ipcRenderer.invoke('network:interfaces')
   },
+  firewall: {
+    profiles: () => ipcRenderer.invoke('firewall:profiles'),
+    listRules: () => ipcRenderer.invoke('firewall:listRules'),
+    setProfileEnabled: (profile, enable) => ipcRenderer.invoke('firewall:setProfileEnabled', profile, enable),
+    toggleRule: (name, enable) => ipcRenderer.invoke('firewall:toggleRule', name, enable)
+  },
+  tasks: {
+    list: () => ipcRenderer.invoke('tasks:list'),
+    setEnabled: (path, name, enable) => ipcRenderer.invoke('tasks:setEnabled', path, name, enable),
+    run: (path, name) => ipcRenderer.invoke('tasks:run', path, name),
+    stop: (path, name) => ipcRenderer.invoke('tasks:stop', path, name)
+  },
+  winServices: {
+    list: () => ipcRenderer.invoke('winServices:list'),
+    start: (name) => ipcRenderer.invoke('winServices:start', name),
+    stop: (name) => ipcRenderer.invoke('winServices:stop', name),
+    setStartupType: (name, startType) => ipcRenderer.invoke('winServices:setStartupType', name, startType)
+  },
   app: {
     getVersion: () => ipcRenderer.invoke('app:getVersion'),
     checkUpdate: () => ipcRenderer.invoke('app:checkUpdate'),

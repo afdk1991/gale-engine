@@ -9,6 +9,9 @@ import { createGameModeService } from './services/gamemode'
 import { createToolboxService } from './services/toolbox'
 import { createProcessService } from './services/process'
 import { createNetworkService } from './services/network'
+import { createFirewallService } from './services/firewall'
+import { createTasksService } from './services/tasks'
+import { createWinServicesService } from './services/winservices'
 import { createPowershellRunner } from './services/shell'
 import { createUpdateService } from './services/update'
 import { createElectronUpdaterApi } from './services/update.electron'
@@ -23,6 +26,9 @@ const gameModeService = createGameModeService(createPowershellRunner(), store as
 const toolboxService = createToolboxService(createPowershellRunner())
 const processService = createProcessService(createPowershellRunner())
 const networkService = createNetworkService(createPowershellRunner())
+const firewallService = createFirewallService(createPowershellRunner())
+const tasksService = createTasksService(createPowershellRunner())
+const winServicesService = createWinServicesService(createPowershellRunner())
 const updateService = createUpdateService(createElectronUpdaterApi())
 const autoLaunchService = createAutoLaunchService(createElectronLoginItemApi(app))
 
@@ -60,6 +66,26 @@ function registerIpc(): void {
   ipcMain.handle('process:priority', (_event, pid, level) => processService.priority(Number(pid), level))
   ipcMain.handle('network:ping', (_event, host, count) => networkService.ping(host, count))
   ipcMain.handle('network:interfaces', () => networkService.interfaces())
+  ipcMain.handle('firewall:profiles', () => firewallService.profiles())
+  ipcMain.handle('firewall:listRules', () => firewallService.listRules())
+  ipcMain.handle('firewall:setProfileEnabled', (_event, profile, enable) =>
+    firewallService.setProfileEnabled(String(profile), Boolean(enable))
+  )
+  ipcMain.handle('firewall:toggleRule', (_event, name, enable) =>
+    firewallService.toggleRule(String(name), Boolean(enable))
+  )
+  ipcMain.handle('tasks:list', () => tasksService.list())
+  ipcMain.handle('tasks:setEnabled', (_event, path, name, enable) =>
+    tasksService.setEnabled(String(path), String(name), Boolean(enable))
+  )
+  ipcMain.handle('tasks:run', (_event, path, name) => tasksService.run(String(path), String(name)))
+  ipcMain.handle('tasks:stop', (_event, path, name) => tasksService.stop(String(path), String(name)))
+  ipcMain.handle('winServices:list', () => winServicesService.list())
+  ipcMain.handle('winServices:start', (_event, name) => winServicesService.start(String(name)))
+  ipcMain.handle('winServices:stop', (_event, name) => winServicesService.stop(String(name)))
+  ipcMain.handle('winServices:setStartupType', (_event, name, startType) =>
+    winServicesService.setStartupType(String(name), startType)
+  )
   ipcMain.handle('app:getVersion', () => app.getVersion())
   ipcMain.handle('app:checkUpdate', () => updateService.checkUpdate())
   ipcMain.handle('app:installUpdate', () => {

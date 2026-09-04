@@ -6,6 +6,9 @@ const navItems = [
   { path: '/network', label: '网络诊断', icon: 'network' },
   { path: '/optimizer', label: '优化中心', icon: 'sliders' },
   { path: '/game', label: '游戏模式', icon: 'gamepad' },
+  { path: '/services', label: '服务管理', icon: 'server' },
+  { path: '/tasks', label: '计划任务', icon: 'clock' },
+  { path: '/firewall', label: '防火墙', icon: 'shield' },
   { path: '/toolbox', label: '工具箱', icon: 'toolbox' },
   { path: '/history', label: '优化记录', icon: 'history' },
   { path: '/settings', label: '设置', icon: 'settings' }
@@ -53,6 +56,19 @@ const navItems = [
         <g v-else-if="item.icon === 'toolbox'">
           <rect x="3" y="8" width="18" height="11" rx="2" />
           <path d="M9 8V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18" />
+        </g>
+        <g v-else-if="item.icon === 'server'">
+          <rect x="3" y="4" width="18" height="7" rx="1.5" />
+          <rect x="3" y="13" width="18" height="7" rx="1.5" />
+          <path d="M7 7.5h.01M7 16.5h.01" />
+        </g>
+        <g v-else-if="item.icon === 'clock'">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 7v5l3.5 2" />
+        </g>
+        <g v-else-if="item.icon === 'shield'">
+          <path d="M12 3 4.5 6v5.5c0 4.6 3.2 8 7.5 9.5 4.3-1.5 7.5-4.9 7.5-9.5V6z" />
+          <path d="m9 12 2 2 4-4" />
         </g>
         <g v-else-if="item.icon === 'history'">
           <path d="M4 5v5h5" />
