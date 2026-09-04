@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>疾风引擎 — 发布前冒烟清单</title>
+<style>
+  :root { --bg:#0f1115; --panel:#1a1d24; --panel2:#21252e; --line:#2c313c;
+    --txt:#e6e9ef; --muted:#9aa3b2; --accent:#4f9dff; --ok:#36c275; --warn:#e0a93b; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+    background:var(--bg); color:var(--txt); line-height:1.55; }
+  header { position:sticky; top:0; z-index:10; padding:16px 20px;
+    background:linear-gradient(180deg,#161a22,#12151b); border-bottom:1px solid var(--line); }
+  h1 { margin:0 0 8px; font-size:19px; }
+  .bar { height:10px; border-radius:6px; background:var(--panel2); overflow:hidden; }
+  .bar > i { display:block; height:100%; width:0; background:linear-gradient(90deg,#4f9dff,#36c275); transition:width .25s; }
+  .meta { display:flex; gap:16px; flex-wrap:wrap; margin-top:8px; font-size:13px; color:var(--muted); }
+  .meta b { color:var(--txt); }
+  .actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  button { background:var(--panel2); color:var(--txt); border:1px solid var(--line);
+    padding:6px 12px; border-radius:8px; cursor:pointer; font-size:13px; }
+  button:hover { border-color:var(--accent); }
+  main { padding:18px 20px 60px; max-width:920px; margin:0 auto; }
+  section { background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    margin-bottom:14px; overflow:hidden; }
+  .sec-head { display:flex; align-items:center; gap:10px; padding:12px 14px; cursor:pointer;
+    background:var(--panel2); user-select:none; }
+  .sec-head h2 { margin:0; font-size:15px; flex:1; }
+  .sec-head .cnt { font-size:12px; color:var(--muted); }
+  .sec-head .arrow { transition:transform .2s; color:var(--muted); }
+  section.collapsed .arrow { transform:rotate(-90deg); }
+  section.collapsed .body { display:none; }
+  .body { padding:6px 14px 12px; }
+  label.item { display:flex; gap:10px; align-items:flex-start; padding:7px 4px;
+    border-bottom:1px dashed var(--line); cursor:pointer; }
+  label.item:last-child { border-bottom:none; }
+  label.item input { margin-top:4px; width:16px; height:16px; accent-color:var(--ok); flex:none; }
+  label.item .t { font-size:14px; }
+  label.item.machine .t::after { content:" ⚙️实机"; font-size:11px; color:var(--warn); margin-left:6px; }
+  label.item.done .t { color:var(--ok); text-decoration:line-through; opacity:.8; }
+  .empty { color:var(--muted); padding:30px; text-align:center; }
+  footer { color:var(--muted); font-size:12px; text-align:center; padding:20px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>疾风引擎 · 发布前冒烟与检查清单</h1>
+  <div class="bar"><i id="bar"></i></div>
+  <div class="meta">
+    <span>完成 <b id="done">0</b> / <b id="total">0</b></span>
+    <span>进度 <b id="pct">0%</b></span>
+    <span>实机项 <b id="mtotal">0</b>（<b id="mdone">0</b> 已点）</span>
+    <span>最后保存 <b id="saved">—</b></span>
+  </div>
+  <div class="actions">
+    <button id="expand">全部展开</button>
+    <button id="collapse">全部折叠</button>
+    <button id="export">导出结果 (JSON)</button>
+    <button id="exportCsv">导出 (CSV)</button>
+    <button id="reset">重置全部</button>
+  </div>
+</header>
+<main id="app"></main>
+<footer>勾选状态保存在本机浏览器（localStorage），不会上传。供真实 Windows 上逐项点检。</footer>
+<script>
+const DATA = {"total": 72, "machineTotal": 44, "sections": [{"title": "一、构建与门禁（本机可验 ✅）", "items": [{"text": "`npm run typecheck`（`vue-tsc --noEmit`）零错误", "machine": false}, {"text": "`npm run test`（`vitest run`）全绿（当前 142 项）", "machine": false}, {"text": "`npm run build`（`electron-vite build`）主进程/预加载/渲染产物均生成，无报错", "machine": false}, {"text": "版本号 `package.json#version` 与计划发版号一致（当前 `0.4.0`）", "machine": false}]}, {"title": "二、安装包产出（本机可验 ✅）", "items": [{"text": "执行 `scripts/package-win.cmd` 产出 `release/gale-engine-${version}-setup.exe`（ASCII 文件名，保证 `latest.yml` 正确）", "machine": false}, {"text": "安装包为合法 NSIS（PE 头 `MZ`、含 `NullsoftInst` 区段）", "machine": false}, {"text": "镜像源 `ELECTRON_BUILDER_BINARIES_MIRROR` 带结尾斜杠（国内 `npmmirror` 同构路径）", "machine": false}]}, {"title": "三、核心命令直测（本机可验 ✅，服务层真实执行路径）", "items": [{"text": "进程采集：双采样 CPU% 输出合法 JSON，字段 pid/name/cpu/mem/status 完整", "machine": false}, {"text": "挂起/恢复：对无害进程（notepad）执行 `NtSuspendProcess` / `NtResumeProcess` 返回 0", "machine": false}, {"text": "Ping：`Test-Connection` 返回 min/avg/max/loss 数值，不可达目标 loss=100", "machine": false}, {"text": "网卡查询：返回本机网卡名称 / IP / 状态", "machine": false}, {"text": "浏览器缓存扫描：Chrome / Edge 的 Cache 目录存在时列入清理计划", "machine": false}, {"text": "服务查询：`Get-CimInstance Win32_Service` 返回 name/displayName/status/startType/canStop 完整", "machine": false}, {"text": "计划任务枚举：`Get-ScheduledTask | Get-ScheduledTaskInfo` 返回 taskPath/taskName/state 完整", "machine": false}, {"text": "防火墙配置：`Get-NetFirewallProfile` 返回 Domain/Private/Public 三个配置文件的开关与默认动作", "machine": false}]}, {"title": "四、GUI 冒烟（⚙️ 需 Windows 实机）", "items": [{"text": "双击 `gale-engine-${version}-setup.exe` 完成安装（支持自定义目录）", "machine": true}, {"text": "桌面/开始菜单快捷方式可启动应用，主窗口正常显示（1080×720）", "machine": true}, {"text": "左侧 12 个导航项均可点击，路由切换无白屏：首页 / 硬件监控 / 进程管理 / 网络诊断 / 优化中心 / 游戏模式 / 服务管理 / 计划任务 / 防火墙 / 工具箱 / 优化记录 / 设置", "machine": true}, {"text": "窗口关闭后重新打开，主题（外观/强调色）设置保持", "machine": true}, {"text": "进入后每秒刷新一次；CPU 负载、内存占用、网络速率、温度/电量/运行时长均有数值", "machine": true}, {"text": "磁盘列表显示各盘占用百分比；无任何字段为 `NaN` 或异常负值", "machine": true}, {"text": "进程列表按 CPU / 内存 / 名称排序切换正常，数值非 NaN", "machine": true}, {"text": "系统关键进程（System / lsass / svchost 等）显示「系统」徽标，结束/挂起按钮禁用", "machine": true}, {"text": "结束普通进程：二次确认后成功结束，列表刷新；取消不执行", "machine": true}, {"text": "挂起 / 恢复普通进程：状态在「已挂起 / 运行中」间切换，进程可恢复", "machine": true}, {"text": "调整优先级：选择后回执成功；权限不足时显示错误原因不崩溃", "machine": true}, {"text": "进程操作在「优化记录」中留痕", "machine": true}, {"text": "延迟测试：输入 `baidu.com` 或点击快捷目标，显示最小/平均/最大延迟与丢包率", "machine": true}, {"text": "不可达目标（如 `10.255.255.1`）显示失败提示，不崩溃", "machine": true}, {"text": "网卡列表显示本机网卡名称、IP 与连接状态", "machine": true}, {"text": "「重新扫描」能列出 Temp / 回收站 / 浏览器缓存占用与大小", "machine": true}, {"text": "勾选安全项 → 「清理选中项」回执成功计数；非安全路径项被禁用不可勾选", "machine": true}, {"text": "「启动项管理」列出 HKCU/HKLM 启动项；禁用/启用切换后状态即时更新", "machine": true}, {"text": "上述操作均在「优化记录」中留痕", "machine": true}, {"text": "「进入游戏模式」后状态切换为已开启，提示切换到高性能计划", "machine": true}, {"text": "「退出游戏模式」还原进入前的电源计划，状态回到普通模式", "machine": true}, {"text": "（验证）`powercfg /getactivescheme` 在高性能与普通计划间切换正确", "machine": true}, {"text": "服务列表显示名称 / 显示名 / 状态 / 启动类型，筛选框按名称或显示名过滤生效", "machine": true}, {"text": "系统关键服务（RpcSs / DcomLaunch / Winmgmt 等）显示「系统」徽标，启动类型下拉与启停按钮禁用", "machine": true}, {"text": "停止运行中的普通服务：二次确认后成功停止，状态刷新为 Stopped；取消不执行", "machine": true}, {"text": "启动已停止的普通服务：状态刷新为 Running；已在运行的服务「启动」按钮禁用", "machine": true}, {"text": "切换启动类型（自动 / 手动 / 已禁用）后回执成功；权限不足时显示错误原因不崩溃", "machine": true}, {"text": "尝试停止系统关键服务被拒绝，页面显示明确错误提示", "machine": true}, {"text": "服务操作在「优化记录」中留痕", "machine": true}, {"text": "任务列表显示任务名 / 路径 / 状态 / 上次与下次运行时间，筛选框按名称或路径过滤生效", "machine": true}, {"text": "启用 / 禁用任务：状态在 Ready 与 Disabled 间切换，回执成功", "machine": true}, {"text": "「运行」触发任务立即执行；「结束」对 Running 状态任务生效（其他状态按钮禁用）", "machine": true}, {"text": "操作失败（如权限不足）显示错误原因，不崩溃", "machine": true}, {"text": "任务操作在「优化记录」中留痕", "machine": true}, {"text": "三个配置文件卡片显示 Domain / Private / Public 的开关状态与出入站默认动作", "machine": true}, {"text": "切换配置文件开关：点击后状态更新，回执成功；非管理员运行时显示「拒绝访问」等明确错误", "machine": true}, {"text": "规则列表显示规则名 / 方向 / 动作 / 启用状态（前 200 条），筛选框按名称过滤生效", "machine": true}, {"text": "单条规则启用 / 禁用：状态切换成功，回执提示", "machine": true}, {"text": "防火墙操作在「优化记录」中留痕", "machine": true}, {"text": "刷新 DNS / 清空回收站 / 清空剪贴板 / 深色·浅色 四个工具均给出成功反馈", "machine": true}, {"text": "失败场景（如权限不足）显示红色错误原因，不崩溃", "machine": true}, {"text": "每个成功工具在「优化记录」中留痕", "machine": true}, {"text": "外观（系统/浅色/深色）、强调色切换即时生效并持久化", "machine": true}, {"text": "「优化记录」时间线按时间倒序；「清空记录」后列表为空", "machine": true}]}, {"title": "五、CI 自动发布（⚙️ GitHub Actions）", "items": [{"text": "推送 `v*` tag 触发 `.github/workflows/release.yml`，工作流 `completed / success`", "machine": false}, {"text": "Release 产物齐全：`gale-engine-${version}-setup.exe` + `.blockmap` + `latest.yml`", "machine": false}, {"text": "`latest.yml` 内文件名与实际产物名一致（ASCII，避免净化名导致自动更新 404）", "machine": false}, {"text": "应用内「设置 → 检查更新」能读到该 Release 版本", "machine": false}, {"text": "仓库 Actions 权限已启用（Settings → Actions → Allow all actions）", "machine": false}]}, {"title": "六、发布与托管（EdgeOne Makers）", "items": [{"text": "落地页（静态站点）含：版本徽章、`下载安装包` CTA、功能亮点、更新日志", "machine": false}, {"text": "落地页 CTA 与获取方式指向真实 GitHub Releases 地址", "machine": false}, {"text": "落地页经 EdgeOne Makers 部署得到公开 URL", "machine": false}, {"text": "安装包制品随发版归档（Release / 对象存储），下载链接与落地页 CTA 对齐", "machine": false}, {"text": "更新日志（CHANGELOG）补充本次发版条目，包含已知限制", "machine": false}]}, {"title": "七、回滚与异常", "items": [{"text": "安装包提供卸载入口，卸载后无残留服务/计划任务", "machine": false}, {"text": "若某模块在实机异常，优先回退该模块 IPC 注册，不阻断主窗口启动", "machine": false}, {"text": "发布后保留上一版本 tag，便于对照基线", "machine": false}]}]};
+const KEY = "gale-smoke-v1";
+const STORE = {};
+try { Object.assign(STORE, JSON.parse(localStorage.getItem(KEY) || "{}")); } catch(e){}
+
+function save(){ localStorage.setItem(KEY, JSON.stringify(STORE));
+  document.getElementById("saved").textContent = new Date().toLocaleString("zh-CN"); }
+
+function render(){
+  const app = document.getElementById("app");
+  app.innerHTML = "";
+  DATA.sections.forEach((sec, si) => {
+    const sec_el = document.createElement("section");
+    const done = sec.items.filter((_,i)=>STORE[si+"-"+i]).length;
+    sec_el.innerHTML = `<div class="sec-head"><span class="arrow">▾</span>
+      <h2>${si+1}. ${sec.title}</h2><span class="cnt">${done}/${sec.items.length}</span></div>
+      <div class="body"></div>`;
+    const body = sec_el.querySelector(".body");
+    sec.items.forEach((it, i) => {
+      const lab = document.createElement("label");
+      lab.className = "item" + (it.machine ? " machine":"") + (STORE[si+"-"+i] ? " done":"");
+      lab.innerHTML = `<input type="checkbox" ${STORE[si+"-"+i]?"checked":""}/>
+        <span class="t">${it.text.replace(/⚙️/g,"")}</span>`;
+      lab.querySelector("input").addEventListener("change", e => {
+        if (e.target.checked) STORE[si+"-"+i] = 1; else delete STORE[si+"-"+i];
+        lab.classList.toggle("done", e.target.checked);
+        save(); update();
+      });
+      body.appendChild(lab);
+    });
+    sec_el.querySelector(".sec-head").addEventListener("click", () =>
+      sec_el.classList.toggle("collapsed"));
+    app.appendChild(sec_el);
+  });
+  update();
+}
+
+function update(){
+  let d=0, md=0;
+  DATA.sections.forEach((sec,si)=>sec.items.forEach((it,i)=>{
+    if (STORE[si+"-"+i]){ d++; if(it.machine) md++; }
+  }));
+  document.getElementById("done").textContent = d;
+  document.getElementById("total").textContent = DATA.total;
+  document.getElementById("mtotal").textContent = DATA.machineTotal;
+  document.getElementById("mdone").textContent = md;
+  const pct = DATA.total ? Math.round(d/DATA.total*100) : 0;
+  document.getElementById("pct").textContent = pct + "%";
+  document.getElementById("bar").style.width = pct + "%";
+}
+
+document.getElementById("expand").onclick = () =>
+  document.querySelectorAll("section").forEach(s=>s.classList.remove("collapsed"));
+document.getElementById("collapse").onclick = () =>
+  document.querySelectorAll("section").forEach(s=>s.classList.add("collapsed"));
+document.getElementById("reset").onclick = () => {
+  if (confirm("确认清空所有勾选状态？")) { for (const k in STORE) delete STORE[k]; save(); render(); }
+};
+document.getElementById("export").onclick = () => {
+  const out = { exportedAt: new Date().toISOString(), total: DATA.total,
+    done: Object.keys(STORE).length, sections: DATA.sections.map((s,si)=>({
+      title: s.title,
+      items: s.items.map((it,i)=>({ text: it.text, machine: it.machine, checked: !!STORE[si+"-"+i] }))
+    })) };
+  const blob = new Blob([JSON.stringify(out,null,2)], {type:"application/json"});
+  download(blob, "gale-smoke-" + stamp() + ".json");
+};
+document.getElementById("exportCsv").onclick = () => {
+  let rows = ["section,item,machine,checked"];
+  DATA.sections.forEach((s,si)=>s.items.forEach((it,i)=>
+    rows.push(`${si+1}. ${csv(s.title)},${csv(it.text)},${it.machine?1:0},${STORE[si+"-"+i]?1:0}`)));
+  download(new Blob([rows.join("\n")], {type:"text/csv"}), "gale-smoke-" + stamp() + ".csv");
+};
+function csv(s){ return '"' + s.replace(/"/g,'""') + '"'; }
+function stamp(){ return new Date().toISOString().slice(0,19).replace(/[:T]/g,"-"); }
+function download(blob, name){ const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href); }
+
+render();
+</script>
+</body>
+</html>

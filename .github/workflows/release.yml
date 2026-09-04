@@ -50,6 +50,12 @@ jobs:
           ELECTRON_BUILDER_BINARIES_MIRROR: https://cdn.npmmirror.com/binaries/electron-builder-binaries/
           # 避免某些 CI 环境下的安全删除拦截
           CODEBUDDY_SAFE_DELETE_ENABLED: 0
+          # 代码签名（休眠态）：仓库设置 Secrets 后 CI 自动签名，未配置则跳过签名。
+          #   CSC_LINK        = .pfx/.p12 证书（可填 base64 或仓库内相对路径，需用 Secrets 加密）
+          #   CSC_KEY_PASSWORD= 证书导出密码
+          # 详见 docs/CODE_SIGNING.md。两项为空时 electron-builder 不签名（当前默认）。
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
         # package:ci 使用 --publish never：CI=true 环境下 electron-builder 会尝试
         # 自行发布（需 GH_TOKEN，未映射必然失败）；发布统一交给下方 gh-release 步骤。
         run: call npm run package:ci
