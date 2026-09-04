@@ -70,3 +70,69 @@ describe('Toolbox', () => {
     expect(r.message).toContain('access denied')
   })
 })
+describe('Toolbox unix 分支', () => {
+  it('darwin flushDns 使用 dscacheutil', async () => {
+    const calls: string[] = []
+    const runner = recordingRunner((s) => { calls.push(s); return ok() })
+    const r = await createToolboxService(runner, 'darwin').flushDns()
+    expect(r.ok).toBe(true)
+    expect(calls[0]).toContain('dscacheutil -flushcache')
+  })
+
+  it('linux flushDns 使用 resolvectl', async () => {
+    const calls: string[] = []
+    const runner = recordingRunner((s) => { calls.push(s); return ok() })
+    const r = await createToolboxService(runner, 'linux').flushDns()
+    expect(r.ok).toBe(true)
+    expect(calls[0]).toContain('resolvectl flush-caches')
+  })
+
+  it('darwin emptyRecycleBin 优先 Finder osascript', async () => {
+    const calls: string[] = []
+    const runner = recordingRunner((s) => { calls.push(s); return ok() })
+    const r = await createToolboxService(runner, 'darwin').emptyRecycleBin()
+    expect(r.ok).toBe(true)
+    expect(calls[0]).toContain('empty trash')
+  })
+
+  it('linux emptyRecycleBin 清空 XDG Trash', async () => {
+    const calls: string[] = []
+    const runner = recordingRunner((s) => { calls.push(s); return ok() })
+    const r = await createToolboxService(runner, 'linux').emptyRecycleBin()
+    expect(r.ok).toBe(true)
+    expect(calls[0]).toContain('.local/share/Trash')
+  })
+
+  it('darwin clearClipboard 使用 pbcopy', async () => {
+    const calls: string[] = []
+    const runner = recordingRunner((s) => { calls.push(s); return ok() })
+    const r = await createToolboxService(runner, 'darwin').clearClipboard()
+    expect(r.ok).toBe(true)
+    expect(calls[0]).toContain('pbcopy')
+  })
+
+  it('linux clearClipboard 使用 wl-copy/xclip/xsel', async () => {
+    const calls: string[] = []
+    const runner = recordingRunner((s) => { calls.push(s); return ok() })
+    const r = await createToolboxService(runner, 'linux').clearClipboard()
+    expect(r.ok).toBe(true)
+    expect(calls[0]).toContain('wl-copy')
+  })
+
+  it('darwin toggleDarkMode(true) 写入 AppleInterfaceStyle Dark', async () => {
+    const calls: string[] = []
+    const runner = recordingRunner((s) => { calls.push(s); return ok() })
+    const r = await createToolboxService(runner, 'darwin').toggleDarkMode(true)
+    expect(r.ok).toBe(true)
+    expect(calls[0]).toContain('AppleInterfaceStyle -string Dark')
+  })
+
+  it('linux toggleDarkMode(false) 使用 gsettings prefer-light', async () => {
+    const calls: string[] = []
+    const runner = recordingRunner((s) => { calls.push(s); return ok() })
+    const r = await createToolboxService(runner, 'linux').toggleDarkMode(false)
+    expect(r.ok).toBe(true)
+    expect(calls[0]).toContain('gsettings')
+    expect(calls[0]).toContain('prefer-light')
+  })
+})

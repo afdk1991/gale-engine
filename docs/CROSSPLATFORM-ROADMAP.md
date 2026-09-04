@@ -1,6 +1,6 @@
 # 疾风引擎 — 跨平台迁移路线图（Windows / macOS / Linux / ARM64）
 
-> 制定时间：2026-09-05 ｜ 当前进度：架构层 + 1 个代表性 service（network）已转换，149 测试全绿
+> 制定时间：2026-09-05 ｜ 当前进度：架构层 + 3 个 service（network/toolbox/process）已转换，171 测试全绿
 > 目标：12 个 service 全部支持 Win/macOS/Linux，6 套构建产物（3 OS × 2 架构）
 
 ## 一、架构总览
@@ -28,10 +28,10 @@ electron/services/
 |---|---|---|---|---|---|---|
 | 1 | monitor | ✅ 完成 | systeminformation（跨平台库，零改造） | 同 | 同 | — |
 | 2 | network | ✅ 完成 | Test-Connection / Win32_NetworkAdapter | ping / ifconfig | ping / ip addr | 已完成 |
-| 3 | process | ⏳ 待迁 | Get-Process / NtSuspendProcess | ps / kill -STOP / kill -CONT | ps / kill -STOP/-CONT | 中 |
+| 3 | process | ✅ 批次1完成 | Get-Process / NtSuspendProcess | ps / kill -STOP / kill -CONT + renice | ps / kill -STOP/-CONT + renice | 已完成 |
 | 4 | optimizer | ⏳ 待迁 | 注册表 Run 键 / 回收站 / 浏览器缓存 | launchctl plist / ~/.Trash | systemd / ~/.local/share/Trash | 中 |
 | 5 | gamemode | ⏳ 待迁 | powercfg 电源计划 | pmset / caffeinate | 无原生电源计划（用 cpufreq/gov） | 中高 |
-| 6 | toolbox | ⏳ 待迁 | ipconfig /flushdns / 回收站 / 剪贴板 | dscacheutil -flushcache / pbcopy | systemd-resolve --flush-caches / xclip | 低 |
+| 6 | toolbox | ✅ 批次1完成 | ipconfig /flushdns / 回收站 / 剪贴板 | dscacheutil -flushcache / Finder trash / pbcopy / defaults | systemd-resolve / XDG Trash / wl-copy·xclip / gsettings | 已完成 |
 | 7 | autolaunch | ⏳ 待迁 | 注册表 Run / 启动文件夹 | launchd plist (~/Library/LaunchAgents) | systemd user unit / XDG autostart | 中 |
 | 8 | firewall | ⏳ 待迁 | Get-NetFirewallProfile/Rule | pfctl / pf.conf（需 root） | ufw / iptables（需 root） | 高 |
 | 9 | tasks | ⏳ 待迁 | Get-ScheduledTask | launchctl print/load/unload | systemctl list-units / crontab | 高 |
@@ -41,8 +41,8 @@ electron/services/
 | 13 | update | ✅ 跨平台 | electron-updater（跨平台，需各平台 latest.yml） | 同 | 同 | — |
 
 **已完成跨平台：4 个**（monitor / settings / history / update —— 用了跨平台库）
-**已手动转换：1 个**（network —— 模板）
-**待迁移：8 个**（process / optimizer / gamemode / toolbox / autolaunch / firewall / tasks / winservices）
+**已手动转换：3 个**（network / toolbox / process —— 平台分发生成器）
+**待迁移：6 个**（optimizer / gamemode / autolaunch / firewall / tasks / winservices）
 
 ## 三、迁移优先级（建议批次）
 
@@ -116,8 +116,9 @@ Release v0.5.0
 - [x] release.yml：6 矩阵 CI 构建
 - [x] macOS entitlements 文件
 - [x] 鸿蒙调研报告
-- [ ] 8 个待迁 service（按批次推进）
+- [x] 批次1：toolbox + process（win/unix 分发生成器 + 16 项新增测试，真实 Windows 冒烟通过）
+- [ ] 6 个待迁 service（批次2：optimizer + autolaunch）
 - [ ] ARM64 三平台实机验证
 - [ ] 落地页多平台下载适配
 
-> 下一步建议：按批次 1（toolbox + process）推进，每批完成后跑全量测试 + 对应平台实机冒烟。
+> 下一步建议：批次 1 已完成（toolbox + process），继续按批次 2（optimizer + autolaunch）推进，每批完成后跑全量测试 + 对应平台实机冒烟。

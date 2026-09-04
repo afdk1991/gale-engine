@@ -5,7 +5,9 @@ import {
   parseActionResult,
   sortProcesses,
   PRIORITY_CLASS,
-  PROTECTED_NAMES
+  PRIORITY_NICE,
+  PROTECTED_NAMES,
+  PROTECTED_UNIX_NAMES
 } from './process'
 import type { ExecRunner } from './shell'
 
@@ -153,5 +155,61 @@ describe('常量', () => {
     expect(PROTECTED_NAMES).toContain('lsass')
     expect(PROTECTED_NAMES).toContain('csrss')
     expect(PROTECTED_NAMES).toContain('System')
+  })
+})
+describe('createProcessService unix 分支', () => {
+  it('kill 使用 kill -9 且含保护守卫', async () => {
+    const { runner, calls } = recordingRunner(() => ok())
+    const res = await createProcessService(runner, 'linux').kill(4321)
+    expect(res.ok).toBe(true)
+    expect(calls[0]).toContain('kill -9')
+    expect(calls[0]).toContain('受保护的系统进程')
+  })
+
+  it('suspend 使用 kill -STOP', async () => {
+    const { runner, calls } = recordingRunner(() => ok())
+    const res = await createProcessService(runner, 'darwin').suspend(111)
+    expect(res.ok).toBe(true)
+    expect(calls[0]).toContain('kill -STOP')
+  })
+
+  it('resume 使用 kill -CONT', async () => {
+    const { runner, calls } = recordingRunner(() => ok())
+    const res = await createProcessService(runner, 'linux').resume(222)
+    expect(res.ok).toBe(true)
+    expect(calls[0]).toContain('kill -CONT')
+  })
+
+  it('priority(high) 映射 renice -n -10', async () => {
+    const { runner, calls } = recordingRunner(() => ok())
+    const res = await createProcessService(runner, 'linux').priority(333, 'high')
+    expect(res.ok).toBe(true)
+    expect(calls[0]).toContain('renice -n -10')
+  })
+
+  it('priority(low) 映射 renice -n 19', async () => {
+    const { runner, calls } = recordingRunner(() => ok())
+    const res = await createProcessService(runner, 'darwin').priority(444, 'low')
+    expect(res.ok).toBe(true)
+    expect(calls[0]).toContain('renice -n 19')
+  })
+
+  it('list 脚本使用 ps -axo 双采样', async () => {
+    const { runner, calls } = recordingRunner(() => ok())
+    await createProcessService(runner, 'darwin').list()
+    expect(calls[0]).toContain('ps -axo')
+    expect(calls[0]).toContain('sleep 0.6')
+  })
+
+  it('PRIORITY_NICE 覆盖全部合法等级', () => {
+    expect(Object.keys(PRIORITY_NICE).sort()).toEqual(
+      ['aboveNormal', 'belowNormal', 'high', 'low', 'normal']
+    )
+  })
+
+  it('unix 保护名单包含内核/init 进程', () => {
+    expect(PROTECTED_UNIX_NAMES).toContain('kernel_task')
+    expect(PROTECTED_UNIX_NAMES).toContain('launchd')
+    expect(PROTECTED_UNIX_NAMES).toContain('systemd')
   })
 })
