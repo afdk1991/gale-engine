@@ -12,23 +12,26 @@ import { createNetworkService } from './services/network'
 import { createFirewallService } from './services/firewall'
 import { createTasksService } from './services/tasks'
 import { createWinServicesService } from './services/winservices'
-import { createPowershellRunner } from './services/shell'
+import { createPlatformRunner, detectPlatform } from './services/shell'
 import { createUpdateService } from './services/update'
 import { createElectronUpdaterApi } from './services/update.electron'
 import { createAutoLaunchService, createElectronLoginItemApi } from './services/autolaunch'
 
+// 跨平台：按当前 OS 选择执行器（Windows→PowerShell，macOS/Linux→bash）
+const runner = createPlatformRunner()
+const platform = detectPlatform()
 const store = new Store()
 const settingsService = createSettingsService(store as unknown as StorageAdapter)
 const monitorService = createMonitorService()
 const historyService = createHistoryService(store as unknown as StorageAdapter)
-const optimizerService = createOptimizerService(createPowershellRunner())
-const gameModeService = createGameModeService(createPowershellRunner(), store as unknown as StorageAdapter)
-const toolboxService = createToolboxService(createPowershellRunner())
-const processService = createProcessService(createPowershellRunner())
-const networkService = createNetworkService(createPowershellRunner())
-const firewallService = createFirewallService(createPowershellRunner())
-const tasksService = createTasksService(createPowershellRunner())
-const winServicesService = createWinServicesService(createPowershellRunner())
+const optimizerService = createOptimizerService(runner)
+const gameModeService = createGameModeService(runner, store as unknown as StorageAdapter)
+const toolboxService = createToolboxService(runner)
+const processService = createProcessService(runner)
+const networkService = createNetworkService(runner, platform)
+const firewallService = createFirewallService(runner)
+const tasksService = createTasksService(runner)
+const winServicesService = createWinServicesService(runner)
 const updateService = createUpdateService(createElectronUpdaterApi())
 const autoLaunchService = createAutoLaunchService(createElectronLoginItemApi(app))
 

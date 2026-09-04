@@ -4,7 +4,9 @@ import {
   parsePing,
   parseInterfaces,
   sanitizeHost,
-  sanitizeCount
+  sanitizeCount,
+  buildPingScript,
+  buildInterfacesScript
 } from './network'
 import type { ExecRunner } from './shell'
 
@@ -115,5 +117,40 @@ describe('createNetworkService', () => {
     const { runner } = recordingRunner(() => ok(JSON.stringify(raw)))
     const list = await createNetworkService(runner).interfaces()
     expect(list[0].ip).toBe('192.168.1.5')
+  })
+})
+
+describe('跨平台脚本分发', () => {
+  it('Windows ping 脚本使用 Test-Connection', () => {
+    expect(buildPingScript('baidu.com', 4, 'win32')).toContain('Test-Connection')
+  })
+  it('macOS/Linux ping 脚本使用 ping -c 且不含 PowerShell cmdlet', () => {
+    const s = buildPingScript('baidu.com', 4, 'darwin')
+    expect(s).toContain('ping -c "$count"')
+    expect(s).toContain('count=4')
+    expect(s).not.toContain('Test-Connection')
+  })
+  it('Linux ping 脚本同样使用 ping -c', () => {
+    const s = buildPingScript('baidu.com', 3, 'linux')
+    expect(s).toContain('ping -c "$count"')
+    expect(s).toContain('count=3')
+  })
+  it('Windows 网卡脚本使用 Win32_NetworkAdapterConfiguration', () => {
+    expect(buildInterfacesScript('win32')).toContain('Win32_NetworkAdapterConfiguration')
+  })
+  it('macOS/Linux 网卡脚本使用 ip/ifconfig 且不含 Win32_', () => {
+    const s = buildInterfacesScript('darwin')
+    expect(s).toMatch(/ip -o addr|ifconfig/)
+    expect(s).not.toContain('Win32_')
+  })
+  it('Linux 网卡脚本走 ip/ifconfig 分支', () => {
+    expect(buildInterfacesScript('linux')).toMatch(/ip -o addr|ifconfig/)
+  })
+  it('createNetworkService 在 unix 平台生成 bash 脚本', async () => {
+    const { runner, calls } = recordingRunner(() => ok(JSON.stringify({ min: 1, avg: 2, max: 3, loss: 0, ok: true })))
+    await createNetworkService(runner, 'darwin').ping('baidu.com', 4)
+    expect(calls[0]).toContain('ping -c "$count"')
+    expect(calls[0]).toContain('count=4')
+    expect(calls[0]).not.toContain('Test-Connection')
   })
 })

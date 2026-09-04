@@ -1,4 +1,4 @@
-name: Release — 打 tag 触发 Windows 安装包构建与发布
+name: Release — 打 tag 触发多平台多架构构建与发布
 
 on:
   push:
@@ -13,9 +13,44 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build-windows:
-    name: 构建 NSIS 安装包 (windows-latest)
-    runs-on: windows-latest
+  build:
+    name: 构建 ${{ matrix.os }} / ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false      # 单平台失败不取消其他平台，便于定位
+      matrix:
+        include:
+          # Windows x64
+          - os: windows
+            runner: windows-latest
+            arch: x64
+            target: --win
+          # Windows ARM64（在 x64 runner 上交叉编译）
+          - os: windows
+            runner: windows-latest
+            arch: arm64
+            target: --win
+          # macOS x64（Intel）
+          - os: macos
+            runner: macos-13
+            arch: x64
+            target: --mac
+          # macOS ARM64（Apple Silicon，原生 runner 更快）
+          - os: macos
+            runner: macos-latest
+            arch: arm64
+            target: --mac
+          # Linux x64
+          - os: linux
+            runner: ubuntu-latest
+            arch: x64
+            target: --linux
+          # Linux ARM64（在 x64 runner 上交叉编译，需 qemu/binfmt）
+          - os: linux
+            runner: ubuntu-latest
+            arch: arm64
+            target: --linux
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,15 +61,18 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Linux ARM64 交叉编译前置（qemu）
+        if: runner.os == 'Linux' && matrix.arch == 'arm64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-user-static binfmt-support
+
       - name: 安装依赖
         run: npm ci
 
       - name: 注入仓库信息到自动更新配置
         shell: pwsh
         run: |
-          # electron-builder.yml 中 publish.owner 为本地占位符 YOUR_GITHUB_OWNER。
-          # CI 里用真实仓库 owner / repo 替换，确保嵌入安装包的 app-update.yml
-          # 指向本仓库的 GitHub Releases，应用内「检查更新」才能正常工作。
           $owner = '${{ github.repository_owner }}'
           $repo = '${{ github.event.repository.name }}'
           $content = Get-Content electron-builder.yml -Raw
@@ -44,31 +82,36 @@ jobs:
           Select-String -Path electron-builder.yml -Pattern 'owner:|repo:'
 
       - name: 构建并打包安装包
-        shell: cmd
+        shell: bash
         env:
           # 国内镜像拉取 winCodeSign / nsis / nsis-resources（结尾斜杠不可省）
           ELECTRON_BUILDER_BINARIES_MIRROR: https://cdn.npmmirror.com/binaries/electron-builder-binaries/
-          # 避免某些 CI 环境下的安全删除拦截
           CODEBUDDY_SAFE_DELETE_ENABLED: 0
-          # 代码签名（休眠态）：仓库设置 Secrets 后 CI 自动签名，未配置则跳过签名。
-          #   CSC_LINK        = .pfx/.p12 证书（可填 base64 或仓库内相对路径，需用 Secrets 加密）
-          #   CSC_KEY_PASSWORD= 证书导出密码
-          # 详见 docs/CODE_SIGNING.md。两项为空时 electron-builder 不签名（当前默认）。
+          # 代码签名（休眠态）：仓库设置 Secrets 后 CI 自动签名，未配置则跳过。
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-        # package:ci 使用 --publish never：CI=true 环境下 electron-builder 会尝试
-        # 自行发布（需 GH_TOKEN，未映射必然失败）；发布统一交给下方 gh-release 步骤。
-        run: call npm run package:ci
+          # macOS 公证（需 Apple Developer 账号，未配置则仅签名不公证）
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # 直接调 electron-builder 并指定 target；--publish never 避免 CI 内自动发布冲突
+        run: npx electron-vite build && npx electron-builder ${{ matrix.target }} --${{ matrix.arch }} --publish never
 
       - name: 发布到 GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
-          # 自动从 tag 消息 / 提交生成发布说明
           generate_release_notes: true
-          # latest.yml 必须上传：electron-updater 依赖它检查与下载新版本，缺失则应用内更新 404
+          # 多平台产物：exe/dmg/AppImage/deb + blockmap + 各平台 latest*.yml
           files: |
             release/*.exe
-            release/*.blockmap
-            release/latest.yml
+            release/*.exe.blockmap
+            release/*.dmg
+            release/*.dmg.blockmap
+            release/*.AppImage
+            release/*.AppImage.zsync
+            release/*.deb
+            release/latest*.yml
+            release/*.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
