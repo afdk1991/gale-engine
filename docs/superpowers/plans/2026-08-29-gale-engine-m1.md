@@ -33,7 +33,8 @@
 ├─ src/                          # 渲染进程根（electron-vite renderer root）
 │  ├─ index.html                 # 任务5
 │  ├─ main.ts                    # 任务5（入口，先 init 主题再挂载）
-│  ├─ env.d.ts                   # 任务2（.vue 与 window.gale 声明）
+│  ├─ env.d.ts                   # 任务2（window.gale 声明）
+│  ├─ shims-vue.d.ts             # 任务2（.vue 模块声明，须为无顶层 import/export 的全局脚本文件）
 │  ├─ App.vue                    # 任务5 临时版 → 任务8 正式版（含侧边栏）
 │  ├─ router/index.ts            # 任务5
 │  ├─ assets/base.css            # 任务5（reset + 页面通用样式）
@@ -135,7 +136,7 @@ git commit -m "chore: 初始化疾风引擎工程与依赖"
 ### Task 2: 构建 / 类型 / 测试配置
 
 **Files:**
-- Create: `electron.vite.config.ts`、`tsconfig.json`、`vitest.config.ts`、`src/env.d.ts`
+- Create: `electron.vite.config.ts`、`tsconfig.json`、`vitest.config.ts`、`src/env.d.ts`、`src/shims-vue.d.ts`
 
 - [ ] **Step 1: 写入 electron.vite.config.ts**
 
@@ -187,6 +188,7 @@ export default defineConfig({
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["vite/client", "node"],
     "skipLibCheck": true,
+    "isolatedModules": true,
     "noEmit": true,
     "baseUrl": ".",
     "paths": { "@/*": ["src/*"] }
@@ -221,7 +223,9 @@ export default defineConfig({
 
 统一用 jsdom 环境：主进程服务测试全部走纯函数 + 依赖注入，不触碰 Electron API，jsdom 下可跑。
 
-- [ ] **Step 4: 写入 src/env.d.ts**
+- [ ] **Step 4: 写入 src/env.d.ts 与 src/shims-vue.d.ts**
+
+`src/env.d.ts`（含顶层 `import type`，属模块文件——模块文件内的 `declare module` 会被按模块增强处理，通配符声明不生效，故 `*.vue` 声明必须拆到独立的全局脚本文件）：
 
 ```ts
 /// <reference types="vite/client" />
@@ -233,13 +237,17 @@ declare global {
   }
 }
 
+export {}
+```
+
+`src/shims-vue.d.ts`（**不得有任何顶层 import/export**，必须是全局脚本文件才能让 `*.vue` 通配符声明生效；`declare module` 块内部的 import/export 不影响全局脚本属性）：
+
+```ts
 declare module '*.vue' {
   import type { DefineComponent } from 'vue'
   const component: DefineComponent<Record<string, never>, Record<string, never>, unknown>
   export default component
 }
-
-export {}
 ```
 
 - [ ] **Step 5: 验证配置可加载**
@@ -250,7 +258,7 @@ Expected: 报找不到入口 `electron/main.ts`（Task 4 才创建）——只�
 - [ ] **Step 6: Commit**
 
 ```bash
-git add electron.vite.config.ts tsconfig.json vitest.config.ts src/env.d.ts
+git add electron.vite.config.ts tsconfig.json vitest.config.ts src/env.d.ts src/shims-vue.d.ts
 git commit -m "chore: electron-vite / tsconfig / vitest 配置"
 ```
 
@@ -1458,7 +1466,7 @@ Expected: 以上 5 项全部通过。Ctrl+C 退出。
 - [ ] **Step 3: 全量测试 + 类型检查 + Commit**
 
 Run: `npx vitest run`
-Expected: 全部 PASS（4 个测试文件、20 个测试：settings 6 + tokens 6 + useTheme 6 + AppSidebar 2）。
+Expected: 全部 PASS（4 个测试文件、21 个测试：settings 6 + tokens 6 + useTheme 7 + AppSidebar 2）。
 
 Run: `npm run typecheck`
 Expected: 退出码 0。
@@ -1529,7 +1537,7 @@ git tag v0.1.0
 
 ## M1 完成定义（DoD）
 
-- [ ] `npx vitest run` 全部通过（4 个测试文件、20 个测试）
+- [ ] `npx vitest run` 全部通过（4 个测试文件、21 个测试）
 - [ ] `npm run typecheck` 退出码 0
 - [ ] `npm run dev` 下：7 页路由正常、主题 3 模式 × 6 色即时切换且重启保持
 - [ ] `release/疾风引擎-0.1.0-setup.exe` 安装后冒烟通过

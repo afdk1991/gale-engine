@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>疾风引擎 — Windows 桌面优化加速引擎</title>
+  <meta name="description" content="疾风引擎：硬件监控、垃圾清理、启动项管理、游戏模式与系统工具箱，一站式 Windows 性能优化。" />
+  <meta name="theme-color" content="#f7f9fc" />
+  <meta name="color-scheme" content="light" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Crect%20width='32'%20height='32'%20rx='8'%20fill='%232f7cf6'/%3E%3Cpath%20d='M18%205%20L8%2018%20H14%20L12%2027%20L24%2012%20H17%20Z'%20fill='%23fff'/%3E%3C/svg%3E" />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="zh_CN" />
+  <meta property="og:title" content="疾风引擎 — Windows 桌面优化加速引擎" />
+  <meta property="og:description" content="硬件监控、垃圾清理、启动项管理、游戏模式与系统工具箱，一站式 Windows 性能优化。" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="疾风引擎 — Windows 桌面优化加速引擎" />
+  <meta name="twitter:description" content="硬件监控、垃圾清理、启动项管理、游戏模式与系统工具箱，一站式 Windows 性能优化。" />
+  <style>
+    :root {
+      --accent: #2f7cf6;
+      --accent-2: #19c3a6;
+      --ink: #0f172a;
+      --ink-2: #475569;
+      --ink-3: #94a3b8;
+      --bg: #f7f9fc;
+      --card: #ffffff;
+      --border: #e6ebf2;
+      --nav-h: 64px;
+      --radius: 14px;
+      --shadow-sm: 0 1px 2px rgba(15,23,42,.04);
+      --shadow-md: 0 10px 26px rgba(15,23,42,.07);
+      --shadow-accent: 0 8px 20px rgba(47,124,246,.28);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html {
+      scroll-behavior: smooth;
+      scroll-padding-top: calc(var(--nav-h) + 16px);
+      color-scheme: light;
+      -webkit-text-size-adjust: 100%;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    a { color: inherit; text-decoration: none; }
+    svg, img { display: block; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+    /* Header / Nav */
+    .site-header {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(247,249,252,.82);
+      backdrop-filter: saturate(180%) blur(12px);
+      -webkit-backdrop-filter: saturate(180%) blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav { display: flex; align-items: center; justify-content: space-between; height: var(--nav-h); }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; }
+    .brand-mark { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); flex: none; }
+    .nav-links { display: flex; gap: 22px; font-size: 14px; color: var(--ink-2); }
+    .nav-links a { padding: 6px 2px; transition: color .15s; }
+    .nav-links a:hover, .nav-links a.active { color: var(--accent); }
+    .nav-links a.active { font-weight: 600; }
+
+    /* Hero */
+    .hero { text-align: center; padding: clamp(48px, 9vw, 84px) 0 clamp(40px, 7vw, 56px); }
+    .badge { display: inline-block; font-size: 12px; color: var(--accent); background: #e8f0ff; border: 1px solid #d3e2ff; padding: 4px 12px; border-radius: 999px; margin-bottom: 18px; }
+    .hero h1 { font-size: clamp(30px, 6.2vw, 46px); font-weight: 800; letter-spacing: -.5px; line-height: 1.15; }
+    .hero .grad { background: linear-gradient(135deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .hero p { font-size: clamp(15px, 2.2vw, 17px); color: var(--ink-2); max-width: 620px; margin: 16px auto 0; }
+    .cta { margin-top: 32px; display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: 15px; font-weight: 600; padding: 12px 26px; border-radius: 10px; min-height: 44px; transition: transform .12s, box-shadow .15s, border-color .15s, color .15s; cursor: pointer; }
+    .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; box-shadow: var(--shadow-accent); }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(47,124,246,.34); }
+    .btn-ghost { background: #fff; color: var(--ink); border: 1px solid var(--border); }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+    .req { display: inline-block; font-size: 12px; color: var(--ink-2); background: #eef2f7; border: 1px solid var(--border); padding: 6px 14px; border-radius: 8px; margin-top: 18px; }
+
+    /* Sections */
+    main { display: block; }
+    .section { padding: clamp(36px, 6vw, 56px) 0; }
+    .section h2 { font-size: clamp(22px, 4.2vw, 30px); font-weight: 800; text-align: center; }
+    .section .sub { text-align: center; color: var(--ink-2); margin-top: 8px; font-size: 15px; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 34px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; transition: box-shadow .15s, transform .15s, border-color .15s; }
+    .card:hover { box-shadow: var(--shadow-md); transform: translateY(-3px); border-color: #d6e0ee; }
+    .card .ico { width: 40px; height: 40px; border-radius: 10px; background: #eef4ff; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 14px; }
+    .card h3 { font-size: 16px; font-weight: 700; }
+    .card p { font-size: 13.5px; color: var(--ink-2); margin-top: 6px; }
+
+    /* Changelog */
+    .log { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px; margin-top: 30px; max-width: 760px; margin-left: auto; margin-right: auto; }
+    .log-item { border-left: 3px solid var(--accent); padding-left: 16px; margin-bottom: 22px; }
+    .log-item:last-child { margin-bottom: 0; }
+    .log-version { font-weight: 700; font-size: 15px; }
+    .log-date { font-size: 12px; color: var(--ink-3); margin-left: 8px; }
+    .log ul { margin: 8px 0 0 18px; font-size: 13.5px; color: var(--ink-2); }
+    .log li { margin: 3px 0; }
+
+    /* Footer */
+    .footer { text-align: center; color: var(--ink-3); font-size: 13px; padding: 40px 0 56px; border-top: 1px solid var(--border); margin-top: 8px; }
+    code { background: #eef2f7; padding: 1px 6px; border-radius: 5px; font-size: 12.5px; color: #1f3a6e; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; word-break: break-word; }
+
+    /* Back to top */
+    .to-top {
+      position: fixed; right: 22px; bottom: 22px; width: 44px; height: 44px;
+      border: none; border-radius: 50%; cursor: pointer; z-index: 60;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff;
+      font-size: 18px; line-height: 1; display: grid; place-items: center;
+      box-shadow: var(--shadow-accent);
+      opacity: 0; visibility: hidden; transform: translateY(8px);
+      transition: opacity .2s, transform .2s, visibility .2s;
+    }
+    .to-top.show { opacity: 1; visibility: visible; transform: none; }
+    .to-top:hover { transform: translateY(-2px); }
+
+    /* Reveal-on-scroll (only when JS enabled) */
+    .js .reveal { opacity: 0; transform: translateY(16px); transition: opacity .5s ease, transform .5s ease; }
+    .js .reveal.in { opacity: 1; transform: none; }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 600px) {
+      .wrap { padding: 0 18px; }
+      .grid { grid-template-columns: 1fr; }
+      .nav-links { gap: 16px; }
+      .hero .cta { flex-direction: column; align-items: stretch; }
+      .hero .cta .btn { width: 100%; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition: none !important; animation: none !important; }
+      .card:hover, .btn-primary:hover, .to-top:hover { transform: none; }
+      .js .reveal { opacity: 1; transform: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <nav class="nav wrap" aria-label="主导航">
+      <div class="brand"><span class="brand-mark" aria-hidden="true"></span> 疾风引擎</div>
+      <div class="nav-links">
+        <a href="#features">功能</a>
+        <a href="#changelog">更新日志</a>
+        <a href="#download">下载</a>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero" id="download">
+      <div class="wrap">
+        <span class="badge">v0.3.0 · 深度优化版</span>
+        <h1>让 Windows 跑得 <span class="grad">更快更稳</span></h1>
+        <p>硬件监控、进程管理、垃圾清理、游戏模式与网络诊断，集成在一个轻量桌面应用里。</p>
+        <div class="cta">
+          <a class="btn btn-primary" href="#get">⬇ 获取安装包</a>
+          <a class="btn btn-ghost" href="#changelog">查看更新日志</a>
+        </div>
+        <div class="req">系统要求：Windows 10 / 11 64 位 · 无需联网即可使用</div>
+      </div>
+    </section>
+
+    <section class="section" id="features">
+      <div class="wrap">
+        <h2>核心功能</h2>
+        <p class="sub">六大模块覆盖日常性能优化全流程</p>
+        <div class="grid">
+          <div class="card reveal">
+            <div class="ico" aria-hidden="true">📊</div>
+            <h3>硬件监控</h3>
+            <p>实时采集 CPU / 内存 / 磁盘 / 网络负载、温度与电量，每秒刷新。</p>
+          </div>
+          <div class="card reveal">
+            <div class="ico" aria-hidden="true">⚙️</div>
+            <h3>进程管理</h3>
+            <p>查看进程 CPU / 内存占用，结束、挂起 / 恢复进程，调整优先级（系统进程已保护）。</p>
+          </div>
+          <div class="card reveal">
+            <div class="ico" aria-hidden="true">🧹</div>
+            <h3>垃圾清理</h3>
+            <p>扫描 Temp、回收站与浏览器缓存占用，白名单安全清理，逐项回执、失败隔离。</p>
+          </div>
+          <div class="card reveal">
+            <div class="ico" aria-hidden="true">⚡</div>
+            <h3>启动项管理</h3>
+            <p>集中管理 HKCU / HKLM 开机启动项，一键启用 / 禁用。</p>
+          </div>
+          <div class="card reveal">
+            <div class="ico" aria-hidden="true">🎮</div>
+            <h3>游戏模式</h3>
+            <p>一键切换高性能电源计划，退出时自动还原，安全可逆。</p>
+          </div>
+          <div class="card reveal">
+            <div class="ico" aria-hidden="true">🌐</div>
+            <h3>网络诊断</h3>
+            <p>Ping 延迟测试（最小 / 平均 / 最大 / 丢包率）与本机网卡信息。</p>
+          </div>
+          <div class="card reveal">
+            <div class="ico" aria-hidden="true">🧰</div>
+            <h3>系统工具箱</h3>
+            <p>刷新 DNS、清空回收站、清空剪贴板、切换深色模式，幂等安全。</p>
+          </div>
+          <div class="card reveal">
+            <div class="ico" aria-hidden="true">🕘</div>
+            <h3>优化记录</h3>
+            <p>每次清理 / 模式切换自动留痕，时间线一目了然。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="get">
+      <div class="wrap">
+        <h2>如何获取安装包</h2>
+        <p class="sub">两种方式，任选其一</p>
+        <div class="grid">
+          <div class="card reveal">
+            <div class="ico" aria-hidden="true">🛠️</div>
+            <h3>方式一：本地一键构建</h3>
+            <p>克隆仓库后运行 <code>scripts/package-win.cmd</code>（需 Node 与 7-Zip），自动产出 <code>release/gale-engine-0.3.0-setup.exe</code>。镜像源已默认指向国内 npmmirror，无需翻墙。</p>
+          </div>
+          <div class="card reveal">
+            <div class="ico" aria-hidden="true">📦</div>
+            <h3>方式二：Release 下载</h3>
+            <p>推送 <code>v*.*.*</code> tag 即由 <code>.github/workflows/release.yml</code> 自动构建并发布到 GitHub Releases。发布后访问 <code>https://github.com/&lt;owner&gt;/&lt;repo&gt;/releases</code> 获取安装包（NSIS，支持自定义安装目录），双击即可安装。</p>
+          </div>
+          <div class="card reveal">
+            <div class="ico" aria-hidden="true">✅</div>
+            <h3>安装与验证</h3>
+            <p>安装后从桌面 / 开始菜单启动，按 <code>docs/smoke-test-checklist.md</code> 逐项核验六大模块功能。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="changelog">
+      <div class="wrap">
+        <h2>更新日志</h2>
+        <p class="sub">v0.3.0 发版说明</p>
+        <div class="log reveal">
+          <div class="log-item">
+            <div><span class="log-version">v0.3.0</span><span class="log-date">2026-09-03</span></div>
+            <ul>
+              <li>新增进程管理：CPU / 内存占用排序，结束、挂起 / 恢复进程，调整优先级（系统进程保护）</li>
+              <li>新增网络诊断：Ping 延迟测试（最小 / 平均 / 最大 / 丢包率）与网卡信息</li>
+              <li>垃圾清理扩展：支持 Chrome / Edge 浏览器缓存清理</li>
+              <li>9 个页面，100 项自动化测试全绿</li>
+            </ul>
+          </div>
+          <div class="log-item">
+            <div><span class="log-version">v0.2.0</span><span class="log-date">2026-08-30</span></div>
+            <ul>
+              <li>新增硬件监控模块：CPU / 内存 / 磁盘 / 网络实时仪表盘（每秒刷新）</li>
+              <li>新增优化记录模块：操作时间线持久化与清空</li>
+              <li>新增优化中心：垃圾清理（Temp / 回收站，白名单安全清理）+ 启动项管理（HKCU / HKLM）</li>
+              <li>新增游戏模式：高性能电源计划一键切换与还原</li>
+              <li>新增系统工具箱：刷新 DNS / 清空回收站 / 清空剪贴板 / 深色模式</li>
+              <li>落地页与发布流水线（tag 触发 GitHub Actions 构建发布）</li>
+            </ul>
+          </div>
+          <div class="log-item">
+            <div><span class="log-version">v0.1.0</span><span class="log-date">2026-08-30</span></div>
+            <ul>
+              <li>工程骨架：Electron + Vue 3 + TypeScript（electron-vite 多进程构建）</li>
+              <li>主窗口（1080×720）与 7 个占位页面、左侧导航</li>
+              <li>设置模块：3 外观 × 6 强调色主题，electron-store 持久化</li>
+              <li>产出 NSIS 安装包，支持自定义安装目录</li>
+            </ul>
+          </div>
+          <div class="log-item">
+            <div><span class="log-version">已知限制</span></div>
+            <ul>
+              <li>沙箱环境无法运行 GUI，所有交互需在 Windows 实机按冒烟清单核验</li>
+              <li>进程挂起类激进优化暂未纳入，避免影响系统稳定性</li>
+              <li>清理解/启动项/电源计划等真实 Windows 操作需在 Windows 实机验证</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      <div>疾风引擎 · 基于 Electron + Vue 3 构建</div>
+      <div style="margin-top:8px">© 2026 GaleEngine · 仅供学习与个人优化使用</div>
+    </div>
+  </footer>
+
+  <button class="to-top" type="button" aria-label="返回顶部" title="返回顶部">↑</button>
+
+  <script>
+    document.documentElement.classList.add('js');
+    (function () {
+      var prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      // Reveal on scroll
+      var reveals = document.querySelectorAll('.reveal');
+      if (prefersReduced || !('IntersectionObserver' in window)) {
+        for (var i = 0; i < reveals.length; i++) reveals[i].classList.add('in');
+      } else {
+        var io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) {
+            if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+          });
+        }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+        reveals.forEach(function (el) { io.observe(el); });
+      }
+
+      // Back to top
+      var toTop = document.querySelector('.to-top');
+      if (toTop) {
+        var onScroll = function () {
+          if (window.scrollY > 480) toTop.classList.add('show');
+          else toTop.classList.remove('show');
+        };
+        window.addEventListener('scroll', onScroll, { passive: true });
+        onScroll();
+        toTop.addEventListener('click', function () {
+          window.scrollTo({ top: 0, behavior: prefersReduced ? 'auto' : 'smooth' });
+        });
+      }
+
+      // Scroll spy for nav active state
+      var navLinks = Array.prototype.slice.call(document.querySelectorAll('.nav-links a'));
+      var map = {};
+      navLinks.forEach(function (a) {
+        var href = a.getAttribute('href');
+        if (href && href.charAt(0) === '#') map[href.slice(1)] = a;
+      });
+      var sections = Object.keys(map)
+        .map(function (id) { return document.getElementById(id); })
+        .filter(Boolean);
+      if ('IntersectionObserver' in window && sections.length) {
+        var spy = new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) {
+            var link = map[e.target.id];
+            if (!link || !e.isIntersecting) return;
+            navLinks.forEach(function (l) { l.classList.remove('active'); });
+            link.classList.add('active');
+          });
+        }, { rootMargin: '-45% 0px -50% 0px', threshold: 0 });
+        sections.forEach(function (s) { spy.observe(s); });
+      }
+    })();
+  </script>
+</body>
+</html>
