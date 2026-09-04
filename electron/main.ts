@@ -26,7 +26,7 @@ const settingsService = createSettingsService(store as unknown as StorageAdapter
 const monitorService = createMonitorService()
 const hardwareService = createHardwareService()
 const historyService = createHistoryService(store as unknown as StorageAdapter)
-const optimizerService = createOptimizerService(runner)
+const optimizerService = createOptimizerService(runner, platform)
 const gameModeService = createGameModeService(runner, store as unknown as StorageAdapter)
 const toolboxService = createToolboxService(runner, platform)
 const processService = createProcessService(runner, platform)
@@ -35,7 +35,7 @@ const firewallService = createFirewallService(runner)
 const tasksService = createTasksService(runner)
 const winServicesService = createWinServicesService(runner)
 const updateService = createUpdateService(createElectronUpdaterApi())
-const autoLaunchService = createAutoLaunchService(createElectronLoginItemApi(app))
+const autoLaunchService = createAutoLaunchService(createElectronLoginItemApi(app), platform)
 
 function registerIpc(): void {
   ipcMain.handle('settings:get', () => settingsService.get())

@@ -296,7 +296,8 @@ export interface StartupItem {
   id: string
   name: string
   command: string
-  location: 'HKCU' | 'HKLM'
+  /** 启动项来源：win=注册表 HKCU/HKLM；mac=launchd；linux=XDG autostart */
+  location: 'HKCU' | 'HKLM' | 'launchd' | 'autostart'
   enabled: boolean
 }
 

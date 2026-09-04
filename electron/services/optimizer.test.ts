@@ -186,3 +186,80 @@ describe('toggleStartup', () => {
     expect(calls.some((c) => c.script.includes('Remove-ItemProperty'))).toBe(true)
   })
 })
+describe('optimizer unix 分支', () => {
+  it('scanCleanup(darwin) 扫描 Trash 与 Library/Caches', async () => {
+    const { runner, calls } = recordingRunner(() => ok('[]'))
+    await createOptimizerService(runner, 'darwin').scanCleanup()
+    expect(calls[0].script).toContain('du -sk')
+    expect(calls[0].script).toContain('.Trash')
+    expect(calls[0].script).toContain('Library/Caches/Google/Chrome')
+  })
+
+  it('scanCleanup(linux) 扫描 XDG Trash 与 .cache', async () => {
+    const { runner, calls } = recordingRunner(() => ok('[]'))
+    await createOptimizerService(runner, 'linux').scanCleanup()
+    expect(calls[0].script).toContain('.local/share/Trash')
+    expect(calls[0].script).toContain('.cache/google-chrome')
+  })
+
+  it('listStartup(darwin) 使用 PlistBuddy', async () => {
+    const { runner, calls } = recordingRunner(() => ok('[]'))
+    await createOptimizerService(runner, 'darwin').listStartup()
+    expect(calls[0].script).toContain('PlistBuddy')
+    expect(calls[0].script).toContain('LaunchAgents')
+  })
+
+  it('listStartup(linux) 扫描 autostart .desktop', async () => {
+    const { runner, calls } = recordingRunner(() => ok('[]'))
+    await createOptimizerService(runner, 'linux').listStartup()
+    expect(calls[0].script).toContain('.config/autostart')
+    expect(calls[0].script).toContain('.desktop')
+  })
+
+  it('toggleStartup(launchd) enable 生成 plist XML', async () => {
+    const { runner, calls } = recordingRunner(() => ok('[]'))
+    await createOptimizerService(runner, 'darwin').toggleStartup('launchd:com.gale.test', true, '/usr/bin/app')
+    const s = calls[0].script
+    expect(s).toContain('LaunchAgents/com.gale.test.plist')
+    expect(s).toContain('RunAtLoad')
+    expect(s).toContain('com.gale.test')
+  })
+
+  it('toggleStartup(autostart) disable 删除 .desktop', async () => {
+    const { runner, calls } = recordingRunner(() => ok('[]'))
+    await createOptimizerService(runner, 'linux').toggleStartup('autostart:myapp', false)
+    expect(calls[0].script).toContain('rm -f')
+    expect(calls[0].script).toContain('myapp.desktop')
+  })
+
+  it('runCleanup 回收站(darwin) 使用 osascript', async () => {
+    const { runner, calls } = recordingRunner((s) => (s.includes('osascript') ? ok() : fail()))
+    const res = await createOptimizerService(runner, 'darwin').runCleanup([
+      { id: 'recycle', path: 'RecycleBin', kind: 'recycle' }
+    ])
+    expect(res[0].ok).toBe(true)
+    expect(calls[0].script).toContain('empty trash')
+  })
+
+  it('runCleanup 白名单(linux) 放行 /tmp 拒绝 Windows 路径', async () => {
+    const { runner, calls } = recordingRunner(() => ok('OK'))
+    const svc = createOptimizerService(runner, 'linux')
+    const okRes = await svc.runCleanup([{ id: 't1', path: '/tmp', kind: 'temp' }])
+    expect(okRes[0].ok).toBe(true)
+    expect(calls[0].script).toContain('find')
+    const badRes = await svc.runCleanup([{ id: 'b1', path: 'C:\\Windows\\Temp', kind: 'temp' }])
+    expect(badRes[0].ok).toBe(false)
+    expect(badRes[0].error).toContain('安全白名单')
+  })
+
+  it('解析 launchd/autostart location 的 StartupItem', async () => {
+    const raw = [
+      { name: 'com.x', command: '/bin/x', location: 'launchd', enabled: true },
+      { name: 'y', command: '/bin/y', location: 'autostart', enabled: true }
+    ]
+    const { runner } = recordingRunner(() => ({ ...ok(), stdout: JSON.stringify(raw) }))
+    const items = await createOptimizerService(runner, 'linux').listStartup()
+    expect(items[0].id).toBe('launchd:com.x')
+    expect(items[1].id).toBe('autostart:y')
+  })
+})
