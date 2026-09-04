@@ -50,6 +50,7 @@ Windows 桌面优化加速软件：硬件监控、进程管理、垃圾清理、
 ├── docs/                # M2 / M3 / M4 计划、冒烟清单
 ├── build/               # 应用图标（icon.ico / icon.png，由 generate-icon.mjs 生成）
 └── .github/workflows/   # release.yml（打 tag 自动构建发布）
+                         # release-backfill.yml（为历史 tag 补发安装包）
 ```
 
 ## 开发
@@ -86,6 +87,27 @@ git tag v0.4.0 && git push origin v0.4.0
 - 本地手动发布可用 `scripts/publish-release.ps1`
 
 > **文件名注意**：`artifactName` 必须用 ASCII（`gale-engine-${version}-setup.exe`）。若用中文名，electron-builder 会在 `latest.yml` 中生成净化名，与实际产物不一致导致自动更新 404。安装界面展示名仍取 `productName`（疾风引擎）。
+
+### 补发历史版本
+
+早期 tag（v0.1.0 / v0.2.0）在推送时并没有可用的发布工作流：v0.1.0 时仓库尚无 `.github/workflows`，v0.2.0 的 release.yml 依赖当时还不存在的 `package:ci` 脚本，且 v0.2.0 的 `artifactName` 是中文名（会导致自动更新 404）。这些版本由 `release-backfill.yml` 补发。
+
+在 GitHub 仓库页面手动触发：**Actions → Release — 补发历史版本安装包 → Run workflow**，填入 tag（如 `v0.1.0`）。
+
+```bash
+# 等价的 API 调用方式
+curl -X POST \
+  -H "Authorization: token <PAT>" \
+  -H "Accept: application/vnd.github+json" \
+  https://api.github.com/repos/afdk1991/gale-engine/actions/workflows/release-backfill.yml/dispatches \
+  -d '{"ref":"master","inputs":{"tag":"v0.1.0"}}'
+```
+
+补发工作流与常规发版的区别：
+
+- checkout **指定 tag 的源码**，但用当前规范的 `electron-builder.yml` 覆盖（ASCII 产物名 + 真实 owner/repo）
+- 直接调用 `electron-vite build` 与 `electron-builder --win --publish never`，不依赖各 tag 的 npm script（v0.1.0 / v0.2.0 无 `package:ci`）
+- 用 `npm install` 而非 `npm ci`，容忍历史 lockfile 与当前 Node 版本的解析差异
 
 ### 代码签名
 
