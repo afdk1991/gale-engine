@@ -1,0 +1,109 @@
+name: Release — 补发历史版本安装包
+
+# 用途：为库里已存在、但从未产出安装包的旧 tag 补发 GitHub Release。
+# 背景：v0.1.0 时仓库还没有本工作流；v0.2.0 的 release.yml 依赖 package:ci 脚本（当时不存在），
+#       且 v0.2.0 的 artifactName 为非 ASCII，会导致 electron-updater 下载 404。
+# 做法：checkout 指定 tag 的源码，但用当前规范的打包配置覆盖，保证产物命名与自动更新源一致。
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '要补发的 tag，例如 v0.1.0'
+        required: true
+        type: string
+
+permissions:
+  contents: write    # 供 softprops/action-gh-release 创建 / 更新 Release
+
+concurrency:
+  group: release-backfill-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  build-windows:
+    name: 补发 ${{ inputs.tag }} (windows-latest)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout 指定 tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: 安装依赖
+        # 历史 tag 的 lockfile 与当前 Node 版本可能存在解析差异，
+        # 用 install 而非 ci，容忍 lockfile 漂移。
+        run: npm install --no-audit --no-fund
+        env:
+          # 加速 Electron 二进制下载（GitHub Runner 直连亦可，此处仅提速）
+          ELECTRON_MIRROR: https://cdn.npmmirror.com/binaries/electron/
+
+      - name: 覆盖为规范打包配置
+        shell: bash
+        env:
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+        run: |
+          cat > electron-builder.yml <<'EOF'
+          appId: com.galeengine.app
+          productName: 疾风引擎
+          directories:
+            output: release
+          files:
+            - out/**
+            - package.json
+          electronLanguages:
+            - zh-CN
+          compression: maximum
+          win:
+            target:
+              - target: nsis
+                arch:
+                  - x64
+          nsis:
+            oneClick: false
+            allowToChangeInstallationDirectory: true
+            artifactName: gale-engine-${version}-setup.exe
+          publish:
+            - provider: github
+              owner: PLACEHOLDER_OWNER
+              repo: PLACEHOLDER_REPO
+          EOF
+          sed -i "s/PLACEHOLDER_OWNER/${REPO_OWNER}/" electron-builder.yml
+          sed -i "s/PLACEHOLDER_REPO/${REPO_NAME}/" electron-builder.yml
+          echo "--- 生效的打包配置 ---"
+          cat electron-builder.yml
+
+      - name: 构建并打包安装包
+        shell: bash
+        env:
+          # 国内镜像拉取 winCodeSign / nsis / nsis-resources（结尾斜杠不可省）
+          ELECTRON_BUILDER_BINARIES_MIRROR: https://cdn.npmmirror.com/binaries/electron-builder-binaries/
+        # 不使用 package.json 的脚本：v0.1.0 / v0.2.0 尚无 package:ci，
+        # 这里直接调用工具链，对全部历史 tag 通用。
+        # --publish never：发布统一交给下方 gh-release 步骤，避免 electron-builder
+        # 在 CI 环境自行发布时因缺 GH_TOKEN 失败。
+        run: |
+          npx electron-vite build
+          npx electron-builder --win --publish never
+          echo "--- 产物 ---"
+          ls -la release/
+
+      - name: 发布到 GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag }}
+          generate_release_notes: true
+          # latest.yml 必须上传：electron-updater 依赖它检查与下载新版本
+          files: |
+            release/*.exe
+            release/*.blockmap
+            release/latest.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
