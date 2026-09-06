@@ -41,7 +41,10 @@ mac:
   category: public.app-category.utilities
   # 签名与公证：配置 Apple Developer 证书后由 CI 自动签名（CSC_LINK/CSC_KEY_PASSWORD 同 Win 复用）。
   # 公证需额外设置 APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD / APPLE_TEAM_ID 环境变量。
-  hardenedRuntime: true
+  # identity: null 表示无证书时显式跳过签名（ad-hoc 签名），避免 CI 在未配置 CSC_LINK 时
+  # 因 hardenedRuntime+entitlements 在 Apple Silicon (arm64) 上构建失败。
+  identity: null
+  hardenedRuntime: false
   gatekeeperAssess: false
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
