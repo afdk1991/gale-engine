@@ -30,9 +30,10 @@ jobs:
             runner: windows-latest
             arch: arm64
             target: --win
-          # macOS x64（Intel）
+          # macOS x64（Intel）— 在 macos-latest(arm64) runner 上通过 Rosetta 2 交叉编译，
+          # 避免 macos-13 Intel runner 长时间排队。
           - os: macos
-            runner: macos-13
+            runner: macos-latest
             arch: x64
             target: --mac
           # macOS ARM64（Apple Silicon，原生 runner 更快）
