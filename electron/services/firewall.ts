@@ -1,5 +1,6 @@
 import type { FirewallProfile, FirewallRule, ToolResult } from '../../shared/types'
-import type { ExecRunner } from './shell'
+import type { ExecRunner, Platform } from './shell'
+import { detectPlatform } from './shell'
 
 /** 防火墙配置文件名白名单（PowerShell 端同样枚举校验，双保险） */
 export const FIREWALL_PROFILES = ['Domain', 'Private', 'Public'] as const
@@ -95,34 +96,137 @@ Get-NetFirewallRule -ErrorAction SilentlyContinue |
   } | ConvertTo-Json -Compress -Depth 3
 `
 
-export function createFirewallService(runner: ExecRunner) {
+// ─────────────────────────────────────────────────────────────
+// 平台脚本生成
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * profiles 脚本：
+ * - Windows：Get-NetFirewallProfile 三配置文件（JSON）
+ * - macOS：pfctl 包过滤（启用状态）
+ * - Linux：ufw status（回退 iptables）
+ */
+export function buildProfilesScript(platform: Platform = detectPlatform()): string {
+  switch (platform) {
+    case 'win32':
+      return PROFILES_SCRIPT
+    case 'darwin':
+      // pfctl -s info 输出含 "Status: Enabled/Disabled"；无 root 读取也可
+      return `if pfctl -s info 2>/dev/null | grep -qi 'Status: Enabled'; then echo 'ON'; else echo 'OFF'; fi`
+    case 'linux':
+      // 优先 ufw；无 ufw 时用 iptables 是否有规则粗略判断
+      return `if command -v ufw >/dev/null 2>&1; then
+  ufw status 2>/dev/null | head -1
+else
+  if iptables -L -n 2>/dev/null | grep -qE '^Chain (INPUT|FORWARD)'; then echo 'ON'; else echo 'OFF'; fi
+fi`
+    default:
+      return `echo '[]'`
+  }
+}
+
+/**
+ * listRules 脚本：
+ * - Windows：Get-NetFirewallRule（JSON，限 200 条）
+ * - macOS：pfctl -sr 列出锚点规则
+ * - Linux：ufw status numbered（回退 iptables -S）
+ */
+export function buildRulesScript(platform: Platform = detectPlatform()): string {
+  switch (platform) {
+    case 'win32':
+      return RULES_SCRIPT
+    case 'darwin':
+      return `pfctl -sr 2>/dev/null || echo ''`
+    case 'linux':
+      return `if command -v ufw >/dev/null 2>&1; then ufw status 2>/dev/null; else iptables -S 2>/dev/null; fi`
+    default:
+      return `echo '[]'`
+  }
+}
+
+/** 设置防火墙整体启用/禁用的脚本（unix） */
+export function buildSetEnabledScript(enable: boolean, platform: Platform = detectPlatform()): string {
+  if (platform === 'darwin') {
+    // pfctl -e 启用 / -d 禁用，需 root
+    return enable ? `pfctl -e 2>&1 && echo OK || echo 'ERR:需要管理员权限'` : `pfctl -d 2>&1 && echo OK || echo 'ERR:需要管理员权限'`
+  }
+  if (platform === 'linux') {
+    // 无 ufw 的最小系统不直接操作 iptables 默认策略（误设 DROP 会断网），安全降级
+    return enable
+      ? `if command -v ufw >/dev/null 2>&1; then ufw enable 2>&1 && echo OK || echo 'ERR:需要管理员权限'; else echo 'ERR:未检测到 ufw，请安装后再操作'; fi`
+      : `if command -v ufw >/dev/null 2>&1; then ufw disable 2>&1 && echo OK || echo 'ERR:需要管理员权限'; else echo 'ERR:未检测到 ufw，请手动放行'; fi`
+  }
+  return `echo 'ERR:不支持的平台'`
+}
+
+/**
+ * 解析 unix profiles 输出为 FirewallProfile[]。
+ * mac/linux 无"三配置文件"概念，映射为单一 "Firewall" 配置文件。
+ */
+export function parseUnixProfiles(stdout: string): FirewallProfile[] {
+  const text = stdout.trim()
+  const enabled = /\bON\b/i.test(text) || /Status:\s*active/i.test(text) || /Status: Enabled/i.test(text)
+  return [{ name: 'Firewall', enabled, inbound: enabled ? 'Block' : 'Allow', outbound: 'Allow' }]
+}
+
+/**
+ * 解析 unix 规则文本为 FirewallRule[]（每行一条，字段有限）。
+ */
+export function parseUnixRules(stdout: string): FirewallRule[] {
+  return stdout
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l && !/^Status:/i.test(l) && l.toLowerCase() !== 'off' && !/^To\s+Action/i.test(l))
+    .slice(0, 200)
+    .map((line, i) => ({
+      name: `rule-${i + 1}`,
+      displayName: line.length > 80 ? line.slice(0, 77) + '...' : line,
+      enabled: true,
+      direction: /in|input/i.test(line) ? 'Inbound' : /out|output/i.test(line) ? 'Outbound' : 'Any',
+      action: /deny|drop|reject|block/i.test(line) ? 'Block' : 'Allow',
+      profile: 'Any'
+    }))
+}
+
+export function createFirewallService(runner: ExecRunner, platform: Platform = detectPlatform()) {
+  const isWin = platform === 'win32'
+
   const profiles = async (): Promise<FirewallProfile[]> => {
-    const { stdout } = await runner.run(PROFILES_SCRIPT)
-    return parseProfiles(stdout)
+    const { stdout } = await runner.run(buildProfilesScript(platform))
+    return isWin ? parseProfiles(stdout) : parseUnixProfiles(stdout)
   }
 
   const listRules = async (): Promise<FirewallRule[]> => {
-    const { stdout } = await runner.run(RULES_SCRIPT)
-    return parseRules(stdout)
+    const { stdout } = await runner.run(buildRulesScript(platform))
+    return isWin ? parseRules(stdout) : parseUnixRules(stdout)
   }
 
   const setProfileEnabled = async (profile: string, enable: boolean): Promise<ToolResult> => {
-    const valid = (FIREWALL_PROFILES as readonly string[]).includes(profile)
-    if (!valid) return { ok: false, message: '无效的配置文件（须为 Domain/Private/Public）' }
-    const state = enable ? 'True' : 'False'
-    const { stdout } = await runner.run(
-      `try { Set-NetFirewallProfile -Name ${profile} -Enabled ${state} -ErrorAction Stop; "OK" } catch { "ERR:$($_.Exception.Message)" }`
-    )
+    if (isWin) {
+      const valid = (FIREWALL_PROFILES as readonly string[]).includes(profile)
+      if (!valid) return { ok: false, message: '无效的配置文件（须为 Domain/Private/Public）' }
+      const state = enable ? 'True' : 'False'
+      const { stdout } = await runner.run(
+        `try { Set-NetFirewallProfile -Name ${profile} -Enabled ${state} -ErrorAction Stop; "OK" } catch { "ERR:$($_.Exception.Message)" }`
+      )
+      return parseFirewallResult(stdout)
+    }
+    // mac/linux：三配置文件概念不存在，仅接受整体开关（profile 任意值）
+    const { stdout } = await runner.run(buildSetEnabledScript(enable, platform))
     return parseFirewallResult(stdout)
   }
 
   const toggleRule = async (name: string, enable: boolean): Promise<ToolResult> => {
-    if (!isSafeFirewallToken(name)) return { ok: false, message: '规则名包含非法字符' }
-    const verb = enable ? 'Enable-NetFirewallRule' : 'Disable-NetFirewallRule'
-    const { stdout } = await runner.run(
-      `try { ${verb} -Name '${name}' -ErrorAction Stop; "OK" } catch { "ERR:$($_.Exception.Message)" }`
-    )
-    return parseFirewallResult(stdout)
+    if (isWin) {
+      if (!isSafeFirewallToken(name)) return { ok: false, message: '规则名包含非法字符' }
+      const verb = enable ? 'Enable-NetFirewallRule' : 'Disable-NetFirewallRule'
+      const { stdout } = await runner.run(
+        `try { ${verb} -Name '${name}' -ErrorAction Stop; "OK" } catch { "ERR:$($_.Exception.Message)" }`
+      )
+      return parseFirewallResult(stdout)
+    }
+    // unix：规则级开关涉及 pf/iptables 规则编辑，风险高且语义不一，v1 诚实降级
+    return { ok: false, message: '当前平台暂不支持单条防火墙规则开关（请使用系统防火墙设置）' }
   }
 
   return { profiles, listRules, setProfileEnabled, toggleRule }

@@ -5,7 +5,12 @@ import {
   parseRules,
   parseFirewallResult,
   isSafeFirewallToken,
-  FIREWALL_PROFILES
+  FIREWALL_PROFILES,
+  buildProfilesScript,
+  buildRulesScript,
+  buildSetEnabledScript,
+  parseUnixProfiles,
+  parseUnixRules
 } from './firewall'
 import type { ExecRunner } from './shell'
 
@@ -140,5 +145,76 @@ describe('createFirewallService', () => {
 describe('常量', () => {
   it('FIREWALL_PROFILES 恰好三个合法配置文件', () => {
     expect([...FIREWALL_PROFILES].sort()).toEqual(['Domain', 'Private', 'Public'])
+  })
+})
+
+describe('防火墙跨平台脚本分发', () => {
+  it('profiles 脚本按平台分发', () => {
+    expect(buildProfilesScript('win32')).toContain('Get-NetFirewallProfile')
+    expect(buildProfilesScript('darwin')).toContain('pfctl')
+    expect(buildProfilesScript('linux')).toContain('ufw')
+  })
+
+  it('rules 脚本按平台分发', () => {
+    expect(buildRulesScript('win32')).toContain('Get-NetFirewallRule')
+    expect(buildRulesScript('darwin')).toContain('pfctl -sr')
+    expect(buildRulesScript('linux')).toContain('ufw')
+  })
+
+  it('启用脚本按平台分发', () => {
+    expect(buildSetEnabledScript(true, 'darwin')).toContain('pfctl -e')
+    expect(buildSetEnabledScript(false, 'darwin')).toContain('pfctl -d')
+    expect(buildSetEnabledScript(true, 'linux')).toContain('ufw enable')
+    expect(buildSetEnabledScript(false, 'linux')).toContain('ufw disable')
+  })
+})
+
+describe('防火墙 unix 解析器', () => {
+  it('parseUnixProfiles 识别启用状态', () => {
+    const on = parseUnixProfiles('ON')
+    expect(on[0]).toMatchObject({ name: 'Firewall', enabled: true })
+    const off = parseUnixProfiles('OFF')
+    expect(off[0].enabled).toBe(false)
+    // ufw active
+    expect(parseUnixProfiles('Status: active')[0].enabled).toBe(true)
+  })
+
+  it('parseUnixRules 将规则文本映射为 FirewallRule', () => {
+    const rules = parseUnixRules('Status: active\nallow from 192.168.1.1\nblock in quick on en0 from 10.0.0.0/8\n')
+    expect(rules.length).toBe(2)
+    expect(rules[0]).toMatchObject({ name: 'rule-1', action: 'Allow', direction: 'Any' })
+    expect(rules[1]).toMatchObject({ action: 'Block', direction: 'Inbound' })
+  })
+})
+
+describe('防火墙 unix 服务行为', () => {
+  function unixRunner(platform: 'darwin' | 'linux', stdout = 'ON') {
+    return recordingRunner((s) => {
+      if (s.includes('pfctl') || s.includes('ufw')) return ok(stdout)
+      return ok('[]')
+    })
+  }
+
+  it('macOS profiles 返回单一 Firewall 配置文件', async () => {
+    const { runner } = unixRunner('darwin', 'ON')
+    const list = await createFirewallService(runner, 'darwin').profiles()
+    expect(list).toHaveLength(1)
+    expect(list[0].name).toBe('Firewall')
+    expect(list[0].enabled).toBe(true)
+  })
+
+  it('Linux setProfileEnabled(true) 调用 ufw enable', async () => {
+    const { runner, calls } = unixRunner('linux', 'OK')
+    const res = await createFirewallService(runner, 'linux').setProfileEnabled('Firewall', true)
+    expect(res.ok).toBe(true)
+    expect(calls.some((c) => c.includes('ufw enable'))).toBe(true)
+  })
+
+  it('unix toggleRule 诚实降级返回不支持', async () => {
+    const { runner, calls } = unixRunner('darwin')
+    const res = await createFirewallService(runner, 'darwin').toggleRule('any-rule', true)
+    expect(res.ok).toBe(false)
+    expect(res.message).toContain('暂不支持')
+    expect(calls).toHaveLength(0)
   })
 })
