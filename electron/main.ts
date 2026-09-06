@@ -31,9 +31,9 @@ const gameModeService = createGameModeService(runner, store as unknown as Storag
 const toolboxService = createToolboxService(runner, platform)
 const processService = createProcessService(runner, platform)
 const networkService = createNetworkService(runner, platform)
-const firewallService = createFirewallService(runner)
-const tasksService = createTasksService(runner)
-const winServicesService = createWinServicesService(runner)
+const firewallService = createFirewallService(runner, platform)
+const tasksService = createTasksService(runner, platform)
+const winServicesService = createWinServicesService(runner, platform)
 const updateService = createUpdateService(createElectronUpdaterApi())
 const autoLaunchService = createAutoLaunchService(createElectronLoginItemApi(app), platform)
 
