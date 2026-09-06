@@ -174,6 +174,11 @@ const entries = SIZES.map((size) => {
 })
 const ico = encodeICO(entries)
 writeFileSync(resolve(OUT_DIR, 'icon.ico'), ico)
-writeFileSync(resolve(OUT_DIR, 'icon.png'), entries[entries.length - 1].png)
+// icon.png 输出 1024px，满足 electron-builder 跨平台图标自动生成要求
+// （macOS icns 需 ≥512px，Linux 图标集也需要高分辨率源图）
+const BIG_SIZE = 1024
+const bigRgba = renderSize(BIG_SIZE)
+const bigPng = encodePNG(BIG_SIZE, BIG_SIZE, bigRgba)
+writeFileSync(resolve(OUT_DIR, 'icon.png'), bigPng)
 console.log(`build/icon.ico  ${(ico.length / 1024).toFixed(1)} KB（${SIZES.join('/')} px）`)
-console.log(`build/icon.png  ${(entries[entries.length - 1].png.length / 1024).toFixed(1)} KB（256 px）`)
+console.log(`build/icon.png  ${(bigPng.length / 1024).toFixed(1)} KB（${BIG_SIZE} px）`)

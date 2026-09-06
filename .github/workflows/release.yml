@@ -61,11 +61,11 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Linux ARM64 交叉编译前置（qemu）
-        if: runner.os == 'Linux' && matrix.arch == 'arm64'
+      - name: Linux ARM64 交叉编译前置（qemu + icnsutils）
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y qemu-user-static binfmt-support
+          sudo apt-get install -y qemu-user-static binfmt-support icnsutils
 
       - name: 安装依赖
         run: npm ci
@@ -94,16 +94,14 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        # 直接调 electron-builder 并指定 target；--publish never 避免 CI 内自动发布冲突
+          # --publish never：各 matrix job 只构建不发布，产物由 release job 统一上传
         run: npx electron-vite build && npx electron-builder ${{ matrix.target }} --${{ matrix.arch }} --publish never
 
-      - name: 发布到 GitHub Releases
-        uses: softprops/action-gh-release@v2
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
         with:
-          generate_release_notes: true
-          # 多平台产物：exe/dmg/AppImage/deb + blockmap + 各平台 latest*.yml
-          files: |
+          name: release-${{ matrix.os }}-${{ matrix.arch }}
+          path: |
             release/*.exe
             release/*.exe.blockmap
             release/*.dmg
@@ -113,5 +111,29 @@ jobs:
             release/*.deb
             release/latest*.yml
             release/*.yml
+          if-no-files-found: error
+          retention-days: 7
+
+  # 统一发布 job：等所有 build job 完成后，下载全部产物一次性上传到同一 Release，
+  # 避免并行 matrix job 同时更新 release asset 导致的 404 竞态错误。
+  release:
+    name: 发布到 GitHub Releases
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载全部构建产物
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+          merge-multiple: true
+
+      - name: 列出待发布文件
+        run: ls -la release-artifacts/
+
+      - name: 发布到 GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: release-artifacts/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
