@@ -98,20 +98,35 @@ jobs:
           # --publish never：各 matrix job 只构建不发布，产物由 release job 统一上传
         run: npx electron-vite build && npx electron-builder ${{ matrix.target }} --${{ matrix.arch }} --publish never
 
+      - name: 整理构建产物（按 os-arch 分目录，避免跨 matrix 同名文件覆盖）
+        shell: bash
+        run: |
+          SUBDIR=release/${{ matrix.os }}-${{ matrix.arch }}
+          mkdir -p "$SUBDIR"
+          shopt -s nullglob
+          # 移动所有构建产物到对应子目录，排除 builder-debug.yml（调试用，不发布）
+          for f in release/*.exe release/*.exe.blockmap release/*.dmg release/*.dmg.blockmap \
+                   release/*.AppImage release/*.AppImage.zsync release/*.deb; do
+            mv "$f" "$SUBDIR/"
+          done
+          # latest*.yml 需要特殊处理：Windows arm64 生成的 latest.yml 会与 x64 的重名，
+          # 重命名为 latest-arm64.yml 以区分；x64 保持 latest.yml（electron-updater 默认查找）
+          for f in release/latest*.yml; do
+            fname=$(basename "$f")
+            if [ "${{ matrix.os }}" = "windows" ] && [ "${{ matrix.arch }}" = "arm64" ] && [ "$fname" = "latest.yml" ]; then
+              mv "$f" "$SUBDIR/latest-arm64.yml"
+            else
+              mv "$f" "$SUBDIR/"
+            fi
+          done
+          echo "=== ${{ matrix.os }}-${{ matrix.arch }} 产物列表 ==="
+          ls -la "$SUBDIR/"
+
       - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
           name: release-${{ matrix.os }}-${{ matrix.arch }}
-          path: |
-            release/*.exe
-            release/*.exe.blockmap
-            release/*.dmg
-            release/*.dmg.blockmap
-            release/*.AppImage
-            release/*.AppImage.zsync
-            release/*.deb
-            release/latest*.yml
-            release/*.yml
+          path: release/${{ matrix.os }}-${{ matrix.arch }}/*
           if-no-files-found: error
           retention-days: 7
 
@@ -126,15 +141,25 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: release-artifacts
-          merge-multiple: true
+          # 不用 merge-multiple：每个 artifact 下载到自己的子目录（release-windows-x64/ 等），
+          # 彻底避免跨平台同名文件（如 latest.yml、builder-debug.yml）互相覆盖。
+          merge-multiple: false
 
-      - name: 列出待发布文件
-        run: ls -la release-artifacts/
+      - name: 扁平化并列出待发布文件
+        run: |
+          mkdir -p dist
+          # 每个 artifact 下载到自己的子目录（release-windows-x64/ 等），这里把所有文件扁平化到 dist/
+          # 由于 build job 已经处理了 latest.yml 重命名（Windows arm64 → latest-arm64.yml），不会有冲突
+          for d in release-artifacts/*/; do
+            cp "$d"* dist/ 2>/dev/null || true
+          done
+          echo "=== 待发布文件 ($(ls dist/ | wc -l) 个) ==="
+          ls -lh dist/
 
       - name: 发布到 GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
-          files: release-artifacts/*
+          files: dist/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
