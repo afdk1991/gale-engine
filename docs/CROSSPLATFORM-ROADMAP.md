@@ -30,7 +30,7 @@ electron/services/
 | 2 | network | ✅ 完成 | Test-Connection / Win32_NetworkAdapter | ping / ifconfig | ping / ip addr | 已完成 |
 | 3 | process | ✅ 批次1完成 | Get-Process / NtSuspendProcess | ps / kill -STOP / kill -CONT + renice | ps / kill -STOP/-CONT + renice | 已完成 |
 | 4 | optimizer | ✅ 批次2完成 | 注册表 Run 键 / 回收站 / 浏览器缓存 | launchd plist / ~/.Trash / Library/Caches | systemd / XDG Trash / ~/.cache | 已完成 |
-| 5 | gamemode | ⏳ 待迁 | powercfg 电源计划 | pmset / caffeinate | 无原生电源计划（用 cpufreq/gov） | 中高 |
+| 5 | gamemode | ✅ 批次3完成 | powercfg 电源计划 | caffeinate 防休眠 | cpufreq scaling_governor（需 root） | 已完成 |
 | 6 | toolbox | ✅ 批次1完成 | ipconfig /flushdns / 回收站 / 剪贴板 | dscacheutil -flushcache / Finder trash / pbcopy / defaults | systemd-resolve / XDG Trash / wl-copy·xclip / gsettings | 已完成 |
 | 7 | autolaunch | ✅ 批次2完成 | 注册表 Run / 启动文件夹 | launchd plist（Electron API） | XDG autostart（.desktop，Node fs） | 已完成 |
 | 8 | firewall | ⏳ 待迁 | Get-NetFirewallProfile/Rule | pfctl / pf.conf（需 root） | ufw / iptables（需 root） | 高 |
@@ -41,8 +41,8 @@ electron/services/
 | 13 | update | ✅ 跨平台 | electron-updater（跨平台，需各平台 latest.yml） | 同 | 同 | — |
 
 **已完成跨平台：4 个**（monitor / settings / history / update —— 用了跨平台库）
-**已手动转换：5 个**（network / toolbox / process / optimizer / autolaunch —— 平台分发生成器）
-**待迁移：4 个**（gamemode / firewall / tasks / winservices）
+**已手动转换：6 个**（network / toolbox / process / optimizer / autolaunch / gamemode —— 平台分发生成器）
+**待迁移：3 个**（firewall / tasks / winservices）
 
 ## 三、迁移优先级（建议批次）
 
