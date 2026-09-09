@@ -162,23 +162,19 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
         run: |
+          repo="${{ github.repository }}"
           # 若该 tag 已有 release，删除其全部 assets，确保本次发布是干净的
           release_id=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/tags/$TAG" \
-            | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('id',''))" 2>/dev/null)
+            "https://api.github.com/repos/$repo/releases/tags/$TAG" | jq -r '.id // empty')
           if [ -n "$release_id" ]; then
             echo "Found existing release #$release_id, deleting all assets..."
-            assets=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
-              "https://api.github.com/repos/${{ github.repository }}/releases/$release_id/assets")
-            echo "$assets" | python3 -c "
-import sys, json
-for a in json.load(sys.stdin):
-    print(a['id'], a['name'])
-" | while read aid aname; do
-              curl -s -X DELETE -H "Authorization: Bearer $GITHUB_TOKEN" \
-                "https://api.github.com/repos/${{ github.repository }}/releases/assets/$aid"
-              echo "  deleted: $aname"
-            done
+            curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+              "https://api.github.com/repos/$repo/releases/$release_id/assets" \
+              | jq -r '.[] | "\(.id) \(.name)"' | while read aid aname; do
+                curl -s -X DELETE -H "Authorization: Bearer $GITHUB_TOKEN" \
+                  "https://api.github.com/repos/$repo/releases/assets/$aid"
+                echo "  deleted: $aname"
+              done
           else
             echo "No existing release for tag $TAG, skipping cleanup."
           fi
