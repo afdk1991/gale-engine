@@ -1,7 +1,7 @@
 # 疾风引擎 — 跨平台迁移路线图（Windows / macOS / Linux / ARM64）
 
-> 制定时间：2026-09-05 ｜ 当前进度：架构层 + 5 个 service（network/toolbox/process/optimizer/autolaunch）已转换，185 测试全绿
-> 目标：12 个 service 全部支持 Win/macOS/Linux，6 套构建产物（3 OS × 2 架构）
+> 制定时间：2026-09-05 ｜ 更新：2026-09-08（v0.5.4）｜ 当前进度：**13 个 service 全跨平台完成，231 测试全绿，6 矩阵 CI 已打通**
+> 目标：12 个 service 全部支持 Win/macOS/Linux，6 套构建产物（3 OS × 2 架构）—— **已达成**
 
 ## 一、架构总览
 
@@ -10,9 +10,10 @@
 ```
 electron/services/
   shell.ts            # ExecRunner 接口 + createPowershellRunner / createBashRunner / createPlatformRunner 工厂
-  network.ts          # ✅ 已转换：buildPingScript/buildInterfacesScript 按 platform 分发 win/unix 脚本
+  network.ts          # ✅ buildPingScript/buildInterfacesScript 按 platform 分发 win/unix 脚本
   monitor.ts          # ✅ 天然跨平台：systeminformation 库支持 Win/mac/Linux，零改造
-  其余 9 个 service   # ⏳ 待迁移（见下表）
+  hardware.ts         # ✅ 天然跨平台：systeminformation 采集主板/CPU/内存/显卡/显示器/硬盘/电源
+  其余 10 个 service  # ✅ 全部跨平台（见下表）
 ```
 
 **转换范式**（以 network 为模板）：
@@ -33,16 +34,17 @@ electron/services/
 | 5 | gamemode | ✅ 批次3完成 | powercfg 电源计划 | caffeinate 防休眠 | cpufreq scaling_governor（需 root） | 已完成 |
 | 6 | toolbox | ✅ 批次1完成 | ipconfig /flushdns / 回收站 / 剪贴板 | dscacheutil -flushcache / Finder trash / pbcopy / defaults | systemd-resolve / XDG Trash / wl-copy·xclip / gsettings | 已完成 |
 | 7 | autolaunch | ✅ 批次2完成 | 注册表 Run / 启动文件夹 | launchd plist（Electron API） | XDG autostart（.desktop，Node fs） | 已完成 |
-| 8 | firewall | ⏳ 待迁 | Get-NetFirewallProfile/Rule | pfctl / pf.conf（需 root） | ufw / iptables（需 root） | 高 |
-| 9 | tasks | ⏳ 待迁 | Get-ScheduledTask | launchctl print/load/unload | systemctl list-units / crontab | 高 |
-| 10 | winservices | ⏳ 待迁 | Win32_Service / Set-Service | launchctl / launchd plists | systemctl start/stop/enable | 高 |
+| 8 | firewall | ✅ 批次3完成 | Get-NetFirewallProfile/Rule | pfctl / pf.conf（需 root） | ufw / iptables（需 root） | 已完成 |
+| 9 | tasks | ✅ 批次3完成 | Get-ScheduledTask | launchctl print/load/unload | systemctl list-timers / crontab | 已完成 |
+| 10 | winservices | ✅ 批次3完成 | Win32_Service / Set-Service | launchctl / launchd plists | systemctl start/stop/enable | 已完成 |
 | 11 | settings | ✅ 跨平台 | electron-store（跨平台，零改造） | 同 | 同 | — |
 | 12 | history | ✅ 跨平台 | electron-store（跨平台，零改造） | 同 | 同 | — |
 | 13 | update | ✅ 跨平台 | electron-updater（跨平台，需各平台 latest.yml） | 同 | 同 | — |
+| 14 | hardware | ✅ 跨平台 | systeminformation（主板/CPU/内存/显卡/显示器/硬盘/电源） | 同 | 同 | — |
 
-**已完成跨平台：4 个**（monitor / settings / history / update —— 用了跨平台库）
-**已手动转换：6 个**（network / toolbox / process / optimizer / autolaunch / gamemode —— 平台分发生成器）
-**待迁移：3 个**（firewall / tasks / winservices）
+**已完成跨平台：5 个**（monitor / hardware / settings / history / update —— 用了跨平台库）
+**已手动转换：9 个**（network / toolbox / process / optimizer / autolaunch / gamemode / firewall / tasks / winservices —— 平台分发生成器）
+**待迁移：0 个** —— 全部完成
 
 ## 三、迁移优先级（建议批次）
 
@@ -118,8 +120,9 @@ Release v0.5.0
 - [x] 鸿蒙调研报告
 - [x] 批次1：toolbox + process（win/unix 分发生成器 + 16 项新增测试，真实 Windows 冒烟通过）
 - [x] 批次2：optimizer + autolaunch（清理/启动项按平台分发；autolaunch linux 走 XDG autostart；修复 PS5.1 `??` 语法遗留 bug；14 项新增测试 + 真实 Windows 冒烟通过）
-- [ ] 4 个待迁 service（批次3：gamemode / winservices / tasks / firewall，均为特权系统管理）
-- [ ] ARM64 三平台实机验证
-- [ ] 落地页多平台下载适配
+- [x] 批次3：gamemode + firewall + tasks + winservices（三平台脚本分发：mac launchctl/caffeinate/pfctl、linux systemctl/governor/ufw；94 项测试全绿）
+- [x] 硬件信息模块（hardware.ts：systeminformation 采集 7 类硬件型号，Hardware.vue 第 13 页面）
+- [x] 落地页多平台下载适配（按 OS 推荐 + 架构分段器 + UA 检测，资产名精确映射）
+- [ ] ARM64 三平台实机验证（待用户侧设备：Apple Silicon / Win ARM / 树莓派）
 
-> 下一步建议：批次 2 已完成（optimizer + autolaunch），继续按批次 3（gamemode / winservices / tasks / firewall）推进，每批完成后跑全量测试 + 对应平台实机冒烟。
+> 跨平台迁移已 100% 完成。剩余仅 ARM64 三平台实机点检（需用户侧设备，沙箱无法代跑）。

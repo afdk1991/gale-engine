@@ -5,6 +5,62 @@
 
 ---
 
+## v0.5.4 — 2026-09-08（跨平台收尾：测试修复 + 文档同步 + 落地页多平台）
+
+在 v0.5.3 跨平台代码 100% 完成基础上，修复跨平台测试在多环境下的失败、全面同步文档至跨平台现状、落地页适配多平台下载。
+
+### 修复
+- **optimizer 测试失败**：本机 `TMPDIR` 指向 Windows 路径导致 `allowedTempRoots('linux')` 白名单失效，linux 分支 `isSafePath('/tmp')` 误判为 false。测试 `beforeAll` 固化 `TMPDIR='/tmp'` + `HOME='/home/tester'`，`afterAll` 改用 `delete` 恢复（避免写入字符串 `"undefined"` 污染跨平台 CI）。零对外契约变更。
+
+### 工程
+- vitest 231/231 全绿（修复后恢复）。
+- package.json 版本 bump 0.5.3 → 0.5.4。
+- 落地页改造为按 OS 推荐 + 架构分段器 + UA 检测；资产名精确映射（exe/dmg x64+arm64、AppImage x86_64+arm64、deb amd64）。
+- README / CROSSPLATFORM-ROADMAP / platform-support-verification / MEMORY 全面对齐 v0.5.4 跨平台现状。
+
+---
+
+## v0.5.3 — 2026-09-07（CI 产物隔离 + macOS x64 runner 调整）
+
+修复 6 矩阵 CI 多平台产物文件名碰撞与 macOS x64 构建问题。
+
+### 修复
+- **CI 产物按 os-arch 隔离**：electron-builder `artifactName` 统一带 `${arch}`，避免不同平台/架构产物同名覆盖；release.yml 矩阵产物 glob 收敛。
+- **macOS x64 改用 macos-latest runner**（Rosetta 2 交叉编译），macos-13 已不可用。
+- package.json 版本 bump 0.5.2 → 0.5.3。
+
+---
+
+## v0.5.2 — 2026-09-07（macOS arm64 构建修复）
+
+修复 macOS arm64（Apple Silicon）CI 构建失败。
+
+### 修复
+- macOS arm64 构建链路：entitlements 路径与 hardenedRuntime 配置修正，dmg arm64 产物正常产出。
+- 批次3 跨平台迁移代码合入（gamemode/firewall/tasks/winservices 三平台脚本分发）。
+
+---
+
+## v0.5.1 / v0.5.0 — 2026-09-06（跨平台迁移批次 1-2 + CI 流水线修复）
+
+跨平台架构级重写的首批落地：批次1（toolbox/process）与批次2（optimizer/autolaunch）迁移完成，CI 6 矩阵构建首次打通。
+
+### 新增
+- **平台抽象层（PAL）**：`shell.ts` 新增 `createBashRunner`（mac/linux）+ `createPlatformRunner` 工厂 + `detectPlatform`，按 OS 自动选择执行器。
+- **硬件信息模块**：`hardware.ts` 用 systeminformation 跨平台采集主板/CPU/内存/显卡/显示器/硬盘/电源型号规格，新增 Hardware.vue 页面（第 13 个页面），导航 13 项。
+- **批次1 迁移**：toolbox（DNS 刷新/回收站/剪贴板/深色模式按平台分发）、process（kill/signal 跨平台）。
+- **批次2 迁移**：optimizer（清理白名单与启动项按平台：Win 注册表 / mac launchd plist / Linux XDG autostart）、autolaunch（三平台开机自启）。
+- **6 矩阵 CI**：release.yml 改为 win/macos/linux × x64/arm64 矩阵，Linux arm64 装 qemu 交叉编译；electron-builder.yml 增 mac/linux target + arm64。
+
+### 修复
+- v0.5.0 发布流水线两个问题（CI 触发与产物上传），v0.5.1 补发修复。
+
+### 工程
+- vitest 142 → 171（批次1）→ 185（批次2）全绿；vue-tsc 0 错误。
+- 新增 docs/HARMONYOS-FEASIBILITY.md（鸿蒙版调研：Electron 不兼容，需 ArkTS 重写）、docs/CROSSPLATFORM-ROADMAP.md（迁移路线图）。
+
+---
+
 ## v0.4.0 — 2026-09-04（M4 系统深度管理里程碑）
 
 在 v0.3.0 基础上，新增**计划任务**、**服务管理**、**防火墙**三大系统级模块。服务层延续可注入依赖范式，vitest 142 项全绿，所有用户输入（任务路径 / 服务名 / 规则名）经字符白名单校验防 PowerShell 注入。

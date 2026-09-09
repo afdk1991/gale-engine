@@ -1,20 +1,20 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-page-node-id="oF9Ox5vGPxRIicxpO9X8ME">
-<head data-page-node-id="abvjMfiLNmoUBKvdOfdSV3">
-  <meta charset="UTF-8" data-page-node-id="phcNSmwDVvsCUEYthwIiE7" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" data-page-node-id="DkkZ2kXrTUeUMzrQ7o5Pjw" />
-  <title>疾风引擎 — Windows 桌面优化加速引擎</title>
-  <meta name="description" content="疾风引擎：硬件监控、垃圾清理、启动项管理、游戏模式与系统工具箱，一站式 Windows 性能优化。" data-page-node-id="B24A6JX016Fkv2Dkgv9n2t" />
-  <meta name="theme-color" content="#f7f9fc" data-page-node-id="kETkLwB7WdtAC6M3Qqw8zp" />
-  <meta name="color-scheme" content="light" data-page-node-id="9u1rJiPnlFSzgBdFPXrYsB" />
-  <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Crect%20width='32'%20height='32'%20rx='8'%20fill='%232f7cf6'/%3E%3Cpath%20d='M18%205%20L8%2018%20H14%20L12%2027%20L24%2012%20H17%20Z'%20fill='%23fff'/%3E%3C/svg%3E" data-page-node-id="dT4lcv5yAZAKyz4F1YCHKD" />
-  <meta property="og:type" content="website" data-page-node-id="w4eNWLrU2H9NNunjz7UL2Q" />
-  <meta property="og:locale" content="zh_CN" data-page-node-id="QeMCQn81mpXh5BHEeW4Ox6" />
-  <meta property="og:title" content="疾风引擎 — Windows 桌面优化加速引擎" data-page-node-id="duukZpzRrXybXNtXdTTuvK" />
-  <meta property="og:description" content="硬件监控、垃圾清理、启动项管理、游戏模式与系统工具箱，一站式 Windows 性能优化。" data-page-node-id="1vyS6TvWooyjT2GtM4Hz39" />
-  <meta name="twitter:card" content="summary" data-page-node-id="d8tJZacErzmkulHvCLH9zQ" />
-  <meta name="twitter:title" content="疾风引擎 — Windows 桌面优化加速引擎" data-page-node-id="XtQrtgrpDBbydA4BurZE1c" />
-  <meta name="twitter:description" content="硬件监控、垃圾清理、启动项管理、游戏模式与系统工具箱，一站式 Windows 性能优化。" data-page-node-id="P3wbdSHdEIu9ytBqunRb2K" />
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>疾风引擎 — 跨平台桌面优化加速引擎</title>
+  <meta name="description" content="疾风引擎：硬件监控与型号规格、进程管理、垃圾清理、启动项管理、游戏模式与系统工具箱，支持 Windows / macOS / Linux（x64 + arm64）。" />
+  <meta name="theme-color" content="#f7f9fc" />
+  <meta name="color-scheme" content="light" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Crect%20width='32'%20height='32'%20rx='8'%20fill='%232f7cf6'/%3E%3Cpath%20d='M18%205%20L8%2018%20H14%20L12%2027%20L24%2012%20H17%20Z'%20fill='%23fff'/%3E%3C/svg%3E" />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="zh_CN" />
+  <meta property="og:title" content="疾风引擎 — 跨平台桌面优化加速引擎" />
+  <meta property="og:description" content="硬件监控、进程管理、垃圾清理、游戏模式与系统工具箱，支持 Windows / macOS / Linux。" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="疾风引擎 — 跨平台桌面优化加速引擎" />
+  <meta name="twitter:description" content="硬件监控、进程管理、垃圾清理、游戏模式与系统工具箱，支持 Windows / macOS / Linux。" />
   <style>
     :root {
       --accent: #2f7cf6;
@@ -32,33 +32,14 @@
       --shadow-accent: 0 8px 20px rgba(47,124,246,.28);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html {
-      scroll-behavior: smooth;
-      scroll-padding-top: calc(var(--nav-h) + 16px);
-      color-scheme: light;
-      -webkit-text-size-adjust: 100%;
-    }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", sans-serif;
-      background: var(--bg);
-      color: var(--ink);
-      line-height: 1.65;
-      -webkit-font-smoothing: antialiased;
-      text-rendering: optimizeLegibility;
-    }
+    html { scroll-behavior: smooth; scroll-padding-top: calc(var(--nav-h) + 16px); color-scheme: light; -webkit-text-size-adjust: 100%; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", sans-serif; background: var(--bg); color: var(--ink); line-height: 1.65; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
     a { color: inherit; text-decoration: none; }
     svg, img { display: block; }
     :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
     .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
 
-    /* Header / Nav */
-    .site-header {
-      position: sticky; top: 0; z-index: 50;
-      background: rgba(247,249,252,.82);
-      backdrop-filter: saturate(180%) blur(12px);
-      -webkit-backdrop-filter: saturate(180%) blur(12px);
-      border-bottom: 1px solid var(--border);
-    }
+    .site-header { position: sticky; top: 0; z-index: 50; background: rgba(247,249,252,.82); backdrop-filter: saturate(180%) blur(12px); -webkit-backdrop-filter: saturate(180%) blur(12px); border-bottom: 1px solid var(--border); }
     .nav { display: flex; align-items: center; justify-content: space-between; height: var(--nav-h); }
     .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; }
     .brand-mark { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); flex: none; }
@@ -67,21 +48,35 @@
     .nav-links a:hover, .nav-links a.active { color: var(--accent); }
     .nav-links a.active { font-weight: 600; }
 
-    /* Hero */
     .hero { text-align: center; padding: clamp(48px, 9vw, 84px) 0 clamp(40px, 7vw, 56px); }
     .badge { display: inline-block; font-size: 12px; color: var(--accent); background: #e8f0ff; border: 1px solid #d3e2ff; padding: 4px 12px; border-radius: 999px; margin-bottom: 18px; }
     .hero h1 { font-size: clamp(30px, 6.2vw, 46px); font-weight: 800; letter-spacing: -.5px; line-height: 1.15; }
     .hero .grad { background: linear-gradient(135deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
-    .hero p { font-size: clamp(15px, 2.2vw, 17px); color: var(--ink-2); max-width: 620px; margin: 16px auto 0; }
-    .cta { margin-top: 32px; display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+    .hero p { font-size: clamp(15px, 2.2vw, 17px); color: var(--ink-2); max-width: 640px; margin: 16px auto 0; }
+    .req { display: inline-block; font-size: 12px; color: var(--ink-2); background: #eef2f7; border: 1px solid var(--border); padding: 6px 14px; border-radius: 8px; margin-top: 18px; }
+
+    /* 下载区：平台 Tab + 架构分段器 */
+    .download { margin-top: 30px; max-width: 560px; margin-left: auto; margin-right: auto; }
+    .dl-tabs { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 16px; }
+    .dl-tab { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 18px; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--ink-2); transition: all .15s; display: flex; align-items: center; gap: 6px; }
+    .dl-tab:hover { border-color: var(--accent); color: var(--accent); }
+    .dl-tab.active { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; border-color: transparent; box-shadow: var(--shadow-accent); }
+    .dl-panel { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; box-shadow: var(--shadow-sm); }
+    .dl-panel .os-name { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .dl-panel .os-hint { font-size: 12.5px; color: var(--ink-3); margin-bottom: 16px; }
+    .arch-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .arch-card { flex: 1; min-width: 150px; border: 1px solid var(--border); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 6px; }
+    .arch-card .arch-label { font-size: 13px; font-weight: 600; color: var(--ink); }
+    .arch-card .arch-desc { font-size: 11.5px; color: var(--ink-3); }
+    .arch-card .btn { padding: 9px 14px; font-size: 13.5px; min-height: 38px; margin-top: 4px; }
     .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: 15px; font-weight: 600; padding: 12px 26px; border-radius: 10px; min-height: 44px; transition: transform .12s, box-shadow .15s, border-color .15s, color .15s; cursor: pointer; }
     .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; box-shadow: var(--shadow-accent); }
     .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(47,124,246,.34); }
     .btn-ghost { background: #fff; color: var(--ink); border: 1px solid var(--border); }
     .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
-    .req { display: inline-block; font-size: 12px; color: var(--ink-2); background: #eef2f7; border: 1px solid var(--border); padding: 6px 14px; border-radius: 8px; margin-top: 18px; }
+    .dl-all { text-align: center; margin-top: 14px; font-size: 12.5px; }
+    .dl-all a { color: var(--accent); font-weight: 600; }
 
-    /* Sections */
     main { display: block; }
     .section { padding: clamp(36px, 6vw, 56px) 0; }
     .section h2 { font-size: clamp(22px, 4.2vw, 30px); font-weight: 800; text-align: center; }
@@ -93,7 +88,6 @@
     .card h3 { font-size: 16px; font-weight: 700; }
     .card p { font-size: 13.5px; color: var(--ink-2); margin-top: 6px; }
 
-    /* Changelog */
     .log { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px; margin-top: 30px; max-width: 760px; margin-left: auto; margin-right: auto; }
     .log-item { border-left: 3px solid var(--accent); padding-left: 16px; margin-bottom: 22px; }
     .log-item:last-child { margin-bottom: 0; }
@@ -102,39 +96,23 @@
     .log ul { margin: 8px 0 0 18px; font-size: 13.5px; color: var(--ink-2); }
     .log li { margin: 3px 0; }
 
-    /* Footer */
     .footer { text-align: center; color: var(--ink-3); font-size: 13px; padding: 40px 0 56px; border-top: 1px solid var(--border); margin-top: 8px; }
     code { background: #eef2f7; padding: 1px 6px; border-radius: 5px; font-size: 12.5px; color: #1f3a6e; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; word-break: break-word; }
 
-    /* Back to top */
-    .to-top {
-      position: fixed; right: 22px; bottom: 22px; width: 44px; height: 44px;
-      border: none; border-radius: 50%; cursor: pointer; z-index: 60;
-      background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff;
-      font-size: 18px; line-height: 1; display: grid; place-items: center;
-      box-shadow: var(--shadow-accent);
-      opacity: 0; visibility: hidden; transform: translateY(8px);
-      transition: opacity .2s, transform .2s, visibility .2s;
-    }
+    .to-top { position: fixed; right: 22px; bottom: 22px; width: 44px; height: 44px; border: none; border-radius: 50%; cursor: pointer; z-index: 60; background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; font-size: 18px; line-height: 1; display: grid; place-items: center; box-shadow: var(--shadow-accent); opacity: 0; visibility: hidden; transform: translateY(8px); transition: opacity .2s, transform .2s, visibility .2s; }
     .to-top.show { opacity: 1; visibility: visible; transform: none; }
     .to-top:hover { transform: translateY(-2px); }
 
-    /* Reveal-on-scroll (only when JS enabled) */
     .js .reveal { opacity: 0; transform: translateY(16px); transition: opacity .5s ease, transform .5s ease; }
     .js .reveal.in { opacity: 1; transform: none; }
 
-    /* Responsive */
-    @media (max-width: 900px) {
-      .grid { grid-template-columns: repeat(2, 1fr); }
-    }
+    @media (max-width: 900px) { .grid { grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 600px) {
       .wrap { padding: 0 18px; }
       .grid { grid-template-columns: 1fr; }
       .nav-links { gap: 16px; }
-      .hero .cta { flex-direction: column; align-items: stretch; }
-      .hero .cta .btn { width: 100%; }
+      .arch-row { flex-direction: column; }
     }
-
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
       *, *::before, *::after { transition: none !important; animation: none !important; }
@@ -143,170 +121,137 @@
     }
   </style>
 </head>
-<body data-page-node-id="NyO2ycg1Ru46HUGR6hTehv">
-  <header class="site-header" data-page-node-id="FSeKb9gPDv3mW1DXdnW5sU">
-    <nav class="nav wrap" aria-label="主导航" data-page-node-id="NRTb3kD2LeHu5iUJsfMOCl">
-      <div class="brand" data-page-node-id="edoiKgfQR4BLwmXH3Z6k4r"><span class="brand-mark" aria-hidden="true" data-page-node-id="IMzRW7h0e7YrMl2HaykE7j"></span> 疾风引擎</div>
-      <div class="nav-links" data-page-node-id="TbF53tTM4YgfJD10DrqXQs">
-        <a href="#features" data-page-node-id="YSoAvc1GmNQ14TcGVk6939">功能</a>
-        <a href="#changelog" data-page-node-id="jLl5STiEkBnISBSGmjHV15">更新日志</a>
-        <a href="#download" data-page-node-id="tMtbVGWom47ba5wN76BQR1">下载</a>
+<body>
+  <header class="site-header">
+    <nav class="nav wrap" aria-label="主导航">
+      <div class="brand"><span class="brand-mark" aria-hidden="true"></span> 疾风引擎</div>
+      <div class="nav-links">
+        <a href="#features">功能</a>
+        <a href="#changelog">更新日志</a>
+        <a href="#download">下载</a>
       </div>
     </nav>
   </header>
 
-  <main data-page-node-id="cJnNi7XlPQDFWvWy5fVPBe">
-    <section class="hero" id="download" data-page-node-id="cXr99i7GsdLAGSCDbZqAkd">
-      <div class="wrap" data-page-node-id="xvxZ2jDMnqWHrgbfvkY0rB">
-        <span class="badge" data-page-node-id="HOqlVqVkStuBFBTmoG78vV">v0.4.0 · 系统深度管理版</span>
-        <h1 data-page-node-id="7WQCsgOjQBgsgzLEaWdJxn">让 Windows 跑得 <span class="grad" data-page-node-id="HC8bjlizFKp6WWfRTueRqw">更快更稳</span></h1>
-        <p data-page-node-id="WPyWjUlbgqL7nTgcpB3un6">硬件监控、进程管理、垃圾清理、游戏模式、网络诊断、服务管理、计划任务与防火墙，集成在一个轻量桌面应用里。</p>
-        <div class="cta" data-page-node-id="AKCfx3I0putNTkxWANgxp2">
-          <a class="btn btn-primary" href="https://github.com/afdk1991/gale-engine/releases/latest" target="_blank" rel="noopener" data-page-node-id="imAlIRJIeJsgnTMj7UIEQd">⬇ 获取安装包</a>
-          <a class="btn btn-ghost" href="#changelog" data-page-node-id="NJTpW3b5Rz3L0gHd8wWMoG">查看更新日志</a>
+  <main>
+    <section class="hero" id="download">
+      <div class="wrap">
+        <span class="badge">v0.5.4 · 跨平台全平台支持</span>
+        <h1>让你的电脑 <span class="grad">更快更稳</span></h1>
+        <p>硬件监控与型号规格、进程管理、垃圾清理、游戏模式、网络诊断、服务管理、计划任务与防火墙，集成在一个轻量桌面应用里。支持 Windows / macOS / Linux（x64 + arm64）。</p>
+
+        <div class="download" id="dl">
+          <div class="dl-tabs" role="tablist">
+            <button class="dl-tab active" data-os="windows" role="tab">🪟 Windows</button>
+            <button class="dl-tab" data-os="macos" role="tab">🍎 macOS</button>
+            <button class="dl-tab" data-os="linux" role="tab">🐧 Linux</button>
+          </div>
+          <div class="dl-panel" id="dl-panel"></div>
+          <div class="dl-all">不确定选哪个？查看 <a href="https://github.com/afdk1991/gale-engine/releases/latest" target="_blank" rel="noopener">全部下载产物</a></div>
         </div>
-        <div class="req" data-page-node-id="4NTSHpyRjjP3HFjBkBsEx7">系统要求：Windows 10 / 11 64 位 · 无需联网即可使用</div>
+        <div class="req">系统要求：Windows 10/11 · macOS 11+ · 主流 Linux（systemd）· 64 位或 ARM64 · 无需联网即可使用</div>
       </div>
     </section>
 
-    <section class="section" id="features" data-page-node-id="6xKQWiHUs1UmIBYwHJnAaP">
-      <div class="wrap" data-page-node-id="xkjCRet4dAVSY9aAGz5loo">
-        <h2 data-page-node-id="GU4Y8xAvPnnUFbSJnFX1ee">核心功能</h2>
-        <p class="sub" data-page-node-id="GvOsjV8s2F8lyiO5JFvN7T">十大模块覆盖日常性能优化全流程</p>
-        <div class="grid" data-page-node-id="SFtqzV0PvK3zamtZtxnpMy">
-          <div class="card reveal" data-page-node-id="bWTmyymRI8KoAVU7bUnSSj">
-            <div class="ico" aria-hidden="true" data-page-node-id="Hi6QbhBr518IFLLoOEcVUq">📊</div>
-            <h3 data-page-node-id="pW1CDZ5Fn85j5GQTXoZLsr">硬件监控</h3>
-            <p data-page-node-id="xR4WN3q3SluE6rBbaKeVHp">实时采集 CPU / 内存 / 磁盘 / 网络负载、温度与电量，每秒刷新。</p>
-          </div>
-          <div class="card reveal" data-page-node-id="0vUwIuHWQchlI4OXjff69z">
-            <div class="ico" aria-hidden="true" data-page-node-id="MuqPSZ0HFk2gEPW3xMr7Wv">⚙️</div>
-            <h3 data-page-node-id="km6AKS5tZSaPblD2omXdk0">进程管理</h3>
-            <p data-page-node-id="nroQp3lFqalE3C4mgdwI7D">查看进程 CPU / 内存占用，结束、挂起 / 恢复进程，调整优先级（系统进程已保护）。</p>
-          </div>
-          <div class="card reveal" data-page-node-id="tfuHLRrKIjHSI0b7wdHYJM">
-            <div class="ico" aria-hidden="true" data-page-node-id="jCNN6LxLsUbLCXgOoaqhrR">🧹</div>
-            <h3 data-page-node-id="b1aZzRyPOcl57AYmfJFDTs">垃圾清理</h3>
-            <p data-page-node-id="4kWxv364lDoRLQVdEXUx8z">扫描 Temp、回收站与浏览器缓存占用，白名单安全清理，逐项回执、失败隔离。</p>
-          </div>
-          <div class="card reveal" data-page-node-id="4OMpTNZnNcOq1mlaNMxQ86">
-            <div class="ico" aria-hidden="true" data-page-node-id="PgLAwvlIWkL5zdgmcLBRcS">⚡</div>
-            <h3 data-page-node-id="tUsdo6W79P8g8eAo8qZOXD">启动项管理</h3>
-            <p data-page-node-id="No0IHEEZXHkImF0sqztc0A">集中管理 HKCU / HKLM 开机启动项，一键启用 / 禁用。</p>
-          </div>
-          <div class="card reveal" data-page-node-id="5xehFyIOhSZEB6HuGj7JNe">
-            <div class="ico" aria-hidden="true" data-page-node-id="duZ3K9WftG0IB92tB21vR9">🎮</div>
-            <h3 data-page-node-id="mSFS42kh2L76YLF4cWhLmL">游戏模式</h3>
-            <p data-page-node-id="BP5DUAMLZeitDEd96Y3CPL">一键切换高性能电源计划，退出时自动还原，安全可逆。</p>
-          </div>
-          <div class="card reveal" data-page-node-id="9y9nCcnWKjYAGRWWvfDAoC">
-            <div class="ico" aria-hidden="true" data-page-node-id="XADtu9E61NPdym0AQNBHAh">🌐</div>
-            <h3 data-page-node-id="A0f76cZ0HXtA89teWm45nt">网络诊断</h3>
-            <p data-page-node-id="biJi5CF8LnGmCR1oY60IMb">Ping 延迟测试（最小 / 平均 / 最大 / 丢包率）与本机网卡信息。</p>
+    <section class="section" id="features">
+      <div class="wrap">
+        <h2>核心功能</h2>
+        <p class="sub">十三大模块覆盖日常性能优化全流程，三平台原生支持</p>
+        <div class="grid">
+          <div class="card reveal"><div class="ico" aria-hidden="true">📊</div><h3>硬件监控</h3><p>实时采集 CPU / 内存 / 磁盘 / 网络负载、温度与电量，每秒刷新。</p></div>
+          <div class="card reveal"><div class="ico" aria-hidden="true">🔧</div><h3>硬件信息</h3><p>主板 / CPU / 内存 / 显卡 / 显示器 / 硬盘 / 电源 型号规格采集（跨平台）。</p></div>
+          <div class="card reveal"><div class="ico" aria-hidden="true">⚙️</div><h3>进程管理</h3><p>查看进程 CPU / 内存占用，结束、挂起 / 恢复进程，调整优先级（系统进程已保护）。</p></div>
+          <div class="card reveal"><div class="ico" aria-hidden="true">🧹</div><h3>垃圾清理</h3><p>扫描 Temp、回收站与浏览器缓存占用，白名单安全清理，逐项回执、失败隔离。</p></div>
+          <div class="card reveal"><div class="ico" aria-hidden="true">⚡</div><h3>启动项管理</h3><p>集中管理开机启动项（Win 注册表 / mac launchd / Linux XDG），一键启用 / 禁用。</p></div>
+          <div class="card reveal"><div class="ico" aria-hidden="true">🎮</div><h3>游戏模式</h3><p>一键切换高性能模式（Win 电源计划 / mac 防休眠 / Linux CPU 调速器），退出自动还原。</p></div>
+          <div class="card reveal"><div class="ico" aria-hidden="true">🌐</div><h3>网络诊断</h3><p>Ping 延迟测试（最小 / 平均 / 最大 / 丢包率）与本机网卡信息。</p></div>
+          <div class="card reveal"><div class="ico" aria-hidden="true">🖥️</div><h3>服务管理</h3><p>查看系统服务状态与启动类型，启动 / 停止、切换自动 / 手动 / 禁用（关键服务已保护）。</p></div>
+          <div class="card reveal"><div class="ico" aria-hidden="true">⏰</div><h3>计划任务</h3><p>枚举系统计划任务与运行时间，启用 / 禁用、立即运行、结束运行中任务。</p></div>
+          <div class="card reveal"><div class="ico" aria-hidden="true">🛡️</div><h3>防火墙</h3><p>配置文件开关（Win NetFirewall / mac pfctl / Linux ufw）+ 规则列表与启用 / 禁用。</p></div>
+          <div class="card reveal"><div class="ico" aria-hidden="true">🧰</div><h3>系统工具箱</h3><p>刷新 DNS、清空回收站、清空剪贴板、切换深色模式，按平台分发命令，幂等安全。</p></div>
+          <div class="card reveal"><div class="ico" aria-hidden="true">🕘</div><h3>优化记录</h3><p>每次清理 / 模式切换自动留痕，时间线一目了然。</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="get">
+      <div class="wrap">
+        <h2>如何获取安装包</h2>
+        <p class="sub">两种方式，任选其一</p>
+        <div class="grid">
+          <div class="card reveal">
+            <div class="ico" aria-hidden="true">🛠️</div>
+            <h3>方式一：本地一键构建</h3>
+            <p>克隆仓库后运行 <code>npm run package:win</code> / <code>:mac</code> / <code>:linux</code>（需 Node），自动产出对应平台安装包。镜像源已默认指向国内 npmmirror，无需翻墙。</p>
           </div>
           <div class="card reveal">
-            <div class="ico" aria-hidden="true">🖥️</div>
-            <h3>服务管理</h3>
-            <p>查看 Windows 服务状态与启动类型，启动 / 停止、切换自动 / 手动 / 禁用（系统关键服务已保护）。</p>
+            <div class="ico" aria-hidden="true">📦</div>
+            <h3>方式二：Release 下载</h3>
+            <p>推送 <code>v*.*.*</code> tag 即由 <code>.github/workflows/release.yml</code> 在 6 矩阵（win/macos/linux × x64/arm64）上并行构建并发布。上方下载区按你的系统推荐对应包，或前往 <a href="https://github.com/afdk1991/gale-engine/releases/latest" target="_blank" rel="noopener">GitHub Releases</a> 下载全部产物。</p>
           </div>
           <div class="card reveal">
-            <div class="ico" aria-hidden="true">⏰</div>
-            <h3>计划任务</h3>
-            <p>枚举系统计划任务与运行时间，启用 / 禁用、立即运行、结束运行中任务。</p>
-          </div>
-          <div class="card reveal">
-            <div class="ico" aria-hidden="true">🛡️</div>
-            <h3>防火墙</h3>
-            <p>Domain / Private / Public 三配置文件开关，规则列表查询与单条规则启用 / 禁用。</p>
-          </div>
-          <div class="card reveal" data-page-node-id="ONyHX0GL6bRx9GaGYaUGKD">
-            <div class="ico" aria-hidden="true" data-page-node-id="dgX8cgYBbJ5V2NkH5bHK2L">🧰</div>
-            <h3 data-page-node-id="96VfIfopqlXbe32kZzZaWR">系统工具箱</h3>
-            <p data-page-node-id="tCyKHPG2ELE4mwBpgeubke">刷新 DNS、清空回收站、清空剪贴板、切换深色模式，幂等安全。</p>
-          </div>
-          <div class="card reveal" data-page-node-id="YVLI8StdOhjRNN11lAXE5D">
-            <div class="ico" aria-hidden="true" data-page-node-id="CqSFSW9SrFTpFemBmhEEyn">🕘</div>
-            <h3 data-page-node-id="TKtlADov3MxMnGhasa2rU2">优化记录</h3>
-            <p data-page-node-id="u8doivVsy4K9naF9DiviI7">每次清理 / 模式切换自动留痕，时间线一目了然。</p>
+            <div class="ico" aria-hidden="true">✅</div>
+            <h3>安装与验证</h3>
+            <p>安装后从桌面 / 开始菜单 / Launchpad 启动，按 <code>docs/smoke-test-checklist.html</code> 逐项核验全部模块功能（72 项，含 44 项实机 GUI 冒烟）。</p>
           </div>
         </div>
       </div>
     </section>
 
-    <section class="section" id="get" data-page-node-id="O3tzIRL9uFGOClVBGjLbng">
-      <div class="wrap" data-page-node-id="RTFBLs3u2mxwAcOIiLuuue">
-        <h2 data-page-node-id="beVxjq7lERkMEprKlY0eqg">如何获取安装包</h2>
-        <p class="sub" data-page-node-id="BonflTq6DZqxrWqGfUwvCz">两种方式，任选其一</p>
-        <div class="grid" data-page-node-id="6JKrtYUDIftVZRy0uRYFm9">
-          <div class="card reveal" data-page-node-id="Z1L65m2VyqzEvNFRYYw1Xd">
-            <div class="ico" aria-hidden="true" data-page-node-id="9HaQJAwb7lgCK3QHdghsWK">🛠️</div>
-            <h3 data-page-node-id="IkC0us8O43vhXadqZpLnv9">方式一：本地一键构建</h3>
-            <p data-page-node-id="gWM2Hjvy2PqEAI7vNuOuCY">克隆仓库后运行 <code data-page-node-id="kjyVxyiAUtxyIIvarRJ6xq">scripts/package-win.cmd</code>（需 Node 与 7-Zip），自动产出 <code data-page-node-id="qcm24tQrqPSvkAjfaFDdux">release/gale-engine-0.4.0-setup.exe</code>。镜像源已默认指向国内 npmmirror，无需翻墙。</p>
+    <section class="section" id="changelog">
+      <div class="wrap">
+        <h2>更新日志</h2>
+        <p class="sub">v0.5.4 跨平台收尾发版说明</p>
+        <div class="log reveal">
+          <div class="log-item">
+            <div><span class="log-version">v0.5.4</span><span class="log-date">2026-09-08</span></div>
+            <ul>
+              <li>修复 optimizer 跨平台测试在多环境下的失败（TMPDIR/HOME 固化）</li>
+              <li>文档全面同步至 v0.5.4 跨平台现状（README / roadmap / 平台验证 / CHANGELOG）</li>
+              <li>落地页多平台下载适配（三 Tab + 架构分段 + UA 检测，资产名精确映射）</li>
+              <li>231 项自动化测试全绿</li>
+            </ul>
           </div>
-          <div class="card reveal" data-page-node-id="JZcwTegqQKTiyRgXGepRZ9">
-            <div class="ico" aria-hidden="true" data-page-node-id="NVa5CBuAvz0WKWdHo2e4oi">📦</div>
-            <h3 data-page-node-id="03Eg58Fm6hsMSunptnGi45">方式二：Release 下载</h3>
-            <p data-page-node-id="yE5f41oXDDhd3yO6SOz8fZ">推送 <code data-page-node-id="KnAmWiGdHfmNQsB8Xk4rnK">v*.*.*</code> tag 即由 <code data-page-node-id="BBkYvttUUtJxSZy08qB7jJ">.github/workflows/release.yml</code> 自动构建并发布。直接前往 <a href="https://github.com/afdk1991/gale-engine/releases/latest" target="_blank" rel="noopener">GitHub Releases</a> 下载 <code>gale-engine-0.4.0-setup.exe</code>（NSIS，支持自定义安装目录），双击即可安装。</p>
+          <div class="log-item">
+            <div><span class="log-version">v0.5.0 ~ v0.5.3</span><span class="log-date">2026-09-06~07</span></div>
+            <ul>
+              <li>跨平台架构重写：PAL 平台抽象层（shell.ts 按 OS 选 PowerShell / bash）</li>
+              <li>13 个 service 全跨平台（9 手动 win/unix 分发 + 4 天然跨平台库）</li>
+              <li>新增硬件信息模块（systeminformation 采集 7 类硬件型号，第 13 个页面）</li>
+              <li>6 矩阵 CI（win/macos/linux × x64/arm64），Linux arm64 用 qemu 交叉编译</li>
+              <li>修复 macOS arm64 构建与 CI 产物按 os-arch 隔离</li>
+            </ul>
           </div>
-          <div class="card reveal" data-page-node-id="0OiKdenPL1KJJSRP7qw4fx">
-            <div class="ico" aria-hidden="true" data-page-node-id="59Bb0WBbo8mXHnHP3IN9HS">✅</div>
-            <h3 data-page-node-id="5PW5d3tkO2IpMZEqDvN7bg">安装与验证</h3>
-            <p data-page-node-id="kQcB8MOqkdmJmX2U5t6VQJ">安装后从桌面 / 开始菜单启动，按 <code data-page-node-id="EwZWxVoAK8Etti0HWmFVAJ">docs/smoke-test-checklist.md</code> 逐项核验十大模块功能。</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="section" id="changelog" data-page-node-id="yGJt315pshI11ByROMp0Gd">
-      <div class="wrap" data-page-node-id="sIQAPixH4aGhhqhpHISytt">
-        <h2 data-page-node-id="pI6VX7uU9ACBuZq2O0mqbm">更新日志</h2>
-        <p class="sub" data-page-node-id="WDBPWzue2yXe0Eb4TZC3jB">v0.4.0 发版说明</p>
-        <div class="log reveal" data-page-node-id="qlMvOM7LzyzQuoDLmaMVij">
           <div class="log-item">
             <div><span class="log-version">v0.4.0</span><span class="log-date">2026-09-04</span></div>
             <ul>
-              <li>新增服务管理：Windows 服务列表、启动 / 停止、切换启动类型（系统关键服务保护）</li>
+              <li>新增服务管理：服务列表、启动 / 停止、切换启动类型（系统关键服务保护）</li>
               <li>新增计划任务：任务枚举与启停、立即运行、结束运行中任务</li>
               <li>新增防火墙：Domain / Private / Public 配置文件开关 + 规则启停</li>
               <li>12 个页面、41 个 IPC handler，142 项自动化测试全绿</li>
-              <li>发布链路打通：GitHub Releases 自动构建发布，应用内「检查更新」可用</li>
             </ul>
           </div>
-          <div class="log-item" data-page-node-id="UG1fnIKSbRrDUIrAdL2odM">
-            <div data-page-node-id="Mx0KlXKWtdqgY8RO2fj8Ct"><span class="log-version" data-page-node-id="6LU1Yjntzheba9pOOM4osY">v0.3.0</span><span class="log-date" data-page-node-id="2B7Y1UVOuCnbvgtoTkgUWD">2026-09-03</span></div>
-            <ul data-page-node-id="uIyWcN0dhJ4YT85LNJAReo">
-              <li data-page-node-id="eTY1NAnbGQwEHKV6Ll2KAy">新增进程管理：CPU / 内存占用排序，结束、挂起 / 恢复进程，调整优先级（系统进程保护）</li>
-              <li data-page-node-id="pVKnggaQMVjvALgUayTjWi">新增网络诊断：Ping 延迟测试（最小 / 平均 / 最大 / 丢包率）与网卡信息</li>
-              <li data-page-node-id="k2nfTBkvPdnVZEFlS86Ke6">垃圾清理扩展：支持 Chrome / Edge 浏览器缓存清理</li>
-              <li data-page-node-id="bgBvl2EyBaMnC7DUL16Ebo">9 个页面，100 项自动化测试全绿</li>
+          <div class="log-item">
+            <div><span class="log-version">v0.3.0</span><span class="log-date">2026-09-03</span></div>
+            <ul>
+              <li>新增进程管理：CPU / 内存占用排序，结束、挂起 / 恢复进程，调整优先级</li>
+              <li>新增网络诊断：Ping 延迟测试与网卡信息</li>
+              <li>垃圾清理扩展：支持 Chrome / Edge 浏览器缓存清理</li>
             </ul>
           </div>
-          <div class="log-item" data-page-node-id="2iQYWaj62AazpcbGYbuBQc">
-            <div data-page-node-id="qbS7loCjCC63lSeJpTxtGR"><span class="log-version" data-page-node-id="KHYrYehx4BhmfRIYKHIcGw">v0.2.0</span><span class="log-date" data-page-node-id="8P8bDWGM4ivnkND17jxwlz">2026-08-30</span></div>
-            <ul data-page-node-id="NG034LRwAkOiWl0Z8p2FUm">
-              <li data-page-node-id="2iHdeWUN4pVPBX3wF4JY13">新增硬件监控模块：CPU / 内存 / 磁盘 / 网络实时仪表盘（每秒刷新）</li>
-              <li data-page-node-id="0NPXYmS2UegGRSeuf3VsF1">新增优化记录模块：操作时间线持久化与清空</li>
-              <li data-page-node-id="aIvW5yTOu2qAg6GfIdG5ju">新增优化中心：垃圾清理（Temp / 回收站，白名单安全清理）+ 启动项管理（HKCU / HKLM）</li>
-              <li data-page-node-id="KrZZOHCrDN7CrQNtGxqdXu">新增游戏模式：高性能电源计划一键切换与还原</li>
-              <li data-page-node-id="sLcLN5gWlFEZiAjGJ6kLRh">新增系统工具箱：刷新 DNS / 清空回收站 / 清空剪贴板 / 深色模式</li>
-              <li data-page-node-id="5oHDRLc3eMT8G8jGuGnhxw">落地页与发布流水线（tag 触发 GitHub Actions 构建发布）</li>
+          <div class="log-item">
+            <div><span class="log-version">v0.2.0</span><span class="log-date">2026-08-30</span></div>
+            <ul>
+              <li>新增硬件监控 / 优化记录 / 优化中心 / 游戏模式 / 系统工具箱五大模块</li>
+              <li>落地页与发布流水线（tag 触发 GitHub Actions 构建发布）</li>
             </ul>
           </div>
-          <div class="log-item" data-page-node-id="nlGoKd3Y3w43KZsetIv7EE">
-            <div data-page-node-id="igW6b76KpGZBuS81hmJHfG"><span class="log-version" data-page-node-id="xCsRbdIr7eP1DiFo0jTVsE">v0.1.0</span><span class="log-date" data-page-node-id="XLd7Zk0GI3uCIBXn207BM5">2026-08-30</span></div>
-            <ul data-page-node-id="SkHl8kmPFqiW2IQoMKFu9k">
-              <li data-page-node-id="uEBOujUX2TDi3xtRBCspf3">工程骨架：Electron + Vue 3 + TypeScript（electron-vite 多进程构建）</li>
-              <li data-page-node-id="gaHv209IU9Y586Zpojw4Qs">主窗口（1080×720）与 7 个占位页面、左侧导航</li>
-              <li data-page-node-id="GZKjo56BeiiyU2bSd8yoJo">设置模块：3 外观 × 6 强调色主题，electron-store 持久化</li>
-              <li data-page-node-id="DQzrQBJTGrht5cgbQzUDut">产出 NSIS 安装包，支持自定义安装目录</li>
-            </ul>
-          </div>
-          <div class="log-item" data-page-node-id="xBtEhaHRIFR8sIFJmMLXmy">
-            <div data-page-node-id="hluUkLFnWXnZmkqDOMXnac"><span class="log-version" data-page-node-id="i61XNu0g99vlelJvE9nNuK">已知限制</span></div>
-            <ul data-page-node-id="gUFJzEe6n5C2Kha8aVABCV">
-              <li data-page-node-id="tROCJ1DquWL7g5CtLnWExA">沙箱环境无法运行 GUI，所有交互需在 Windows 实机按冒烟清单核验</li>
-              <li data-page-node-id="XQzTP72kZqE8PfYJkoUUNp">进程挂起类激进优化暂未纳入，避免影响系统稳定性</li>
-              <li data-page-node-id="tGTuMwL9YrkrhrSxSw2ike">清理解/启动项/电源计划等真实 Windows 操作需在 Windows 实机验证</li>
+          <div class="log-item">
+            <div><span class="log-version">v0.1.0</span><span class="log-date">2026-08-30</span></div>
+            <ul>
+              <li>工程骨架：Electron + Vue 3 + TypeScript（electron-vite 多进程构建）</li>
+              <li>主窗口与占位页面、左侧导航、主题设置模块</li>
+              <li>产出 NSIS 安装包，支持自定义安装目录</li>
             </ul>
           </div>
         </div>
@@ -314,19 +259,117 @@
     </section>
   </main>
 
-  <footer class="footer" data-page-node-id="ssHiEzS7AqaGdycDbzsRP3">
-    <div class="wrap" data-page-node-id="PFGqXJ7hGDeFl7RoTCveMu">
-      <div data-page-node-id="d7NuQpIWyd3WwmH5IRYBxK">疾风引擎 · 基于 Electron + Vue 3 构建</div>
-      <div style="margin-top:8px" data-page-node-id="nFuU7ztNghmaU7mSgsvHRT">© 2026 GaleEngine · 仅供学习与个人优化使用</div>
+  <footer class="footer">
+    <div class="wrap">
+      <div>疾风引擎 · 基于 Electron + Vue 3 构建 · 支持 Windows / macOS / Linux</div>
+      <div style="margin-top:8px">© 2026 GaleEngine · 仅供学习与个人优化使用</div>
     </div>
   </footer>
 
-  <button class="to-top" type="button" aria-label="返回顶部" title="返回顶部" data-page-node-id="bwEnTnyvzPZNRhdyVmU9ds">↑</button>
+  <button class="to-top" type="button" aria-label="返回顶部" title="返回顶部">↑</button>
 
   <script>
     document.documentElement.classList.add('js');
     (function () {
       var prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var V = '0.5.4';
+      var BASE = 'https://github.com/afdk1991/gale-engine/releases/download/v' + V + '/gale-engine-' + V + '-';
+
+      // 资产名映射（exe/dmg 用 x64|arm64，AppImage 用 x86_64|arm64，deb 用 amd64）
+      var ASSETS = {
+        windows: [
+          { arch: 'x64', desc: 'Intel / AMD 64 位', suffix: 'x64-setup.exe' },
+          { arch: 'arm64', desc: 'Surface / 骁龙 ARM', suffix: 'arm64-setup.exe' }
+        ],
+        macos: [
+          { arch: 'x64', desc: 'Intel 芯片', suffix: 'x64.dmg' },
+          { arch: 'arm64', desc: 'Apple Silicon (M1-M4)', suffix: 'arm64.dmg' }
+        ],
+        linux: [
+          { arch: 'x64', desc: 'AppImage · Intel/AMD', suffix: 'x86_64.AppImage' },
+          { arch: 'arm64', desc: 'AppImage · ARM', suffix: 'arm64.AppImage' },
+          { arch: 'deb', desc: 'deb 包 · x64', suffix: 'amd64.deb' }
+        ]
+      };
+
+      var osNames = { windows: 'Windows', macos: 'macOS', linux: 'Linux' };
+      var osHints = {
+        windows: 'NSIS 安装包，支持自定义安装目录，双击即可安装',
+        macos: 'dmg 镜像，拖入 Applications 即用（未签名需右键→打开）',
+        linux: 'AppImage 免安装直接运行（chmod +x）；deb 适用于 Debian/Ubuntu'
+      };
+
+      function renderPanel(os) {
+        var panel = document.getElementById('dl-panel');
+        var list = ASSETS[os] || [];
+        var html = '<div class="os-name">' + (osNames[os] || os) + '</div>';
+        html += '<div class="os-hint">' + (osHints[os] || '') + '</div>';
+        html += '<div class="arch-row">';
+        for (var i = 0; i < list.length; i++) {
+          var a = list[i];
+          html += '<div class="arch-card"><div class="arch-label">' + a.arch + '</div>';
+          html += '<div class="arch-desc">' + a.desc + '</div>';
+          html += '<a class="btn btn-primary" href="' + BASE + a.suffix + '" target="_blank" rel="noopener">⬇ 下载</a>';
+          html += '</div>';
+        }
+        html += '</div>';
+        panel.innerHTML = html;
+      }
+
+      // UA 检测推荐平台 + 架构
+      function detectOS() {
+        var ua = navigator.userAgent || '';
+        if (/Win/.test(ua)) return 'windows';
+        if (/Mac/.test(ua)) return 'macos';
+        if (/Linux/.test(ua)) return 'linux';
+        return 'windows';
+      }
+
+      function detectArch() {
+        // 优先高熵 UA（Chromium）
+        try {
+          if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) {
+            var p = navigator.userAgentData.getHighEntropyValues(['architecture']);
+            if (p && p.then) {
+              p.then(function (r) {
+                if (r && r.architecture === 'arm') highlightArch('arm64');
+              });
+            }
+          }
+        } catch (e) {}
+        // Apple Silicon 判定
+        if (navigator.platform === 'MacIntel' && (navigator.maxTouchPoints || 0) > 2) highlightArch('arm64');
+      }
+
+      function highlightArch(arch) {
+        var cards = document.querySelectorAll('#dl-panel .arch-card');
+        for (var i = 0; i < cards.length; i++) {
+          var label = cards[i].querySelector('.arch-label');
+          if (label && label.textContent.indexOf(arch) === 0) {
+            cards[i].style.borderColor = 'var(--accent)';
+            cards[i].style.boxShadow = '0 0 0 2px rgba(47,124,246,.18)';
+          }
+        }
+      }
+
+      // Tab 切换
+      var tabs = document.querySelectorAll('.dl-tab');
+      var currentOS = detectOS();
+      for (var t = 0; t < tabs.length; t++) {
+        (function (tab) {
+          var os = tab.getAttribute('data-os');
+          if (os === currentOS) { tab.classList.add('active'); }
+          else { tab.classList.remove('active'); }
+          tab.addEventListener('click', function () {
+            for (var k = 0; k < tabs.length; k++) tabs[k].classList.remove('active');
+            tab.classList.add('active');
+            renderPanel(os);
+            detectArch();
+          });
+        })(tabs[t]);
+      }
+      renderPanel(currentOS);
+      detectArch();
 
       // Reveal on scroll
       var reveals = document.querySelectorAll('.reveal');
@@ -355,16 +398,14 @@
         });
       }
 
-      // Scroll spy for nav active state
+      // Scroll spy
       var navLinks = Array.prototype.slice.call(document.querySelectorAll('.nav-links a'));
       var map = {};
       navLinks.forEach(function (a) {
         var href = a.getAttribute('href');
         if (href && href.charAt(0) === '#') map[href.slice(1)] = a;
       });
-      var sections = Object.keys(map)
-        .map(function (id) { return document.getElementById(id); })
-        .filter(Boolean);
+      var sections = Object.keys(map).map(function (id) { return document.getElementById(id); }).filter(Boolean);
       if ('IntersectionObserver' in window && sections.length) {
         var spy = new IntersectionObserver(function (entries) {
           entries.forEach(function (e) {

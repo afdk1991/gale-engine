@@ -11,11 +11,10 @@ compression: maximum
 
 # ── Windows ───────────────────────────────────────────────────
 win:
-  target:
-    - target: nsis
-      arch:
-        - x64
-        - arm64          # Windows on ARM 原生支持（Win10/11 ARM 设备）
+  # 不在这里指定 arch：CI 通过 electron-builder --win --x64 / --arm64 显式指定。
+  # 若在此写 arch: [x64, arm64]，NSIS 会额外生成一个合并两架构的 setup.exe
+  # （artifactName 中 ${arch} 为空），导致产物冗余。
+  target: nsis
   # 代码签名：由环境变量驱动，无需改本文件。
   #   CSC_LINK=<证书 .pfx/.p12 路径或 base64>、CSC_KEY_PASSWORD=<证书密码>
   # 两项为空时 electron-builder 自动跳过签名（当前默认），SmartScreen 提示"未知发布者"，属预期。
@@ -33,11 +32,8 @@ nsis:
 
 # ── macOS ─────────────────────────────────────────────────────
 mac:
-  target:
-    - target: dmg
-      arch:
-        - x64
-        - arm64         # Apple Silicon（M1/M2/M3/M4）原生
+  # 不指定 arch：CI 通过 --x64 / --arm64 显式控制，避免产生合并产物。
+  target: dmg
   category: public.app-category.utilities
   # 签名与公证：配置 Apple Developer 证书后由 CI 自动签名（CSC_LINK/CSC_KEY_PASSWORD 同 Win 复用）。
   # 公证需额外设置 APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD / APPLE_TEAM_ID 环境变量。
@@ -52,14 +48,11 @@ mac:
 
 # ── Linux ─────────────────────────────────────────────────────
 linux:
+  # 不指定 arch：CI 通过 --x64 / --arm64 显式控制。
+  # AppImage 同时支持 x64/arm64；deb 仅在 x64 job 中产出（CI matrix 控制）。
   target:
-    - target: AppImage
-      arch:
-        - x64
-        - arm64        # 树莓派 / ARM 服务器 / ARM Linux 工作站
-    - target: deb
-      arch:
-        - x64
+    - AppImage
+    - deb
   category: Utility
   maintainer: afdk1991
   vendor: GaleEngine

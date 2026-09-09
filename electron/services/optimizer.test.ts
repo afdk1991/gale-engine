@@ -38,18 +38,33 @@ const fail = (stderr = 'err'): { stdout: string; stderr: string; code: number } 
 const ORIG_TEMP = process.env.TEMP
 const ORIG_SYSTEMROOT = process.env.SystemRoot
 const ORIG_LOCALAPPDATA = process.env.LOCALAPPDATA
+const ORIG_TMPDIR = process.env.TMPDIR
+const ORIG_HOME = process.env.HOME
 
 beforeAll(() => {
-  // 固化安全白名单根，避免测试机真实环境变量影响断言
+  // 固化安全白名单根，避免测试机真实环境变量影响断言。
+  // TMPDIR/HOME 必须一并固化：allowedTempRoots('linux'/'darwin') 用 TMPDIR||'/tmp'，
+  // allowedBrowserRoots(unix) 用 HOME；本机 Windows 若设了 TMPDIR 指向 Windows 路径，
+  // 会使 linux 分支 isSafePath('/tmp') 失败，污染跨平台测试断言。
   process.env.TEMP = 'C:\\TESTTEMP'
   process.env.SystemRoot = 'C:\\WIN'
   process.env.LOCALAPPDATA = 'C:\\TESTLOCAL'
+  process.env.TMPDIR = '/tmp'
+  process.env.HOME = '/home/tester'
 })
 
 afterAll(() => {
-  process.env.TEMP = ORIG_TEMP
-  process.env.SystemRoot = ORIG_SYSTEMROOT
-  process.env.LOCALAPPDATA = ORIG_LOCALAPPDATA
+  // 用 delete 恢复而非赋值：ORIG_* 可能为 undefined（环境变量未设），
+  // process.env.X = undefined 会写入字符串 "undefined"，在跨平台 CI 上污染后续测试。
+  function restore(key: string, orig: string | undefined): void {
+    if (orig === undefined) delete process.env[key]
+    else process.env[key] = orig
+  }
+  restore('TEMP', ORIG_TEMP)
+  restore('SystemRoot', ORIG_SYSTEMROOT)
+  restore('LOCALAPPDATA', ORIG_LOCALAPPDATA)
+  restore('TMPDIR', ORIG_TMPDIR)
+  restore('HOME', ORIG_HOME)
 })
 
 describe('scanCleanup', () => {
