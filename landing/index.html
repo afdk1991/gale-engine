@@ -6,7 +6,7 @@
   <title>疾风引擎 — 跨平台桌面优化加速引擎</title>
   <meta name="description" content="疾风引擎：硬件监控与型号规格、进程管理、垃圾清理、启动项管理、游戏模式与系统工具箱，支持 Windows / macOS / Linux（x64 + arm64）。" />
   <meta name="theme-color" content="#f7f9fc" />
-  <meta name="color-scheme" content="light" />
+  <meta name="color-scheme" content="light dark" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Crect%20width='32'%20height='32'%20rx='8'%20fill='%232f7cf6'/%3E%3Cpath%20d='M18%205%20L8%2018%20H14%20L12%2027%20L24%2012%20H17%20Z'%20fill='%23fff'/%3E%3C/svg%3E" />
   <meta property="og:type" content="website" />
   <meta property="og:locale" content="zh_CN" />
@@ -31,9 +31,35 @@
       --shadow-md: 0 10px 26px rgba(15,23,42,.07);
       --shadow-accent: 0 8px 20px rgba(47,124,246,.28);
     }
+    [data-theme="dark"] {
+      --accent: #5b9dff;
+      --accent-2: #2ee0c4;
+      --ink: #e6edf6;
+      --ink-2: #94a3b8;
+      --ink-3: #64748b;
+      --bg: #0a0f1a;
+      --card: #131a28;
+      --border: #1e2a40;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,.2);
+      --shadow-md: 0 10px 26px rgba(0,0,0,.3);
+      --shadow-accent: 0 8px 20px rgba(91,157,255,.3);
+    }
+    [data-theme="dark"] .site-header { background: rgba(10,15,26,.82); }
+    [data-theme="dark"] .badge { background: #15233a; border-color: #1e3a5f; }
+    [data-theme="dark"] .req { background: #131a28; border-color: var(--border); }
+    [data-theme="dark"] .dl-tab { background: var(--card); }
+    [data-theme="dark"] .btn-ghost { background: var(--card); }
+    [data-theme="dark"] .card .ico { background: #15233a; }
+    [data-theme="dark"] code { background: #15233a; color: #7ab8ff; }
+    [data-theme="dark"] .faq-item summary::after { color: var(--ink-3); }
+    [data-theme="dark"] .footer-links a { color: var(--accent); }
+    .section-alt { background: #eef2f7; }
+    [data-theme="dark"] .section-alt { background: #0d1422; }
+    [data-theme="dark"] .card pre { background: #0d1422; border: 1px solid var(--border); }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html { scroll-behavior: smooth; scroll-padding-top: calc(var(--nav-h) + 16px); color-scheme: light; -webkit-text-size-adjust: 100%; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", sans-serif; background: var(--bg); color: var(--ink); line-height: 1.65; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+    html { scroll-behavior: smooth; scroll-padding-top: calc(var(--nav-h) + 16px); color-scheme: light dark; -webkit-text-size-adjust: 100%; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", sans-serif; background: var(--bg); color: var(--ink); line-height: 1.65; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; transition: background .25s, color .25s; }
+    .card, .site-header, .badge, .req, .dl-tab, .btn-ghost, .faq-item { transition: background .25s, border-color .25s, box-shadow .25s; }
     a { color: inherit; text-decoration: none; }
     svg, img { display: block; }
     :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
@@ -47,6 +73,14 @@
     .nav-links a { padding: 6px 2px; transition: color .15s; }
     .nav-links a:hover, .nav-links a.active { color: var(--accent); }
     .nav-links a.active { font-weight: 600; }
+
+    .theme-toggle { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; flex: none; transition: background .2s, border-color .2s, transform .15s; line-height: 1; }
+    .theme-toggle:hover { border-color: var(--accent); transform: scale(1.05); }
+    .theme-toggle:active { transform: scale(.95); }
+    .theme-toggle .icon-sun { display: none; }
+    .theme-toggle .icon-moon { display: block; }
+    [data-theme="dark"] .theme-toggle .icon-sun { display: block; }
+    [data-theme="dark"] .theme-toggle .icon-moon { display: none; }
 
     .hero { text-align: center; padding: clamp(48px, 9vw, 84px) 0 clamp(40px, 7vw, 56px); }
     .badge { display: inline-block; font-size: 12px; color: var(--accent); background: #e8f0ff; border: 1px solid #d3e2ff; padding: 4px 12px; border-radius: 999px; margin-bottom: 18px; }
@@ -137,6 +171,10 @@
       .js .reveal { opacity: 1; transform: none; }
     }
   </style>
+  <script>
+    /* FOUC 预防：在 CSS 加载前同步设置主题 */
+    (function(){try{var t=localStorage.getItem('gale-theme');var d=window.matchMedia('(prefers-color-scheme:dark)').matches;if(t==='dark'||(!t&&d)){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}})();
+  </script>
 </head>
 <body>
   <header class="site-header">
@@ -148,6 +186,10 @@
         <a href="#get">安装</a>
         <a href="#faq">FAQ</a>
         <a href="#changelog">更新日志</a>
+        <button class="theme-toggle" id="themeToggle" aria-label="切换深色模式" title="切换深色模式">
+          <span class="icon-moon" aria-hidden="true">🌙</span>
+          <span class="icon-sun" aria-hidden="true">☀</span>
+        </button>
       </div>
     </nav>
   </header>
@@ -193,7 +235,7 @@
       </div>
     </section>
 
-    <section class="section" id="tech" style="background:#eef2f7;">
+    <section class="section section-alt" id="tech">
       <div class="wrap">
         <h2>技术架构</h2>
         <p class="sub">Electron 33 + Vue 3 + TypeScript，electron-vite 多进程构建，全跨平台原生命令分发</p>
@@ -342,7 +384,7 @@ sudo dpkg -i gale-engine-*.deb</code></pre>
       </div>
     </section>
 
-    <section class="section" id="faq" style="background:#eef2f7;">
+    <section class="section section-alt" id="faq">
       <div class="wrap">
         <h2>常见问题</h2>
         <p class="sub">安装与使用中的高频问题解答</p>
@@ -410,6 +452,34 @@ sudo dpkg -i gale-engine-*.deb</code></pre>
   <script>
     document.documentElement.classList.add('js');
     (function () {
+      /* —— 主题切换 —— */
+      var root = document.documentElement;
+      var toggle = document.getElementById('themeToggle');
+      function updateToggleLabel() {
+        var isDark = root.getAttribute('data-theme') === 'dark';
+        toggle.setAttribute('aria-label', isDark ? '切换浅色模式' : '切换深色模式');
+        toggle.title = isDark ? '切换浅色模式' : '切换深色模式';
+      }
+      updateToggleLabel();
+      toggle.addEventListener('click', function () {
+        var isDark = root.getAttribute('data-theme') === 'dark';
+        if (isDark) {
+          root.removeAttribute('data-theme');
+          localStorage.setItem('gale-theme', 'light');
+        } else {
+          root.setAttribute('data-theme', 'dark');
+          localStorage.setItem('gale-theme', 'dark');
+        }
+        updateToggleLabel();
+      });
+      /* 监听系统主题变化（用户未手动选择时跟随） */
+      window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change', function (e) {
+        if (!localStorage.getItem('gale-theme')) {
+          if (e.matches) { root.setAttribute('data-theme','dark'); } else { root.removeAttribute('data-theme'); }
+          updateToggleLabel();
+        }
+      });
+
       var prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       var V = '0.5.4';
       var BASE = 'https://github.com/afdk1991/gale-engine/releases/download/v' + V + '/gale-engine-' + V + '-';
