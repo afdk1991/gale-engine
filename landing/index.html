@@ -98,6 +98,8 @@
 
     .footer { text-align: center; color: var(--ink-3); font-size: 13px; padding: 40px 0 56px; border-top: 1px solid var(--border); margin-top: 8px; }
     code { background: #eef2f7; padding: 1px 6px; border-radius: 5px; font-size: 12.5px; color: #1f3a6e; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; word-break: break-word; }
+    .card pre { background: #0f172a; color: #e2e8f0; border-radius: 8px; padding: 12px 14px; margin: 8px 0; overflow-x: auto; font-size: 12px; line-height: 1.6; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .card pre code { background: none; color: inherit; padding: 0; font-size: inherit; word-break: normal; }
 
     .to-top { position: fixed; right: 22px; bottom: 22px; width: 44px; height: 44px; border: none; border-radius: 50%; cursor: pointer; z-index: 60; background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; font-size: 18px; line-height: 1; display: grid; place-items: center; box-shadow: var(--shadow-accent); opacity: 0; visibility: hidden; transform: translateY(8px); transition: opacity .2s, transform .2s, visibility .2s; }
     .to-top.show { opacity: 1; visibility: visible; transform: none; }
@@ -176,18 +178,44 @@
 
     <section class="section" id="get">
       <div class="wrap">
-        <h2>如何获取安装包</h2>
-        <p class="sub">两种方式，任选其一</p>
+        <h2>多种安装方式</h2>
+        <p class="sub">按平台选择最适合的方式，命令行用户与普通用户都能轻松上手</p>
         <div class="grid">
           <div class="card reveal">
-            <div class="ico" aria-hidden="true">🛠️</div>
-            <h3>方式一：本地一键构建</h3>
-            <p>克隆仓库后运行 <code>npm run package:win</code> / <code>:mac</code> / <code>:linux</code>（需 Node），自动产出对应平台安装包。镜像源已默认指向国内 npmmirror，无需翻墙。</p>
+            <div class="ico" aria-hidden="true">🥄</div>
+            <h3>Windows · Scoop</h3>
+            <p>命令行用户首选，自动管理版本与升级：</p>
+            <pre><code>scoop bucket add gale https://github.com/afdk1991/gale-engine
+scoop install gale-engine</code></pre>
+            <p style="margin-top:8px;font-size:13px;color:var(--ink-3)">支持 x64 + arm64 · <code>scoop update</code> 即可升级</p>
+          </div>
+          <div class="card reveal">
+            <div class="ico" aria-hidden="true">🍺</div>
+            <h3>macOS · Homebrew</h3>
+            <p>命令行用户首选，自动按 CPU 架构选择 DMG：</p>
+            <pre><code>brew tap afdk1991/gale-engine
+brew install --cask gale-engine</code></pre>
+            <p style="margin-top:8px;font-size:13px;color:var(--ink-3)">支持 Intel + Apple Silicon · 首次打开需右键 → 打开</p>
           </div>
           <div class="card reveal">
             <div class="ico" aria-hidden="true">📦</div>
-            <h3>方式二：Release 下载</h3>
-            <p>推送 <code>v*.*.*</code> tag 即由 <code>.github/workflows/release.yml</code> 在 6 矩阵（win/macos/linux × x64/arm64）上并行构建并发布。上方下载区按你的系统推荐对应包，或前往 <a href="https://github.com/afdk1991/gale-engine/releases/latest" target="_blank" rel="noopener">GitHub Releases</a> 下载全部产物。</p>
+            <h3>Linux · AppImage / deb</h3>
+            <p>AppImage 免安装即用，deb 适用 Debian/Ubuntu：</p>
+            <pre><code># AppImage（x64 / arm64）
+chmod +x gale-engine-*.AppImage &amp;&amp; ./gale-engine-*.AppImage
+
+# deb（x64）
+sudo dpkg -i gale-engine-*.deb</code></pre>
+          </div>
+          <div class="card reveal">
+            <div class="ico" aria-hidden="true">⬇️</div>
+            <h3>直接下载安装包</h3>
+            <p>上方下载区按你的系统推荐对应包，或前往 <a href="https://github.com/afdk1991/gale-engine/releases/latest" target="_blank" rel="noopener">GitHub Releases</a> 下载全部产物。双击即可安装，无需命令行。</p>
+          </div>
+          <div class="card reveal">
+            <div class="ico" aria-hidden="true">🛠️</div>
+            <h3>本地一键构建</h3>
+            <p>克隆仓库后运行 <code>npm run package:win</code> / <code>:mac</code> / <code>:linux</code>（需 Node），自动产出对应平台安装包。镜像源已默认指向国内 npmmirror，无需翻墙。</p>
           </div>
           <div class="card reveal">
             <div class="ico" aria-hidden="true">✅</div>

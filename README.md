@@ -9,6 +9,38 @@
 
 ---
 
+## 安装方式
+
+### Windows
+
+| 方式 | 命令 / 链接 | 适用场景 |
+| --- | --- | --- |
+| **Scoop**（推荐） | `scoop bucket add gale https://github.com/afdk1991/gale-engine` → `scoop install gale-engine` | 命令行用户，自动更新 |
+| **直接下载** | [GitHub Releases](https://github.com/afdk1991/gale-engine/releases/latest) → `gale-engine-0.5.4-x64-setup.exe` / `arm64-setup.exe` | 普通用户，双击安装 |
+
+> Scoop manifest 位于仓库 `scoop/gale-engine.json`，支持 x64 + arm64，`checkver` + `autoupdate` 已配置，新版本发布后 `scoop update` 即可升级。
+
+### macOS
+
+| 方式 | 命令 / 链接 | 适用场景 |
+| --- | --- | --- |
+| **Homebrew**（推荐） | `brew tap afdk1991/gale-engine https://github.com/afdk1991/gale-engine` → `brew install --cask gale-engine` | 命令行用户，自动更新 |
+| **直接下载** | [GitHub Releases](https://github.com/afdk1991/gale-engine/releases/latest) → `gale-engine-0.5.4-x64.dmg` / `arm64.dmg` | 普通用户，拖入 Applications |
+
+> Homebrew Cask 位于仓库 `homebrew/gale-engine.rb`，自动按 CPU 架构（Intel / Apple Silicon）选择对应 DMG。应用未签名，首次打开需右键 → 打开。
+
+### Linux
+
+| 方式 | 命令 / 链接 | 适用场景 |
+| --- | --- | --- |
+| **AppImage**（推荐） | [下载](https://github.com/afdk1991/gale-engine/releases/latest) → `chmod +x gale-engine-0.5.4-x86_64.AppImage` → `./gale-engine-0.5.4-x86_64.AppImage` | 免安装，即下即用 |
+| **deb** | [下载](https://github.com/afdk1991/gale-engine/releases/latest) → `sudo dpkg -i gale-engine-0.5.4-amd64.deb` | Debian / Ubuntu (x64) |
+| **直接下载** | [GitHub Releases](https://github.com/afdk1991/gale-engine/releases/latest) | 全部产物 |
+
+> AppImage 同时提供 x64 (`x86_64`) 和 arm64 两个架构。deb 仅支持 x64。
+
+---
+
 ## 功能特性
 
 | 模块 | 能力 |
