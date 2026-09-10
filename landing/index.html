@@ -1,20 +1,19 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<html lang="zh-CN" class="js"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>疾风引擎 — 跨平台桌面优化加速引擎</title>
-  <meta name="description" content="疾风引擎：硬件监控与型号规格、进程管理、垃圾清理、启动项管理、游戏模式与系统工具箱，支持 Windows / macOS / Linux（x64 + arm64）。" />
-  <meta name="theme-color" content="#f7f9fc" />
-  <meta name="color-scheme" content="light dark" />
-  <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Crect%20width='32'%20height='32'%20rx='8'%20fill='%232f7cf6'/%3E%3Cpath%20d='M18%205%20L8%2018%20H14%20L12%2027%20L24%2012%20H17%20Z'%20fill='%23fff'/%3E%3C/svg%3E" />
-  <meta property="og:type" content="website" />
-  <meta property="og:locale" content="zh_CN" />
-  <meta property="og:title" content="疾风引擎 — 跨平台桌面优化加速引擎" />
-  <meta property="og:description" content="硬件监控、进程管理、垃圾清理、游戏模式与系统工具箱，支持 Windows / macOS / Linux。" />
-  <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="疾风引擎 — 跨平台桌面优化加速引擎" />
-  <meta name="twitter:description" content="硬件监控、进程管理、垃圾清理、游戏模式与系统工具箱，支持 Windows / macOS / Linux。" />
+  <meta name="description" content="疾风引擎：硬件监控与型号规格、进程管理、垃圾清理、启动项管理、游戏模式与系统工具箱，支持 Windows / macOS / Linux（x64 + arm64）。">
+  <meta name="theme-color" content="#f7f9fc">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Crect%20width='32'%20height='32'%20rx='8'%20fill='%232f7cf6'/%3E%3Cpath%20d='M18%205%20L8%2018%20H14%20L12%2027%20L24%2012%20H17%20Z'%20fill='%23fff'/%3E%3C/svg%3E">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:title" content="疾风引擎 — 跨平台桌面优化加速引擎">
+  <meta property="og:description" content="硬件监控、进程管理、垃圾清理、游戏模式与系统工具箱，支持 Windows / macOS / Linux。">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="疾风引擎 — 跨平台桌面优化加速引擎">
+  <meta name="twitter:description" content="硬件监控、进程管理、垃圾清理、游戏模式与系统工具箱，支持 Windows / macOS / Linux。">
   <style>
     :root {
       --accent: #2f7cf6;
@@ -186,11 +185,11 @@
     <nav class="nav wrap" aria-label="主导航">
       <div class="brand"><span class="brand-mark" aria-hidden="true"></span> 疾风引擎</div>
       <div class="nav-links">
-        <a href="#features">功能</a>
-        <a href="#tech">技术</a>
-        <a href="#get">安装</a>
+        <a href="#features" class="">功能</a>
+        <a href="#tech" class="">技术</a>
+        <a href="#get" class="">安装</a>
         <a href="#faq">FAQ</a>
-        <a href="#changelog">更新日志</a>
+        <a href="#changelog" class="active">更新日志</a>
         <button class="theme-toggle" id="themeToggle" aria-label="切换深色模式" title="切换深色模式">
           <span class="icon-moon" aria-hidden="true">🌙</span>
           <span class="icon-sun" aria-hidden="true">☀</span>
@@ -202,7 +201,7 @@
   <main>
     <section class="hero" id="download">
       <div class="wrap">
-        <span class="badge">v0.5.4 · 跨平台全平台支持</span>
+        <span class="badge">v0.1.7 · 跨平台全平台支持</span>
         <h1>让你的电脑 <span class="grad">更快更稳</span></h1>
         <p>硬件监控与型号规格、进程管理、垃圾清理、游戏模式、网络诊断、服务管理、计划任务与防火墙，集成在一个轻量桌面应用里。支持 Windows / macOS / Linux（x64 + arm64）。</p>
 
@@ -212,7 +211,7 @@
             <button class="dl-tab" data-os="macos" role="tab">🍎 macOS</button>
             <button class="dl-tab" data-os="linux" role="tab">🐧 Linux</button>
           </div>
-          <div class="dl-panel" id="dl-panel"></div>
+          <div class="dl-panel" id="dl-panel"><div class="os-name">Windows</div><div class="os-hint">NSIS 安装包，支持自定义安装目录，双击即可安装</div><div class="arch-row"><div class="arch-card"><div class="arch-label">x64</div><div class="arch-desc">Intel / AMD 64 位</div><a class="btn btn-primary" href="https://github.com/afdk1991/gale-engine/releases/download/v0.1.7/gale-engine-0.1.7-x64-setup.exe" target="_blank" rel="noopener">⬇ 下载</a></div><div class="arch-card"><div class="arch-label">arm64</div><div class="arch-desc">Surface / 骁龙 ARM</div><a class="btn btn-primary" href="https://github.com/afdk1991/gale-engine/releases/download/v0.1.7/gale-engine-0.1.7-arm64-setup.exe" target="_blank" rel="noopener">⬇ 下载</a></div></div></div>
           <div class="dl-all">不确定选哪个？查看 <a href="https://github.com/afdk1991/gale-engine/releases/latest" target="_blank" rel="noopener">全部下载产物</a></div>
         </div>
         <div class="req">系统要求：Windows 10/11 · macOS 11+ · 主流 Linux（systemd）· 64 位或 ARM64 · 无需联网即可使用</div>
@@ -224,18 +223,18 @@
         <h2>核心功能</h2>
         <p class="sub">十三大模块覆盖日常性能优化全流程，三平台原生支持</p>
         <div class="grid">
-          <div class="card reveal"><div class="ico" aria-hidden="true">📊</div><h3>硬件监控</h3><p>实时采集 CPU / 内存 / 磁盘 / 网络负载、温度与电量，每秒刷新。</p></div>
-          <div class="card reveal"><div class="ico" aria-hidden="true">🔧</div><h3>硬件信息</h3><p>主板 / CPU / 内存 / 显卡 / 显示器 / 硬盘 / 电源 型号规格采集（跨平台）。</p></div>
-          <div class="card reveal"><div class="ico" aria-hidden="true">⚙️</div><h3>进程管理</h3><p>查看进程 CPU / 内存占用，结束、挂起 / 恢复进程，调整优先级（系统进程已保护）。</p></div>
-          <div class="card reveal"><div class="ico" aria-hidden="true">🧹</div><h3>垃圾清理</h3><p>扫描 Temp、回收站与浏览器缓存占用，白名单安全清理，逐项回执、失败隔离。</p></div>
-          <div class="card reveal"><div class="ico" aria-hidden="true">⚡</div><h3>启动项管理</h3><p>集中管理开机启动项（Win 注册表 / mac launchd / Linux XDG），一键启用 / 禁用。</p></div>
-          <div class="card reveal"><div class="ico" aria-hidden="true">🎮</div><h3>游戏模式</h3><p>一键切换高性能模式（Win 电源计划 / mac 防休眠 / Linux CPU 调速器），退出自动还原。</p></div>
-          <div class="card reveal"><div class="ico" aria-hidden="true">🌐</div><h3>网络诊断</h3><p>Ping 延迟测试（最小 / 平均 / 最大 / 丢包率）与本机网卡信息。</p></div>
-          <div class="card reveal"><div class="ico" aria-hidden="true">🖥️</div><h3>服务管理</h3><p>查看系统服务状态与启动类型，启动 / 停止、切换自动 / 手动 / 禁用（关键服务已保护）。</p></div>
-          <div class="card reveal"><div class="ico" aria-hidden="true">⏰</div><h3>计划任务</h3><p>枚举系统计划任务与运行时间，启用 / 禁用、立即运行、结束运行中任务。</p></div>
-          <div class="card reveal"><div class="ico" aria-hidden="true">🛡️</div><h3>防火墙</h3><p>配置文件开关（Win NetFirewall / mac pfctl / Linux ufw）+ 规则列表与启用 / 禁用。</p></div>
-          <div class="card reveal"><div class="ico" aria-hidden="true">🧰</div><h3>系统工具箱</h3><p>刷新 DNS、清空回收站、清空剪贴板、切换深色模式，按平台分发命令，幂等安全。</p></div>
-          <div class="card reveal"><div class="ico" aria-hidden="true">🕘</div><h3>优化记录</h3><p>每次清理 / 模式切换自动留痕，时间线一目了然。</p></div>
+          <div class="card reveal in"><div class="ico" aria-hidden="true">📊</div><h3>硬件监控</h3><p>实时采集 CPU / 内存 / 磁盘 / 网络负载、温度与电量，每秒刷新。</p></div>
+          <div class="card reveal in"><div class="ico" aria-hidden="true">🔧</div><h3>硬件信息</h3><p>主板 / CPU / 内存 / 显卡 / 显示器 / 硬盘 / 电源 型号规格采集（跨平台）。</p></div>
+          <div class="card reveal in"><div class="ico" aria-hidden="true">⚙️</div><h3>进程管理</h3><p>查看进程 CPU / 内存占用，结束、挂起 / 恢复进程，调整优先级（系统进程已保护）。</p></div>
+          <div class="card reveal in"><div class="ico" aria-hidden="true">🧹</div><h3>垃圾清理</h3><p>扫描 Temp、回收站与浏览器缓存占用，白名单安全清理，逐项回执、失败隔离。</p></div>
+          <div class="card reveal in"><div class="ico" aria-hidden="true">⚡</div><h3>启动项管理</h3><p>集中管理开机启动项（Win 注册表 / mac launchd / Linux XDG），一键启用 / 禁用。</p></div>
+          <div class="card reveal in"><div class="ico" aria-hidden="true">🎮</div><h3>游戏模式</h3><p>一键切换高性能模式（Win 电源计划 / mac 防休眠 / Linux CPU 调速器），退出自动还原。</p></div>
+          <div class="card reveal in"><div class="ico" aria-hidden="true">🌐</div><h3>网络诊断</h3><p>Ping 延迟测试（最小 / 平均 / 最大 / 丢包率）与本机网卡信息。</p></div>
+          <div class="card reveal in"><div class="ico" aria-hidden="true">🖥️</div><h3>服务管理</h3><p>查看系统服务状态与启动类型，启动 / 停止、切换自动 / 手动 / 禁用（关键服务已保护）。</p></div>
+          <div class="card reveal in"><div class="ico" aria-hidden="true">⏰</div><h3>计划任务</h3><p>枚举系统计划任务与运行时间，启用 / 禁用、立即运行、结束运行中任务。</p></div>
+          <div class="card reveal in"><div class="ico" aria-hidden="true">🛡️</div><h3>防火墙</h3><p>配置文件开关（Win NetFirewall / mac pfctl / Linux ufw）+ 规则列表与启用 / 禁用。</p></div>
+          <div class="card reveal in"><div class="ico" aria-hidden="true">🧰</div><h3>系统工具箱</h3><p>刷新 DNS、清空回收站、清空剪贴板、切换深色模式，按平台分发命令，幂等安全。</p></div>
+          <div class="card reveal in"><div class="ico" aria-hidden="true">🕘</div><h3>优化记录</h3><p>每次清理 / 模式切换自动留痕，时间线一目了然。</p></div>
         </div>
       </div>
     </section>
@@ -245,32 +244,32 @@
         <h2>技术架构</h2>
         <p class="sub">Electron 33 + Vue 3 + TypeScript，electron-vite 多进程构建，全跨平台原生命令分发</p>
         <div class="grid">
-          <div class="card reveal">
+          <div class="card reveal in">
             <div class="ico" aria-hidden="true">⚡</div>
             <h3>渲染层</h3>
             <p>Vue 3 + TypeScript，13 个页面组件，左侧自适应导航（720px 以下收窄为图标栏），主题令牌系统（3 外观 × 6 强调色）。</p>
           </div>
-          <div class="card reveal">
+          <div class="card reveal in">
             <div class="ico" aria-hidden="true">🔌</div>
             <h3>主进程</h3>
             <p>42 个 IPC handler，preload 桥接为 <code>window.gale</code>（contextIsolation: true），服务层全可注入依赖，纯逻辑可单测。</p>
           </div>
-          <div class="card reveal">
+          <div class="card reveal in">
             <div class="ico" aria-hidden="true"> shell</div>
             <h3>跨平台 PAL</h3>
             <p><code>shell.ts</code> 平台抽象层，按 <code>process.platform</code> 选择 PowerShell / bash 执行器，13 个 service 全跨平台。</p>
           </div>
-          <div class="card reveal">
+          <div class="card reveal in">
             <div class="ico" aria-hidden="true">🛡️</div>
             <h3>安全设计</h3>
             <p>所有用户输入（PID / 主机名 / 路径 / 服务名 / 规则名）经字符白名单校验，防 shell 注入；系统关键进程保护拒绝。</p>
           </div>
-          <div class="card reveal">
+          <div class="card reveal in">
             <div class="ico" aria-hidden="true">🔄</div>
             <h3>自动更新</h3>
             <p>electron-updater 指向 GitHub Releases，各平台独立 <code>latest*.yml</code> 驱动按 OS + 架构拉取对应增量包。</p>
           </div>
-          <div class="card reveal">
+          <div class="card reveal in">
             <div class="ico" aria-hidden="true">📦</div>
             <h3>CI / CD</h3>
             <p>GitHub Actions 6 矩阵并行构建（win/macos/linux × x64/arm64），推送 <code>v*</code> tag 自动构建发布，231 项自动化测试把关。</p>
@@ -284,7 +283,7 @@
         <h2>多种安装方式</h2>
         <p class="sub">按平台选择最适合的方式，命令行用户与普通用户都能轻松上手</p>
         <div class="grid">
-          <div class="card reveal">
+          <div class="card reveal in">
             <div class="ico" aria-hidden="true">🥄</div>
             <h3>Windows · Scoop</h3>
             <p>命令行用户首选，自动管理版本与升级：</p>
@@ -292,7 +291,7 @@
 scoop install gale-engine</code></pre>
             <p style="margin-top:8px;font-size:13px;color:var(--ink-3)">支持 x64 + arm64 · <code>scoop update</code> 即可升级</p>
           </div>
-          <div class="card reveal">
+          <div class="card reveal in">
             <div class="ico" aria-hidden="true">🍺</div>
             <h3>macOS · Homebrew</h3>
             <p>命令行用户首选，自动按 CPU 架构选择 DMG：</p>
@@ -300,7 +299,7 @@ scoop install gale-engine</code></pre>
 brew install --cask gale-engine</code></pre>
             <p style="margin-top:8px;font-size:13px;color:var(--ink-3)">支持 Intel + Apple Silicon · 首次打开需右键 → 打开</p>
           </div>
-          <div class="card reveal">
+          <div class="card reveal in">
             <div class="ico" aria-hidden="true">📦</div>
             <h3>Linux · AppImage / deb</h3>
             <p>AppImage 免安装即用，deb 适用 Debian/Ubuntu：</p>
@@ -310,17 +309,17 @@ chmod +x gale-engine-*.AppImage &amp;&amp; ./gale-engine-*.AppImage
 # deb（x64）
 sudo dpkg -i gale-engine-*.deb</code></pre>
           </div>
-          <div class="card reveal">
+          <div class="card reveal in">
             <div class="ico" aria-hidden="true">⬇️</div>
             <h3>直接下载安装包</h3>
             <p>上方下载区按你的系统推荐对应包，或前往 <a href="https://github.com/afdk1991/gale-engine/releases/latest" target="_blank" rel="noopener">GitHub Releases</a> 下载全部产物。双击即可安装，无需命令行。</p>
           </div>
-          <div class="card reveal">
+          <div class="card reveal in">
             <div class="ico" aria-hidden="true">🛠️</div>
             <h3>本地一键构建</h3>
             <p>克隆仓库后运行 <code>npm run package:win</code> / <code>:mac</code> / <code>:linux</code>（需 Node），自动产出对应平台安装包。镜像源已默认指向国内 npmmirror，无需翻墙。</p>
           </div>
-          <div class="card reveal">
+          <div class="card reveal in">
             <div class="ico" aria-hidden="true">✅</div>
             <h3>安装与验证</h3>
             <p>安装后从桌面 / 开始菜单 / Launchpad 启动，按 <code>docs/smoke-test-checklist.html</code> 逐项核验全部模块功能（72 项，含 44 项实机 GUI 冒烟）。</p>
@@ -332,19 +331,19 @@ sudo dpkg -i gale-engine-*.deb</code></pre>
     <section class="section" id="changelog">
       <div class="wrap">
         <h2>更新日志</h2>
-        <p class="sub">v0.5.4 跨平台收尾发版说明</p>
-        <div class="log reveal">
+        <p class="sub">v0.1.7 跨平台收尾发版说明</p>
+        <div class="log reveal in">
           <div class="log-item">
-            <div><span class="log-version">v0.5.4</span><span class="log-date">2026-09-08</span></div>
+            <div><span class="log-version">v0.1.7</span><span class="log-date">2026-09-08</span></div>
             <ul>
               <li>修复 optimizer 跨平台测试在多环境下的失败（TMPDIR/HOME 固化）</li>
-              <li>文档全面同步至 v0.5.4 跨平台现状（README / roadmap / 平台验证 / CHANGELOG）</li>
+              <li>文档全面同步至 v0.1.7 跨平台现状（README / roadmap / 平台验证 / CHANGELOG）</li>
               <li>落地页多平台下载适配（三 Tab + 架构分段 + UA 检测，资产名精确映射）</li>
               <li>231 项自动化测试全绿</li>
             </ul>
           </div>
           <div class="log-item">
-            <div><span class="log-version">v0.5.0 ~ v0.5.3</span><span class="log-date">2026-09-06~07</span></div>
+            <div><span class="log-version">v0.1.4 ~ v0.1.6</span><span class="log-date">2026-09-06~07</span></div>
             <ul>
               <li>跨平台架构重写：PAL 平台抽象层（shell.ts 按 OS 选 PowerShell / bash）</li>
               <li>13 个 service 全跨平台（9 手动 win/unix 分发 + 4 天然跨平台库）</li>
@@ -394,35 +393,35 @@ sudo dpkg -i gale-engine-*.deb</code></pre>
         <h2>常见问题</h2>
         <p class="sub">安装与使用中的高频问题解答</p>
         <div style="max-width:760px;margin:34px auto 0;">
-          <details class="faq-item reveal">
+          <details class="faq-item reveal in">
             <summary>Windows 安装时 SmartScreen 提示「未知发布者」怎么办？</summary>
             <p>这是因为应用未配置代码签名证书。点击「更多信息」→「仍要运行」即可安装。这不影响功能与安全，只是 Windows 对未签名应用的常规提示。配置证书后 CI 会自动签名，提示将消失。</p>
           </details>
-          <details class="faq-item reveal">
+          <details class="faq-item reveal in">
             <summary>macOS 打开时提示「无法验证开发者」怎么办？</summary>
             <p>右键点击应用图标 → 选择「打开」→ 在弹窗中点击「打开」。也可以在终端执行 <code>xattr -d com.apple.quarantine /Applications/疾风引擎.app</code>。配置 Apple Developer 证书后 CI 会自动签名+公证。</p>
           </details>
-          <details class="faq-item reveal">
+          <details class="faq-item reveal in">
             <summary>Linux AppImage 双击没反应？</summary>
             <p>AppImage 需要先赋予执行权限：在终端运行 <code>chmod +x gale-engine-*.AppImage</code>，然后 <code>./gale-engine-*.AppImage</code> 即可启动。也可以在文件管理器中右键 → 属性 → 权限 → 勾选「允许执行」。</p>
           </details>
-          <details class="faq-item reveal">
+          <details class="faq-item reveal in">
             <summary>Scoop / Homebrew 安装后如何更新？</summary>
             <p><strong>Scoop</strong>：运行 <code>scoop update gale-engine</code> 即可升级到最新版。<strong>Homebrew</strong>：运行 <code>brew upgrade --cask gale-engine</code>。两个 manifest 都配置了 <code>checkver</code> / 自动版本检测，新版本发布后即可升级。</p>
           </details>
-          <details class="faq-item reveal">
+          <details class="faq-item reveal in">
             <summary>应用支持哪些系统？ARM 设备能用吗？</summary>
             <p>支持 Windows 10/11、macOS 11+、主流 Linux（需 systemd）。同时支持 x64（Intel/AMD）和 arm64（Apple Silicon / Surface / 树莓派 / ARM 服务器），共 6 个平台组合，CI 全量构建。</p>
           </details>
-          <details class="faq-item reveal">
+          <details class="faq-item reveal in">
             <summary>如何从源码本地构建？</summary>
             <p>克隆仓库后运行 <code>npm install</code> 安装依赖，然后按平台运行 <code>npm run package:win</code> / <code>:mac</code> / <code>:linux</code>。镜像源已默认指向国内 npmmirror，无需翻墙即可下载 electron-builder 二进制依赖。</p>
           </details>
-          <details class="faq-item reveal">
+          <details class="faq-item reveal in">
             <summary>应用需要联网吗？</summary>
             <p>核心功能完全离线运行，无需联网。仅「检查更新」功能需要访问 GitHub Releases（可在设置中关闭自动检查）。</p>
           </details>
-          <details class="faq-item reveal">
+          <details class="faq-item reveal in">
             <summary>停止系统服务 / 修改防火墙时提示权限不足？</summary>
             <p>这些操作需要管理员权限（Windows UAC / macOS root / Linux root）。请以管理员身份运行应用，或使用系统服务管理的替代命令。应用对关键系统服务有保护机制，不会允许停止受保护的服务。</p>
           </details>
@@ -446,13 +445,13 @@ sudo dpkg -i gale-engine-*.deb</code></pre>
         </div>
       </div>
       <div style="margin-top:24px;padding-top:18px;border-top:1px solid var(--border);text-align:center;">
-        <div>v0.5.4 · MIT License · 231 项自动化测试全绿</div>
+        <div>v0.1.7 · MIT License · 231 项自动化测试全绿</div>
         <div style="margin-top:6px;">© 2026 GaleEngine · 仅供学习与个人优化使用</div>
       </div>
     </div>
   </footer>
 
-  <button class="to-top" type="button" aria-label="返回顶部" title="返回顶部">↑</button>
+  <button class="to-top show" type="button" aria-label="返回顶部" title="返回顶部">↑</button>
 
   <script>
     document.documentElement.classList.add('js');
@@ -486,7 +485,7 @@ sudo dpkg -i gale-engine-*.deb</code></pre>
       });
 
       var prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      var V = '0.5.4';
+      var V = '0.1.7';
       var BASE = 'https://github.com/afdk1991/gale-engine/releases/download/v' + V + '/gale-engine-' + V + '-';
 
       // 资产名映射（exe/dmg 用 x64|arm64，AppImage 用 x86_64|arm64，deb 用 amd64）
@@ -633,5 +632,6 @@ sudo dpkg -i gale-engine-*.deb</code></pre>
       }
     })();
   </script>
-</body>
-</html>
+
+
+</body></html>

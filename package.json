@@ -1,6 +1,6 @@
 {
   "name": "gale-engine",
-  "version": "0.5.4",
+  "version": "0.1.7",
   "description": "疾风引擎 - 跨平台系统优化加速软件（Windows/macOS/Linux）",
   "main": "out/main/index.js",
   "author": "GaleEngine",

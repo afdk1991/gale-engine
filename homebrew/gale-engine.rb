@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 cask "gale-engine" do
-  version "0.5.4"
+  version "0.1.7"
 
   arch = Hardware::CPU.arm? ? "arm64" : "x64"
   sha256_map = {

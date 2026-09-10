@@ -2,7 +2,7 @@
 
 跨平台桌面优化加速软件：硬件监控与型号规格、进程管理、垃圾清理、启动项管理、游戏模式、系统服务、计划任务与防火墙管理，集成在一个轻量 Electron 桌面应用里。支持 **Windows 10/11、macOS、Linux**（x64 + arm64）。
 
-当前版本：**v0.5.4**（跨平台全平台支持，13 个系统服务全跨平台 + 6 矩阵 CI）
+当前版本：**v0.1.7**（跨平台全平台支持，13 个系统服务全跨平台 + 6 矩阵 CI）
 
 - 仓库：https://github.com/afdk1991/gale-engine
 - 最新安装包：https://github.com/afdk1991/gale-engine/releases
@@ -16,7 +16,7 @@
 | 方式 | 命令 / 链接 | 适用场景 |
 | --- | --- | --- |
 | **Scoop**（推荐） | `scoop bucket add gale https://github.com/afdk1991/gale-engine` → `scoop install gale-engine` | 命令行用户，自动更新 |
-| **直接下载** | [GitHub Releases](https://github.com/afdk1991/gale-engine/releases/latest) → `gale-engine-0.5.4-x64-setup.exe` / `arm64-setup.exe` | 普通用户，双击安装 |
+| **直接下载** | [GitHub Releases](https://github.com/afdk1991/gale-engine/releases/latest) → `gale-engine-0.1.7-x64-setup.exe` / `arm64-setup.exe` | 普通用户，双击安装 |
 
 > Scoop manifest 位于仓库 `scoop/gale-engine.json`，支持 x64 + arm64，`checkver` + `autoupdate` 已配置，新版本发布后 `scoop update` 即可升级。
 
@@ -25,7 +25,7 @@
 | 方式 | 命令 / 链接 | 适用场景 |
 | --- | --- | --- |
 | **Homebrew**（推荐） | `brew tap afdk1991/gale-engine https://github.com/afdk1991/gale-engine` → `brew install --cask gale-engine` | 命令行用户，自动更新 |
-| **直接下载** | [GitHub Releases](https://github.com/afdk1991/gale-engine/releases/latest) → `gale-engine-0.5.4-x64.dmg` / `arm64.dmg` | 普通用户，拖入 Applications |
+| **直接下载** | [GitHub Releases](https://github.com/afdk1991/gale-engine/releases/latest) → `gale-engine-0.1.7-x64.dmg` / `arm64.dmg` | 普通用户，拖入 Applications |
 
 > Homebrew Cask 位于仓库 `homebrew/gale-engine.rb`，自动按 CPU 架构（Intel / Apple Silicon）选择对应 DMG。应用未签名，首次打开需右键 → 打开。
 
@@ -33,8 +33,8 @@
 
 | 方式 | 命令 / 链接 | 适用场景 |
 | --- | --- | --- |
-| **AppImage**（推荐） | [下载](https://github.com/afdk1991/gale-engine/releases/latest) → `chmod +x gale-engine-0.5.4-x86_64.AppImage` → `./gale-engine-0.5.4-x86_64.AppImage` | 免安装，即下即用 |
-| **deb** | [下载](https://github.com/afdk1991/gale-engine/releases/latest) → `sudo dpkg -i gale-engine-0.5.4-amd64.deb` | Debian / Ubuntu (x64) |
+| **AppImage**（推荐） | [下载](https://github.com/afdk1991/gale-engine/releases/latest) → `chmod +x gale-engine-0.1.7-x86_64.AppImage` → `./gale-engine-0.1.7-x86_64.AppImage` | 免安装，即下即用 |
+| **deb** | [下载](https://github.com/afdk1991/gale-engine/releases/latest) → `sudo dpkg -i gale-engine-0.1.7-amd64.deb` | Debian / Ubuntu (x64) |
 | **直接下载** | [GitHub Releases](https://github.com/afdk1991/gale-engine/releases/latest) | 全部产物 |
 
 > AppImage 同时提供 x64 (`x86_64`) 和 arm64 两个架构。deb 仅支持 x64。
@@ -115,7 +115,7 @@ npm run package:linux    # Linux（AppImage+deb，x64+arm64）
 推送 `v*` tag 即触发 `.github/workflows/release.yml`，在 win/macos/linux × x64/arm64 六个矩阵上并行构建：
 
 ```bash
-git tag v0.5.4 && git push origin v0.5.4
+git tag v0.1.7 && git push origin v0.1.7
 ```
 
 - 6 个平台产物汇聚到同一 Release：exe / dmg / AppImage / deb + blockmap + 各平台 `latest*.yml`
@@ -126,7 +126,7 @@ git tag v0.5.4 && git push origin v0.5.4
 
 ### 补发历史版本
 
-早期 tag（v0.1.0 / v0.2.0）在推送时并没有可用的发布工作流：v0.1.0 时仓库尚无 `.github/workflows`，v0.2.0 的 release.yml 依赖当时还不存在的 `package:ci` 脚本，且 v0.2.0 的 `artifactName` 是中文名（会导致自动更新 404）。这些版本由 `release-backfill.yml` 补发。
+早期 tag（v0.1.0 / v0.1.1）在推送时并没有可用的发布工作流：v0.1.0 时仓库尚无 `.github/workflows`，v0.1.1 的 release.yml 依赖当时还不存在的 `package:ci` 脚本，且 v0.1.1 的 `artifactName` 是中文名（会导致自动更新 404）。这些版本由 `release-backfill.yml` 补发。
 
 在 GitHub 仓库页面手动触发：**Actions → Release — 补发历史版本安装包 → Run workflow**，填入 tag（如 `v0.1.0`）。
 
@@ -142,7 +142,7 @@ curl -X POST \
 补发工作流与常规发版的区别：
 
 - checkout **指定 tag 的源码**，但用当前规范的 `electron-builder.yml` 覆盖（ASCII 产物名 + 真实 owner/repo）
-- 直接调用 `electron-vite build` 与 `electron-builder --win --publish never`，不依赖各 tag 的 npm script（v0.1.0 / v0.2.0 无 `package:ci`）
+- 直接调用 `electron-vite build` 与 `electron-builder --win --publish never`，不依赖各 tag 的 npm script（v0.1.0 / v0.1.1 无 `package:ci`）
 - 用 `npm install` 而非 `npm ci`，容忍历史 lockfile 与当前 Node 版本的解析差异
 
 ### 代码签名

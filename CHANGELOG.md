@@ -1,37 +1,26 @@
 # 疾风引擎 (gale-engine) 更新日志
 
 > 版本格式遵循语义化版本（SemVer）：`主版本.次版本.修订`。
-> 本仓库通过 Git tag（如 `v0.2.0`）触发 `.github/workflows/release.yml` 自动构建 NSIS 安装包并发布到 GitHub Releases。
+> 本仓库通过 Git tag（如 `v0.1.1`）触发 `.github/workflows/release.yml` 自动构建 NSIS 安装包并发布到 GitHub Releases。
 
 ---
 
-## v0.5.4 — 2026-09-08（跨平台收尾：测试修复 + 文档同步 + 落地页多平台）
+## v0.1.7 — 2026-09-08（跨平台收尾：测试修复 + 文档同步 + 落地页多平台）
 
-在 v0.5.3 跨平台代码 100% 完成基础上，修复跨平台测试在多环境下的失败、全面同步文档至跨平台现状、落地页适配多平台下载。
+在 v0.1.6 跨平台代码 100% 完成基础上，修复跨平台测试在多环境下的失败、全面同步文档至跨平台现状、落地页适配多平台下载。
 
 ### 修复
 - **optimizer 测试失败**：本机 `TMPDIR` 指向 Windows 路径导致 `allowedTempRoots('linux')` 白名单失效，linux 分支 `isSafePath('/tmp')` 误判为 false。测试 `beforeAll` 固化 `TMPDIR='/tmp'` + `HOME='/home/tester'`，`afterAll` 改用 `delete` 恢复（避免写入字符串 `"undefined"` 污染跨平台 CI）。零对外契约变更。
 
 ### 工程
 - vitest 231/231 全绿（修复后恢复）。
-- package.json 版本 bump 0.5.3 → 0.5.4。
+- package.json 版本 bump 0.1.6 → 0.1.7。
 - 落地页改造为按 OS 推荐 + 架构分段器 + UA 检测；资产名精确映射（exe/dmg x64+arm64、AppImage x86_64+arm64、deb amd64）。
-- README / CROSSPLATFORM-ROADMAP / platform-support-verification / MEMORY 全面对齐 v0.5.4 跨平台现状。
+- README / CROSSPLATFORM-ROADMAP / platform-support-verification / MEMORY 全面对齐 v0.1.7 跨平台现状。
 
 ---
 
-## v0.5.3 — 2026-09-07（CI 产物隔离 + macOS x64 runner 调整）
-
-修复 6 矩阵 CI 多平台产物文件名碰撞与 macOS x64 构建问题。
-
-### 修复
-- **CI 产物按 os-arch 隔离**：electron-builder `artifactName` 统一带 `${arch}`，避免不同平台/架构产物同名覆盖；release.yml 矩阵产物 glob 收敛。
-- **macOS x64 改用 macos-latest runner**（Rosetta 2 交叉编译），macos-13 已不可用。
-- package.json 版本 bump 0.5.2 → 0.5.3。
-
----
-
-## v0.5.2 — 2026-09-07（macOS arm64 构建修复）
+## v0.1.6 — 2026-09-07（macOS arm64 构建修复）
 
 修复 macOS arm64（Apple Silicon）CI 构建失败。
 
@@ -41,7 +30,7 @@
 
 ---
 
-## v0.5.1 / v0.5.0 — 2026-09-06（跨平台迁移批次 1-2 + CI 流水线修复）
+## v0.1.5 / v0.1.4 — 2026-09-06（跨平台迁移批次 1-2 + CI 流水线修复）
 
 跨平台架构级重写的首批落地：批次1（toolbox/process）与批次2（optimizer/autolaunch）迁移完成，CI 6 矩阵构建首次打通。
 
@@ -53,7 +42,7 @@
 - **6 矩阵 CI**：release.yml 改为 win/macos/linux × x64/arm64 矩阵，Linux arm64 装 qemu 交叉编译；electron-builder.yml 增 mac/linux target + arm64。
 
 ### 修复
-- v0.5.0 发布流水线两个问题（CI 触发与产物上传），v0.5.1 补发修复。
+- v0.1.4 发布流水线两个问题（CI 触发与产物上传），v0.1.5 补发修复。
 
 ### 工程
 - vitest 142 → 171（批次1）→ 185（批次2）全绿；vue-tsc 0 错误。
@@ -61,9 +50,9 @@
 
 ---
 
-## v0.4.0 — 2026-09-04（M4 系统深度管理里程碑）
+## v0.1.3 — 2026-09-04（M4 系统深度管理里程碑）
 
-在 v0.3.0 基础上，新增**计划任务**、**服务管理**、**防火墙**三大系统级模块。服务层延续可注入依赖范式，vitest 142 项全绿，所有用户输入（任务路径 / 服务名 / 规则名）经字符白名单校验防 PowerShell 注入。
+在 v0.1.2 基础上，新增**计划任务**、**服务管理**、**防火墙**三大系统级模块。服务层延续可注入依赖范式，vitest 142 项全绿，所有用户输入（任务路径 / 服务名 / 规则名）经字符白名单校验防 PowerShell 注入。
 
 ### 新增功能
 - **计划任务（Tasks）**：
@@ -89,9 +78,9 @@
 
 ---
 
-## v0.3.0 — 2026-09-03（M3 深度优化里程碑）
+## v0.1.2 — 2026-09-03（M3 深度优化里程碑）
 
-在 v0.2.0 基础上，新增**进程管理**与**网络诊断**两大模块，并补齐浏览器缓存清理。服务层延续可注入依赖范式，纯函数 vitest 覆盖（100 项全绿），核心 PowerShell 命令在真实 Windows 直测通过。
+在 v0.1.1 基础上，新增**进程管理**与**网络诊断**两大模块，并补齐浏览器缓存清理。服务层延续可注入依赖范式，纯函数 vitest 覆盖（100 项全绿），核心 PowerShell 命令在真实 Windows 直测通过。
 
 ### 新增功能
 - **进程管理（Process）**：
@@ -116,7 +105,7 @@
 
 ---
 
-## v0.2.0 — 2026-08-30（M2 功能里程碑）
+## v0.1.1 — 2026-08-30（M2 功能里程碑）
 
 在 M1 骨架基础上，新增五大真实功能模块，全部 service 逻辑经可注入依赖（fetcher / exec runner / storage）实现，纯函数由 vitest 覆盖（54 项全绿）。
 

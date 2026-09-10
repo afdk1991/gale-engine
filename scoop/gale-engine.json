@@ -1,16 +1,16 @@
 {
   "$schema": "https://raw.githubusercontent.com/ScoopInstaller/Scoop/master/schema.json",
-  "version": "0.5.4",
+  "version": "0.1.7",
   "description": "疾风引擎 - 跨平台系统优化加速软件（硬件监控 / 进程管理 / 垃圾清理 / 游戏模式 / 服务管理 / 防火墙）",
   "homepage": "https://github.com/afdk1991/gale-engine",
   "license": "MIT",
   "architecture": {
     "64bit": {
-      "url": "https://github.com/afdk1991/gale-engine/releases/download/v0.5.4/gale-engine-0.5.4-x64-setup.exe",
+      "url": "https://github.com/afdk1991/gale-engine/releases/download/v0.1.7/gale-engine-0.1.7-x64-setup.exe",
       "hash": "sha256:cd84cd47838a063e568a0b96cef27c6b10d1392f8fbc269f2c92443dae2ce3e8"
     },
     "arm64": {
-      "url": "https://github.com/afdk1991/gale-engine/releases/download/v0.5.4/gale-engine-0.5.4-arm64-setup.exe",
+      "url": "https://github.com/afdk1991/gale-engine/releases/download/v0.1.7/gale-engine-0.1.7-arm64-setup.exe",
       "hash": "sha256:4d7fc3637c3bcd636d2d9ada6f1472af744046532271cfef62e319ec914aadc0"
     }
   },
