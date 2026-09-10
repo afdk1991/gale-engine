@@ -19,7 +19,7 @@ cask "gale-engine" do
   url "https://github.com/afdk1991/gale-engine/releases/download/v#{version}/gale-engine-#{version}-#{arch}.dmg"
   name "疾风引擎"
   desc "跨平台系统优化加速软件 - 硬件监控 / 进程管理 / 垃圾清理 / 游戏模式 / 服务管理"
-  homepage "https://github.com/afdk1991/gale-engine"
+  homepage "https://gy.mixm.top"
 
   # 未签名 DMG：安装后需右键 → 打开（或 xattr -d com.apple.quarantine）
   app "疾风引擎.app"

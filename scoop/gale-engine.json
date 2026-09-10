@@ -2,7 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/ScoopInstaller/Scoop/master/schema.json",
   "version": "0.1.7",
   "description": "疾风引擎 - 跨平台系统优化加速软件（硬件监控 / 进程管理 / 垃圾清理 / 游戏模式 / 服务管理 / 防火墙）",
-  "homepage": "https://github.com/afdk1991/gale-engine",
+  "homepage": "https://gy.mixm.top",
   "license": "MIT",
   "architecture": {
     "64bit": {

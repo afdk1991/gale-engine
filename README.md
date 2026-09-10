@@ -4,6 +4,7 @@
 
 当前版本：**v0.1.7**（跨平台全平台支持，13 个系统服务全跨平台 + 6 矩阵 CI）
 
+- 官网：https://gy.mixm.top
 - 仓库：https://github.com/afdk1991/gale-engine
 - 最新安装包：https://github.com/afdk1991/gale-engine/releases
 
