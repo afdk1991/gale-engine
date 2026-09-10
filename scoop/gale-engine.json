@@ -15,22 +15,15 @@
     }
   },
   "installer": {
-    "script": [
-      "if ($architecture -eq 'arm64') {",
-      "    $installerArgs = '/S /D=\"$dir\"'",
-      "} else {",
-      "    $installerArgs = '/S /D=\"$dir\"'",
-      "}",
-      "Start-Process -FilePath \"$fname\" -ArgumentList $installerArgs -Wait"
-    ]
+    "script": "Start-Process -FilePath \"$fname\" -ArgumentList '/S' -Wait"
   },
   "uninstaller": {
-    "script": "Start-Process -FilePath \"$dir\\uninstall.exe\" -ArgumentList '/S' -Wait"
+    "script": "if (Test-Path \"$dir\\uninstall.exe\") { Start-Process -FilePath \"$dir\\uninstall.exe\" -ArgumentList '/S' -Wait }"
   },
-  "bin": "gale-engine.exe",
+  "bin": "疾风引擎.exe",
   "shortcuts": [
     [
-      "gale-engine.exe",
+      "疾风引擎.exe",
       "疾风引擎"
     ]
   ],

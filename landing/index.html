@@ -101,6 +101,20 @@
     .card pre { background: #0f172a; color: #e2e8f0; border-radius: 8px; padding: 12px 14px; margin: 8px 0; overflow-x: auto; font-size: 12px; line-height: 1.6; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
     .card pre code { background: none; color: inherit; padding: 0; font-size: inherit; word-break: normal; }
 
+    .faq-item { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; overflow: hidden; transition: box-shadow .15s, border-color .15s; }
+    .faq-item[open] { box-shadow: var(--shadow-sm); border-color: #d6e0ee; }
+    .faq-item summary { padding: 16px 20px; font-weight: 600; font-size: 14.5px; cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .faq-item summary::-webkit-details-marker { display: none; }
+    .faq-item summary::after { content: '+'; font-size: 20px; color: var(--ink-3); flex: none; transition: transform .2s; }
+    .faq-item[open] summary::after { transform: rotate(45deg); }
+    .faq-item summary:hover { color: var(--accent); }
+    .faq-item p { padding: 0 20px 16px; font-size: 13.5px; color: var(--ink-2); line-height: 1.7; }
+
+    .footer-grid { display: flex; justify-content: space-between; gap: 40px; flex-wrap: wrap; }
+    .footer-links { display: flex; gap: 24px; flex-wrap: wrap; align-items: center; }
+    .footer-links a { color: var(--accent); font-weight: 600; font-size: 14px; transition: opacity .15s; }
+    .footer-links a:hover { opacity: .7; }
+
     .to-top { position: fixed; right: 22px; bottom: 22px; width: 44px; height: 44px; border: none; border-radius: 50%; cursor: pointer; z-index: 60; background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; font-size: 18px; line-height: 1; display: grid; place-items: center; box-shadow: var(--shadow-accent); opacity: 0; visibility: hidden; transform: translateY(8px); transition: opacity .2s, transform .2s, visibility .2s; }
     .to-top.show { opacity: 1; visibility: visible; transform: none; }
     .to-top:hover { transform: translateY(-2px); }
@@ -114,6 +128,7 @@
       .grid { grid-template-columns: 1fr; }
       .nav-links { gap: 16px; }
       .arch-row { flex-direction: column; }
+      .footer-grid { flex-direction: column; gap: 20px; }
     }
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
@@ -129,8 +144,10 @@
       <div class="brand"><span class="brand-mark" aria-hidden="true"></span> 疾风引擎</div>
       <div class="nav-links">
         <a href="#features">功能</a>
+        <a href="#tech">技术</a>
+        <a href="#get">安装</a>
+        <a href="#faq">FAQ</a>
         <a href="#changelog">更新日志</a>
-        <a href="#download">下载</a>
       </div>
     </nav>
   </header>
@@ -172,6 +189,45 @@
           <div class="card reveal"><div class="ico" aria-hidden="true">🛡️</div><h3>防火墙</h3><p>配置文件开关（Win NetFirewall / mac pfctl / Linux ufw）+ 规则列表与启用 / 禁用。</p></div>
           <div class="card reveal"><div class="ico" aria-hidden="true">🧰</div><h3>系统工具箱</h3><p>刷新 DNS、清空回收站、清空剪贴板、切换深色模式，按平台分发命令，幂等安全。</p></div>
           <div class="card reveal"><div class="ico" aria-hidden="true">🕘</div><h3>优化记录</h3><p>每次清理 / 模式切换自动留痕，时间线一目了然。</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="tech" style="background:#eef2f7;">
+      <div class="wrap">
+        <h2>技术架构</h2>
+        <p class="sub">Electron 33 + Vue 3 + TypeScript，electron-vite 多进程构建，全跨平台原生命令分发</p>
+        <div class="grid">
+          <div class="card reveal">
+            <div class="ico" aria-hidden="true">⚡</div>
+            <h3>渲染层</h3>
+            <p>Vue 3 + TypeScript，13 个页面组件，左侧自适应导航（720px 以下收窄为图标栏），主题令牌系统（3 外观 × 6 强调色）。</p>
+          </div>
+          <div class="card reveal">
+            <div class="ico" aria-hidden="true">🔌</div>
+            <h3>主进程</h3>
+            <p>42 个 IPC handler，preload 桥接为 <code>window.gale</code>（contextIsolation: true），服务层全可注入依赖，纯逻辑可单测。</p>
+          </div>
+          <div class="card reveal">
+            <div class="ico" aria-hidden="true"> shell</div>
+            <h3>跨平台 PAL</h3>
+            <p><code>shell.ts</code> 平台抽象层，按 <code>process.platform</code> 选择 PowerShell / bash 执行器，13 个 service 全跨平台。</p>
+          </div>
+          <div class="card reveal">
+            <div class="ico" aria-hidden="true">🛡️</div>
+            <h3>安全设计</h3>
+            <p>所有用户输入（PID / 主机名 / 路径 / 服务名 / 规则名）经字符白名单校验，防 shell 注入；系统关键进程保护拒绝。</p>
+          </div>
+          <div class="card reveal">
+            <div class="ico" aria-hidden="true">🔄</div>
+            <h3>自动更新</h3>
+            <p>electron-updater 指向 GitHub Releases，各平台独立 <code>latest*.yml</code> 驱动按 OS + 架构拉取对应增量包。</p>
+          </div>
+          <div class="card reveal">
+            <div class="ico" aria-hidden="true">📦</div>
+            <h3>CI / CD</h3>
+            <p>GitHub Actions 6 矩阵并行构建（win/macos/linux × x64/arm64），推送 <code>v*</code> tag 自动构建发布，231 项自动化测试把关。</p>
+          </div>
         </div>
       </div>
     </section>
@@ -285,12 +341,67 @@ sudo dpkg -i gale-engine-*.deb</code></pre>
         </div>
       </div>
     </section>
+
+    <section class="section" id="faq" style="background:#eef2f7;">
+      <div class="wrap">
+        <h2>常见问题</h2>
+        <p class="sub">安装与使用中的高频问题解答</p>
+        <div style="max-width:760px;margin:34px auto 0;">
+          <details class="faq-item reveal">
+            <summary>Windows 安装时 SmartScreen 提示「未知发布者」怎么办？</summary>
+            <p>这是因为应用未配置代码签名证书。点击「更多信息」→「仍要运行」即可安装。这不影响功能与安全，只是 Windows 对未签名应用的常规提示。配置证书后 CI 会自动签名，提示将消失。</p>
+          </details>
+          <details class="faq-item reveal">
+            <summary>macOS 打开时提示「无法验证开发者」怎么办？</summary>
+            <p>右键点击应用图标 → 选择「打开」→ 在弹窗中点击「打开」。也可以在终端执行 <code>xattr -d com.apple.quarantine /Applications/疾风引擎.app</code>。配置 Apple Developer 证书后 CI 会自动签名+公证。</p>
+          </details>
+          <details class="faq-item reveal">
+            <summary>Linux AppImage 双击没反应？</summary>
+            <p>AppImage 需要先赋予执行权限：在终端运行 <code>chmod +x gale-engine-*.AppImage</code>，然后 <code>./gale-engine-*.AppImage</code> 即可启动。也可以在文件管理器中右键 → 属性 → 权限 → 勾选「允许执行」。</p>
+          </details>
+          <details class="faq-item reveal">
+            <summary>Scoop / Homebrew 安装后如何更新？</summary>
+            <p><strong>Scoop</strong>：运行 <code>scoop update gale-engine</code> 即可升级到最新版。<strong>Homebrew</strong>：运行 <code>brew upgrade --cask gale-engine</code>。两个 manifest 都配置了 <code>checkver</code> / 自动版本检测，新版本发布后即可升级。</p>
+          </details>
+          <details class="faq-item reveal">
+            <summary>应用支持哪些系统？ARM 设备能用吗？</summary>
+            <p>支持 Windows 10/11、macOS 11+、主流 Linux（需 systemd）。同时支持 x64（Intel/AMD）和 arm64（Apple Silicon / Surface / 树莓派 / ARM 服务器），共 6 个平台组合，CI 全量构建。</p>
+          </details>
+          <details class="faq-item reveal">
+            <summary>如何从源码本地构建？</summary>
+            <p>克隆仓库后运行 <code>npm install</code> 安装依赖，然后按平台运行 <code>npm run package:win</code> / <code>:mac</code> / <code>:linux</code>。镜像源已默认指向国内 npmmirror，无需翻墙即可下载 electron-builder 二进制依赖。</p>
+          </details>
+          <details class="faq-item reveal">
+            <summary>应用需要联网吗？</summary>
+            <p>核心功能完全离线运行，无需联网。仅「检查更新」功能需要访问 GitHub Releases（可在设置中关闭自动检查）。</p>
+          </details>
+          <details class="faq-item reveal">
+            <summary>停止系统服务 / 修改防火墙时提示权限不足？</summary>
+            <p>这些操作需要管理员权限（Windows UAC / macOS root / Linux root）。请以管理员身份运行应用，或使用系统服务管理的替代命令。应用对关键系统服务有保护机制，不会允许停止受保护的服务。</p>
+          </details>
+        </div>
+      </div>
+    </section>
   </main>
 
   <footer class="footer">
     <div class="wrap">
-      <div>疾风引擎 · 基于 Electron + Vue 3 构建 · 支持 Windows / macOS / Linux</div>
-      <div style="margin-top:8px">© 2026 GaleEngine · 仅供学习与个人优化使用</div>
+      <div class="footer-grid">
+        <div>
+          <div class="brand" style="margin-bottom:10px;"><span class="brand-mark" aria-hidden="true"></span> 疾风引擎</div>
+          <p style="font-size:13px;color:var(--ink-3);max-width:300px;">跨平台桌面优化加速软件，支持 Windows / macOS / Linux（x64 + arm64）。基于 Electron + Vue 3 构建。</p>
+        </div>
+        <div class="footer-links">
+          <a href="https://github.com/afdk1991/gale-engine" target="_blank" rel="noopener">GitHub 仓库</a>
+          <a href="https://github.com/afdk1991/gale-engine/releases/latest" target="_blank" rel="noopener">最新版本</a>
+          <a href="https://github.com/afdk1991/gale-engine/issues" target="_blank" rel="noopener">问题反馈</a>
+          <a href="https://github.com/afdk1991/gale-engine/blob/master/CHANGELOG.md" target="_blank" rel="noopener">更新日志</a>
+        </div>
+      </div>
+      <div style="margin-top:24px;padding-top:18px;border-top:1px solid var(--border);">
+        <div>v0.5.4 · MIT License · 231 项自动化测试全绿</div>
+        <div style="margin-top:6px;">© 2026 GaleEngine · 仅供学习与个人优化使用</div>
+      </div>
     </div>
   </footer>
 
