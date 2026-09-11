@@ -493,6 +493,16 @@ sudo dpkg -i gale-engine-*.deb</code></pre>
       });
 
       var prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      /* —— Logo 点击返回顶部 —— */
+      var brand = document.querySelector('.brand');
+      if (brand) {
+        brand.addEventListener('click', function (e) {
+          e.preventDefault();
+          window.scrollTo({ top: 0, behavior: prefersReduced ? 'auto' : 'smooth' });
+        });
+      }
+
       var V = '0.1.7';
       var BASE = 'https://github.com/afdk1991/gale-engine/releases/download/v' + V + '/gale-engine-' + V + '-';
 
