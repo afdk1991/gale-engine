@@ -1,7 +1,25 @@
 # 疾风引擎 (gale-engine) 更新日志
 
 > 版本格式遵循语义化版本（SemVer）：`主版本.次版本.修订`。
-> 本仓库通过 Git tag（如 `v0.1.1`）触发 `.github/workflows/release.yml` 自动构建 NSIS 安装包并发布到 GitHub Releases。
+> 发版流程：在 `package.json` 升级版本后打 Git tag（如 `v0.2.0`），再运行 `scripts/publish-release.ps1` 构建并创建 GitHub Release、上传 NSIS 安装包。CI 矩阵构建（win/macos/linux × x64/arm64）可在此流程之上接入，由 tag 触发。
+
+---
+
+## v0.2.0 — 2026-09-16（一键优化编排 / DLL 能力库 / 提权通道 / 空间实测释放）
+
+在 v0.1.8 磁盘修复基础上，补齐「一键优化」批量入口、可独立调用的单项目优化能力库、运行时提权通道，并修复磁盘空间未实际释放的问题。
+
+### 新增功能
+- **首页一键全部优化**：首页 Hero 区新增「⚡ 一键优化」入口，按序执行所有可优化项，实时展示进度、每项结果（成功/失败/跳过）与汇总报告；支持中途取消与失败重试（默认 1 次）。
+- **DLL 单项目优化能力库（optlib）**：将各优化能力封装为可动态装载的能力库，对外提供 `listCapabilities()` 列清单与 `runSingle(id)` 独立调用；统一返回执行状态、耗时、错误信息与实测释放空间（ABI 为纯 JSON，后续可替换为原生后端）。
+- **运行时提权通道（elevate）**：新增 `isElevated` / `runElevated`（Windows `ShellExecute runas` 弹 UAC、回收子进程输出、识别用户取消）/ `restartElevated`；设置页新增「以管理员身份重启」。打包清单改为 `asInvoker` + NSIS `perMachine:false` + `allowElevation:true`，默认装到用户目录不弹 UAC、自更新可用。
+- **磁盘空间实测释放修复**：新增 `space.ts` 以清理前后 `fsSize` 空闲字节差作为真实释放量；清理脚本改为逐项 try/catch 并回传 JSON 统计（删除字节/条目数/失败数/被占用样例路径），回收站按卷逐个清空；新增「资源管理器缩略图缓存清理」（停外壳→删缓存→必重启外壳，避免桌面消失）。
+
+### 工程
+- IPC 新增 optlib / onekey / 提权 等 handler（共 55 个），`window.gale` 契约同步扩展（`onekey:start/cancel/retry/state` + 进度推送）。
+- 新增 `src/composables/useOneKey.ts`（模块级单例状态）、`src/components/OneKeyPanel.vue`（勾选 / 进度 / 结果 / 汇总 / 停止 / 重试）。
+- vitest 265 → 309（新增 space / elevate / optlib / onekey 单测；修正 `disk.test.ts` 过时断言）。
+- 发版机制：打 tag（如 `v0.2.0`）后运行 `scripts/publish-release.ps1` 创建 GitHub Release 并上传安装包；CI 矩阵构建可在该流程上接入。
 
 ---
 
