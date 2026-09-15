@@ -23,6 +23,23 @@ const api: GaleApi = {
     listStartup: () => ipcRenderer.invoke('optimizer:listStartup'),
     toggleStartup: (id, enable, command) => ipcRenderer.invoke('optimizer:toggleStartup', id, enable, command)
   },
+  // 优化能力动态库（DLL）——单项能力可独立调用
+  optlib: {
+    listCapabilities: () => ipcRenderer.invoke('optlib:listCapabilities'),
+    runSingle: (id) => ipcRenderer.invoke('optlib:runSingle', id)
+  },
+  // 一键优化
+  onekey: {
+    start: (ids) => ipcRenderer.invoke('onekey:start', ids),
+    cancel: () => ipcRenderer.invoke('onekey:cancel'),
+    retryFailed: () => ipcRenderer.invoke('onekey:retry'),
+    state: () => ipcRenderer.invoke('onekey:state'),
+    onProgress: (cb) => {
+      const listener = (_event: unknown, progress: Parameters<typeof cb>[0]) => cb(progress)
+      ipcRenderer.on('onekey:progress', listener)
+      return () => ipcRenderer.removeListener('onekey:progress', listener)
+    }
+  },
   disk: {
     volumes: () => ipcRenderer.invoke('disk:volumes'),
     scanDeepCleanup: () => ipcRenderer.invoke('disk:scanDeepCleanup'),
@@ -75,7 +92,9 @@ const api: GaleApi = {
     checkUpdate: () => ipcRenderer.invoke('app:checkUpdate'),
     installUpdate: () => ipcRenderer.invoke('app:installUpdate'),
     getAutoLaunch: () => ipcRenderer.invoke('app:getAutoLaunch'),
-    setAutoLaunch: (enable) => ipcRenderer.invoke('app:setAutoLaunch', enable)
+    setAutoLaunch: (enable) => ipcRenderer.invoke('app:setAutoLaunch', enable),
+    isElevated: () => ipcRenderer.invoke('app:isElevated'),
+    restartElevated: () => ipcRenderer.invoke('app:restartElevated')
   }
 }
 

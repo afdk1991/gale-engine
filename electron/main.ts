@@ -18,6 +18,10 @@ import { createPlatformRunner, detectPlatform } from './services/shell'
 import { createUpdateService } from './services/update'
 import { createElectronUpdaterApi } from './services/update.electron'
 import { createAutoLaunchService, createElectronLoginItemApi } from './services/autolaunch'
+import { createElectronElevator } from './services/elevate.electron'
+import { createOptLibrary } from './services/optlib'
+import { createOneKeyService } from './services/onekey'
+import type { ExecRunner } from './services/shell'
 
 // 跨平台：按当前 OS 选择执行器（Windows→PowerShell，macOS/Linux→bash）
 const runner = createPlatformRunner()
@@ -38,6 +42,27 @@ const tasksService = createTasksService(runner, platform)
 const winServicesService = createWinServicesService(runner, platform)
 const updateService = createUpdateService(createElectronUpdaterApi())
 const autoLaunchService = createAutoLaunchService(createElectronLoginItemApi(app), platform)
+
+// ── 提权与优化能力动态库 ──────────────────────────────────────
+// 普通执行器继承当前进程权限；adminRunner 把同一段脚本交给提权子进程执行
+// （Windows ShellExecute runas 弹 UAC，unix 走 pkexec/sudo），从而让
+// 高权限优化项（更新缓存 / WinSxS / SFC）在无管理员启动时也能按需完成。
+const elevator = createElectronElevator(runner)
+const adminRunner: ExecRunner = { run: (script) => elevator.runElevated(script) }
+const optLibrary = createOptLibrary({
+  platform,
+  normal: { optimizer: optimizerService, disk: diskService, toolbox: toolboxService },
+  admin: {
+    optimizer: createOptimizerService(adminRunner, platform),
+    disk: createDiskService(adminRunner, platform),
+    toolbox: createToolboxService(adminRunner, platform)
+  },
+  isElevated: () => elevator.isElevated()
+})
+const oneKeyService = createOneKeyService({
+  library: optLibrary,
+  isElevated: () => elevator.isElevated()
+})
 
 function registerIpc(): void {
   ipcMain.handle('settings:get', () => settingsService.get())
@@ -60,6 +85,16 @@ function registerIpc(): void {
   ipcMain.handle('optimizer:toggleStartup', (_event, id, enable, command) =>
     optimizerService.toggleStartup(id, Boolean(enable), command)
   )
+  // 优化能力动态库（DLL）：列出全部单项能力 / 独立调用其中任意一项
+  ipcMain.handle('optlib:listCapabilities', () => optLibrary.listCapabilities())
+  ipcMain.handle('optlib:runSingle', (_event, id) => optLibrary.runSingle(String(id)))
+  // 一键优化：start 返回汇总；进度由下方 webContents 推送给渲染进程
+  ipcMain.handle('onekey:start', (_event, ids) =>
+    oneKeyService.start(Array.isArray(ids) ? ids.map(String) : undefined)
+  )
+  ipcMain.handle('onekey:cancel', () => oneKeyService.cancel())
+  ipcMain.handle('onekey:retry', () => oneKeyService.retryFailed())
+  ipcMain.handle('onekey:state', () => oneKeyService.getState())
   ipcMain.handle('disk:volumes', () => diskService.volumes())
   ipcMain.handle('disk:scanDeepCleanup', () => diskService.scanDeepCleanup())
   ipcMain.handle('disk:runDeepCleanup', (_event, items) => diskService.runDeepCleanup(items ?? []))
@@ -112,6 +147,16 @@ function registerIpc(): void {
   })
   ipcMain.handle('app:getAutoLaunch', () => autoLaunchService.get())
   ipcMain.handle('app:setAutoLaunch', (_event, enable) => autoLaunchService.set(Boolean(enable)))
+  ipcMain.handle('app:isElevated', () => elevator.isElevated())
+  ipcMain.handle('app:restartElevated', () => elevator.restartElevated())
+
+  // 一键优化进度推送（主进程 → 所有窗口）。放在 registerIpc 内只订阅一次，
+  // 避免每次调用都叠加一个监听器导致重复推送。
+  oneKeyService.onProgress((progress) => {
+    for (const w of BrowserWindow.getAllWindows()) {
+      if (!w.isDestroyed()) w.webContents.send('onekey:progress', progress)
+    }
+  })
 }
 
 function createWindow(): void {

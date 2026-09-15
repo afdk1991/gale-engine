@@ -207,6 +207,22 @@ export interface GaleApi {
     listStartup(): Promise<StartupItem[]>
     toggleStartup(id: string, enable: boolean, command?: string): Promise<StartupItem[]>
   }
+  /** 优化能力动态库：列出全部单项能力、并按 id 独立调用其中任意一项 */
+  optlib: {
+    listCapabilities(): Promise<OptCapabilityMeta[]>
+    runSingle(id: string): Promise<OptOutcome>
+  }
+  /** 一键优化：按序执行全部（或指定）优化项，实时推送进度，支持取消与重试 */
+  onekey: {
+    start(ids?: string[]): Promise<OneKeySummary>
+    cancel(): Promise<void>
+    /** 只重试上一轮中失败的项 */
+    retryFailed(): Promise<OneKeySummary>
+    /** 读取当前进度快照（界面重进时恢复展示），从未运行过为 null */
+    state(): Promise<OneKeyProgress | null>
+    /** 订阅进度推送，返回取消订阅函数 */
+    onProgress(cb: (p: OneKeyProgress) => void): () => void
+  }
   disk: {
     /** 各卷空间占用与空间不足预警（systeminformation 跨平台） */
     volumes(): Promise<DiskVolume[]>
@@ -270,6 +286,10 @@ export interface GaleApi {
     getAutoLaunch(): Promise<boolean>
     /** 设置开机自启，返回设置后的状态 */
     setAutoLaunch(enable: boolean): Promise<boolean>
+    /** 当前进程是否已提升到管理员 / root 权限 */
+    isElevated(): Promise<boolean>
+    /** 以提升权限重启本应用（Windows 弹 UAC；macOS 弹认证框；Linux 诚实降级） */
+    restartElevated(): Promise<{ ok: boolean; message: string }>
   }
 }
 
@@ -302,6 +322,14 @@ export interface CleanupResult {
   id: string
   ok: boolean
   error?: string
+  /** 实测释放的卷空闲空间增量（bytes）；无法测量时为 undefined */
+  releasedBytes?: number
+  /** 实际成功删除的条目数 */
+  deletedCount?: number
+  /** 因被占用 / 无权限而删除失败的条目数 */
+  failedCount?: number
+  /** 被占用而删除失败的样例路径（最多 5 条），用于界面提示"谁在占用" */
+  locked?: string[]
 }
 
 export interface StartupItem {
@@ -311,6 +339,88 @@ export interface StartupItem {
   /** 启动项来源：win=注册表 HKCU/HKLM；mac=launchd；linux=XDG autostart */
   location: 'HKCU' | 'HKLM' | 'launchd' | 'autostart'
   enabled: boolean
+}
+
+// ---- 优化能力动态库（DLL：Dynamically Loadable Library）----
+// 每个「优化能力」是一个独立可调用的单元，主程序既可通过一键优化批量编排，
+// 也可通过 runSingle(id) 单独调用任意一项。ABI 固定为：
+//   入 OptContext（执行器 + 提权执行器 + 平台 + 空间测量）
+//   出 OptOutcome（状态 + 耗时 + 错误信息 + 实测释放空间）
+
+/** 单项优化执行结果状态 */
+export type OptStatus = 'success' | 'failed' | 'skipped'
+
+/** 单项优化的统一返回结构（DLL 的对外 ABI 输出） */
+export interface OptOutcome {
+  /** 能力 id */
+  id: string
+  /** 能力名称（便于界面直接展示，无需二次查表） */
+  label: string
+  status: OptStatus
+  /** 执行耗时（ms） */
+  durationMs: number
+  /** failure 时的错误原因 */
+  error?: string
+  /** skipped 时的跳过原因 */
+  reason?: string
+  /** 实测释放的空间（bytes），无法测量时为 undefined */
+  releasedBytes?: number
+  /** 该项是否需要管理员 / root 权限 */
+  needsAdmin?: boolean
+  /** 实际执行次数（>1 表示首次失败后自动重试过） */
+  attempts?: number
+}
+
+/** 优化能力的对外描述（不含实现，供界面列清单） */
+export interface OptCapabilityMeta {
+  id: string
+  label: string
+  description: string
+  needsAdmin: boolean
+  /** 是否默认纳入一键优化（改变系统行为的高危项默认 false） */
+  defaultEnabled: boolean
+}
+
+// ---- 一键优化（首页）----
+
+export type OneKeyPhase = 'idle' | 'running' | 'cancelling' | 'done' | 'cancelled'
+
+/** 一键优化实时进度（主进程 → 渲染进程推送） */
+export interface OneKeyProgress {
+  runId: string
+  phase: OneKeyPhase
+  /** 本次计划执行的总项数 */
+  total: number
+  /** 已完成项数（含失败与跳过） */
+  completed: number
+  /** 正在执行的项 id，空闲时为 null */
+  currentId: string | null
+  currentLabel: string | null
+  /** 已产出的逐项结果 */
+  outcomes: OptOutcome[]
+  startedAt: number
+  /** 结束时间戳，未结束为 null */
+  finishedAt: number | null
+  /** 累计实测释放空间（bytes） */
+  releasedBytes: number
+  /** 当前是否以提升权限运行 */
+  elevated: boolean
+}
+
+/** 一键优化的汇总报告 */
+export interface OneKeySummary {
+  runId: string
+  total: number
+  success: number
+  failed: number
+  skipped: number
+  releasedBytes: number
+  durationMs: number
+  cancelled: boolean
+  /** 逐项结果（与 OneKeyProgress.outcomes 同源，供汇总报告/重试持久化） */
+  outcomes: OptOutcome[]
+  /** 整轮无法启动时的说明（并发守卫拦截 / 无可用项等）；正常为空 */
+  error?: string
 }
 
 // ---- Disk（磁盘空间 / 深度释放 / 磁盘修复 / 系统文件修复）----

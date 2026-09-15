@@ -9,6 +9,8 @@ import type {
 import * as si from 'systeminformation'
 import type { ExecRunner, Platform } from './shell'
 import { detectPlatform } from './shell'
+import { createSpaceMeter, diffReleasedBytes } from './space'
+import { parseCleanupStats } from './optimizer'
 
 // ─────────────────────────────────────────────────────────────
 // 常量
@@ -142,6 +144,30 @@ export function buildDeepCatalog(
         needsAdmin: true,
         defaultChecked: false,
         action: ''
+      },
+      {
+        id: 'win-explorer-thumb',
+        kind: 'action',
+        label: '重启资源管理器并清理缩略图缓存',
+        detail: 'thumbcache/iconcache 常被 explorer.exe 占用而删不掉；结束后删除并自动重启资源管理器',
+        path: '',
+        patterns: [],
+        needsAdmin: false,
+        defaultChecked: false, // 会短暂重启桌面外壳，默认不勾，由用户按需执行
+        action: [
+          '$ErrorActionPreference = "Continue"',
+          '$p = Join-Path $env:LOCALAPPDATA "Microsoft\\Windows\\Explorer"',
+          'Get-Process explorer -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue',
+          'Start-Sleep -Seconds 1',
+          'if (Test-Path -LiteralPath $p) {',
+          '  Get-ChildItem -LiteralPath $p -File -Force -ErrorAction SilentlyContinue |',
+          '    Where-Object { $_.Name -like "thumbcache_*.db" -or $_.Name -like "iconcache_*.db" } |',
+          '    Remove-Item -Force -ErrorAction SilentlyContinue',
+          '}',
+          // 无论前面是否出错都必须把外壳拉回来，避免用户桌面消失
+          'if (-not (Get-Process explorer -ErrorAction SilentlyContinue)) { Start-Process explorer.exe }',
+          '"OK"'
+        ].join('\n')
       },
       {
         id: 'win-prefetch',
@@ -329,26 +355,63 @@ export function buildDeepScanScript(
 // 深度清理：单项执行脚本
 // ─────────────────────────────────────────────────────────────
 
+/**
+ * 单个目录的清理脚本（保留目录本身，只删内容）。
+ *
+ * 与优化中心同理：改为逐项 try/catch 统计并以 JSON 回传。
+ * 旧实现的 `Get-ChildItem | Remove-Item -ErrorAction SilentlyContinue` 会把
+ * 被 explorer/系统占用的文件全部静默跳过，然后无条件 echo "OK"，
+ * 于是界面显示「清理成功」而磁盘空间纹丝不动。
+ */
 export function buildDeepCleanScript(entry: DeepCatalogEntry, platform: Platform): string {
   if (entry.kind === 'action') return entry.action
 
   if (platform === 'win32') {
     const p = psSingleQuote(entry.path)
-    if (entry.patterns.length > 0) {
-      return (
-        'function __galeLike($n,[string[]]$pats){ foreach($pp in $pats){ if($n -like $pp){ return $true } }; return $false }\n' +
-        `Get-ChildItem ${p} -File -Force -ErrorAction SilentlyContinue | Where-Object { __galeLike $_.Name @(${entry.patterns
-          .map((x) => psSingleQuote(x))
-          .join(',')}) } | Remove-Item -Force -ErrorAction SilentlyContinue; "OK"`
-      )
-    }
-    return `Get-ChildItem ${p} -Recurse -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue; "OK"`
+    // 有 patterns 时只删匹配文件；否则递归清空（先文件后目录，避免目录非空导致整棵失败）
+    const select =
+      entry.patterns.length > 0
+        ? `Get-ChildItem -LiteralPath ${p} -File -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -like ${entry.patterns
+            .map((x) => psSingleQuote(x))
+            .join(' -or $_.Name -like ')} }`
+        : `Get-ChildItem -LiteralPath ${p} -Recurse -Force -ErrorAction SilentlyContinue | Sort-Object -Property PSIsContainer`
+    return [
+      '$ErrorActionPreference = "Continue"',
+      '$deleted = [int64]0; $deletedCount = 0; $failedCount = 0',
+      '$locked = New-Object System.Collections.ArrayList',
+      `if (Test-Path -LiteralPath ${p}) {`,
+      `  $items = @(${select})`,
+      '  foreach ($i in $items) {',
+      '    try {',
+      '      $n = [int64]0',
+      '      if (-not $i.PSIsContainer) { $n = [int64]$i.Length }',
+      // 有 patterns 时只删文件（不递归）；否则删目录内容（目录可能非空，需 -Recurse）
+      `      Remove-Item -LiteralPath $i.FullName${entry.patterns.length > 0 ? '' : ' -Recurse'} -Force -ErrorAction Stop`,
+      '      $deleted += $n; $deletedCount++',
+      '    } catch {',
+      '      $failedCount++',
+      '      if ($locked.Count -lt 5) { [void]$locked.Add([string]$i.FullName) }',
+      '    }',
+      '  }',
+      '}',
+      '[pscustomobject]@{ deletedBytes=$deleted; deletedCount=$deletedCount; failedCount=$failedCount; locked=@($locked) } | ConvertTo-Json -Compress'
+    ].join('\n')
   }
 
-  // find -mindepth 1 -delete：只删内容不删路径本身（BSD/GNU find 均支持）
-  return `[ -d ${shq(entry.path)} ] || { echo "OK"; exit 0; }
-find ${shq(entry.path)} -mindepth 1 -delete 2>/dev/null
-echo "OK"`
+  // find -mindepth 1 -depth -delete：只删内容不删路径本身（BSD/GNU find 均支持）
+  return `p=${shq(entry.path)}
+if [ -d "$p" ]; then
+  before=$(du -sk "$p" 2>/dev/null | awk '{print $1}'); [ -z "$before" ] && before=0
+  b=$(find "$p" -mindepth 1 2>/dev/null | wc -l | tr -d ' ')
+  find "$p" -mindepth 1 -depth -delete 2>/dev/null
+  after=$(du -sk "$p" 2>/dev/null | awk '{print $1}'); [ -z "$after" ] && after=0
+  a=$(find "$p" -mindepth 1 2>/dev/null | wc -l | tr -d ' ')
+  db=$(( (before - after) * 1024 )); [ "$db" -lt 0 ] && db=0
+  dc=$(( b - a )); [ "$dc" -lt 0 ] && dc=0
+  printf '{"deletedBytes":%s,"deletedCount":%s,"failedCount":%s,"locked":[]}' "$db" "$dc" "$a"
+else
+  printf '{"deletedBytes":0,"deletedCount":0,"failedCount":0,"locked":[]}'
+fi`
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -507,6 +570,8 @@ export function createDiskService(
   const runDeepCleanup = async (
     items: { id: string; kind: DeepCleanupKind; path: string }[]
   ): Promise<CleanupResult[]> => {
+    // 复用已有的卷信息采集器做「清理前/后」空间实测
+    const meter = createSpaceMeter({ fsSize: () => f.fsSize() })
     const results: CleanupResult[] = []
     for (const item of items) {
       const entry = catalog.find((e) => e.id === item.id)
@@ -518,11 +583,46 @@ export function createDiskService(
         results.push({ id: item.id, ok: false, error: '路径不在安全白名单内，已跳过' })
         continue
       }
+      // action 项没有目录，按系统卷测（win → C:，unix → /）
+      const probe = entry.path || (platform === 'win32' ? 'C:\\' : '/')
+      const before = await meter.freeBytesForPath(probe, platform)
+
       const script = buildDeepCleanScript(entry, platform)
       const { code, stdout, stderr } = await runner.run(script)
-      // action 项脚本自带 echo OK / 兜底；path 项要求输出 OK
-      const ok = entry.kind === 'action' ? code === 0 : code === 0 && stdout.includes('OK')
-      results.push({ id: item.id, ok, error: ok ? undefined : stderr.trim() || '清理失败（可能需要管理员权限）' })
+
+      let raw: CleanupResult
+      if (entry.kind === 'action') {
+        // action 项脚本自带 echo OK / 兜底
+        const ok = code === 0
+        raw = { id: item.id, ok, error: ok ? undefined : stderr.trim() || '执行失败（可能需要管理员权限）' }
+      } else {
+        const stats = parseCleanupStats(stdout)
+        if (code !== 0 && !stats) {
+          raw = { id: item.id, ok: false, error: stderr.trim() || '清理失败（可能需要管理员权限）' }
+        } else if (stats) {
+          const ok = stats.failedCount === 0 || stats.deletedCount > 0
+          raw = {
+            id: item.id,
+            ok,
+            error:
+              stats.failedCount > 0
+                ? `${stats.failedCount} 个文件被占用或无权删除，已跳过${
+                    stats.locked.length ? `（如 ${stats.locked[0]}）` : ''
+                  }`
+                : undefined,
+            deletedCount: stats.deletedCount,
+            failedCount: stats.failedCount,
+            locked: stats.locked.length ? stats.locked : undefined
+          }
+        } else {
+          const ok = code === 0 && stdout.includes('OK')
+          raw = { id: item.id, ok, error: ok ? undefined : stderr.trim() || '清理失败' }
+        }
+      }
+
+      const after = await meter.freeBytesForPath(probe, platform)
+      const released = diffReleasedBytes(before, after)
+      results.push(released === undefined ? raw : { ...raw, releasedBytes: released })
     }
     return results
   }

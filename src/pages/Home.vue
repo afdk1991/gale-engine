@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import type { SystemSnapshot } from '../../shared/types'
+import OneKeyPanel from '../components/OneKeyPanel.vue'
+import { useOneKey } from '../composables/useOneKey'
+
+// 一键优化的状态由 composable 单例持有，Hero 按钮与下方面板共用同一份
+const { running, busy, start } = useOneKey()
 
 const snap = ref<SystemSnapshot | null>(null)
 const version = ref('')
@@ -73,7 +78,10 @@ onUnmounted(() => {
         </div>
         <p class="hero-sub">一站式系统优化与硬件监控，让电脑持续保持最佳状态</p>
         <div class="hero-actions">
-          <RouterLink class="hero-btn" to="/monitor">硬件监控</RouterLink>
+          <button class="hero-btn" :disabled="running || busy" @click="start">
+            {{ running ? '优化中…' : '⚡ 一键优化' }}
+          </button>
+          <RouterLink class="hero-btn ghost" to="/monitor">硬件监控</RouterLink>
           <RouterLink class="hero-btn ghost" to="/optimizer">优化中心</RouterLink>
         </div>
       </div>
@@ -87,6 +95,9 @@ onUnmounted(() => {
     </div>
 
     <p v-if="error" class="error">监控数据获取失败：{{ error }}</p>
+
+    <!-- 首页一键优化入口：进度、逐项结果、汇总报告、中途停止与失败重试 -->
+    <OneKeyPanel />
 
     <div v-if="snap" class="stats">
       <div class="stat">
@@ -180,12 +191,16 @@ onUnmounted(() => {
   border-radius: 9px;
   background: #fff;
   color: #1f2329;
+  border: 1px solid transparent;
   text-decoration: none;
   font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
   transition: transform 0.12s, opacity 0.12s;
 }
 .hero-btn.ghost { background: rgba(255, 255, 255, 0.16); color: #fff; }
-.hero-btn:hover { transform: translateY(-1px); opacity: 0.95; }
+.hero-btn:hover:not(:disabled) { transform: translateY(-1px); opacity: 0.95; }
+.hero-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 .hero-score { display: flex; flex-direction: column; align-items: center; gap: 6px; flex-shrink: 0; }
 .score-ring {
   width: 92px;

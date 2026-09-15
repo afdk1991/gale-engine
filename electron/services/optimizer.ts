@@ -6,6 +6,40 @@ import type {
 } from '../../shared/types'
 import type { ExecRunner, Platform } from './shell'
 import { detectPlatform } from './shell'
+import { diffReleasedBytes, type SpaceMeter } from './space'
+
+/**
+ * 脚本回传的删除统计。旧脚本只 echo 一个 "OK"，
+ * 导致被占用文件一个没删时照样报成功 —— 这是「清理完成但空间没变」的直接成因。
+ */
+export interface CleanupStats {
+  deletedBytes: number
+  deletedCount: number
+  failedCount: number
+  locked: string[]
+}
+
+/** 解析清理脚本的 JSON 统计；非 JSON（旧格式）时返回 null，由调用方按 "OK" 兜底判定 */
+export function parseCleanupStats(stdout: string): CleanupStats | null {
+  const trimmed = String(stdout ?? '').trim()
+  if (!trimmed.startsWith('{')) return null
+  try {
+    const raw = JSON.parse(trimmed) as Record<string, unknown>
+    const num = (v: unknown): number => {
+      const n = Number(v)
+      return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0
+    }
+    const locked = Array.isArray(raw.locked) ? raw.locked.map((x) => String(x)).slice(0, 5) : []
+    return {
+      deletedBytes: num(raw.deletedBytes),
+      deletedCount: num(raw.deletedCount),
+      failedCount: num(raw.failedCount),
+      locked
+    }
+  } catch {
+    return null
+  }
+}
 
 // ─────────────────────────────────────────────────────────────
 // 安全白名单（按平台）
@@ -185,6 +219,11 @@ function shq(s: string): string {
   return `'${String(s).replace(/'/g, `'\\''`)}'`
 }
 
+/** PowerShell 单引号字面量转义：' → '' */
+function psSingleQuote(s: string): string {
+  return `'${String(s).replace(/'/g, "''")}'`
+}
+
 /** XML 文本转义（launchd plist 内容） */
 function xmlEsc(s: string): string {
   return String(s)
@@ -232,22 +271,72 @@ export function buildScanScript(platform: Platform = detectPlatform()): string {
 export function buildRecycleCleanupScript(platform: Platform = detectPlatform()): string {
   switch (platform) {
     case 'win32':
-      return 'Clear-RecycleBin -Force -ErrorAction SilentlyContinue; if ($?) { "OK" } else { "FAIL" }'
+      // 无参 Clear-RecycleBin 只清当前用户在各卷的回收站，且遇到无权限卷会静默失败。
+      // 这里显式遍历所有固定磁盘逐个清空，才能真正把 $Recycle.Bin 占的空间吐出来。
+      return [
+        '$ErrorActionPreference = "Continue"',
+        'try { Clear-RecycleBin -Force -ErrorAction SilentlyContinue } catch {}',
+        'Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" -ErrorAction SilentlyContinue | ForEach-Object {',
+        '  $l = $_.DeviceID.Substring(0,1)',
+        '  try { Clear-RecycleBin -DriveLetter $l -Force -ErrorAction SilentlyContinue } catch {}',
+        '}',
+        '"OK"'
+      ].join('\n')
     case 'darwin':
-      return `osascript -e 'tell application "Finder" to empty trash' >/dev/null 2>&1 && echo "OK" || { rm -rf "$HOME/.Trash/"* 2>/dev/null; echo "OK"; }`
+      return `osascript -e 'tell application "Finder" to empty trash' >/dev/null 2>&1 || rm -rf "$HOME/.Trash/"* 2>/dev/null; echo "OK"`
     default:
       return `rm -rf "$HOME/.local/share/Trash/files/"* "$HOME/.local/share/Trash/files/".[!.]* 2>/dev/null; echo "OK"`
   }
 }
 
+/**
+ * 目录清理脚本（保留目录本身，只删内容）。
+ *
+ * 关键改动：逐项 try/catch 统计「真实删掉的字节数 / 文件数 / 失败数 / 被占用样例」，
+ * 以 JSON 回传。此前是 `Get-ChildItem | Remove-Item -ErrorAction SilentlyContinue`，
+ * 被占用文件全部静默跳过，随后 `if ($?)` 因 SilentlyContinue 恒为 true 而误报成功。
+ */
 export function buildPathCleanupScript(path: string, platform: Platform = detectPlatform()): string {
   if (platform === 'win32') {
-    return `Get-ChildItem "${path}" -Recurse -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue; if ($?) { "OK" } else { "FAIL" }`
+    const p = psSingleQuote(path)
+    return [
+      '$ErrorActionPreference = "Continue"',
+      '$deleted = [int64]0; $deletedCount = 0; $failedCount = 0',
+      '$locked = New-Object System.Collections.ArrayList',
+      `if (Test-Path -LiteralPath ${p}) {`,
+      // 先文件后目录：避免目录非空导致 Remove-Item 整棵失败
+      '  $items = @(Get-ChildItem -LiteralPath ' +
+        p +
+        ' -Recurse -Force -ErrorAction SilentlyContinue | Sort-Object -Property PSIsContainer)',
+      '  foreach ($i in $items) {',
+      '    try {',
+      '      $n = [int64]0',
+      '      if (-not $i.PSIsContainer) { $n = [int64]$i.Length }',
+      '      Remove-Item -LiteralPath $i.FullName -Recurse -Force -ErrorAction Stop',
+      '      $deleted += $n; $deletedCount++',
+      '    } catch {',
+      '      $failedCount++',
+      '      if ($locked.Count -lt 5) { [void]$locked.Add([string]$i.FullName) }',
+      '    }',
+      '  }',
+      '}',
+      '[pscustomobject]@{ deletedBytes=$deleted; deletedCount=$deletedCount; failedCount=$failedCount; locked=@($locked) } | ConvertTo-Json -Compress'
+    ].join('\n')
   }
-  // find -mindepth 1 -delete：只删内容不删路径本身；BSD find(mac) 与 GNU find(linux) 均支持
-  return `[ -d ${shq(path)} ] || { echo "OK"; exit 0; }
-find ${shq(path)} -mindepth 1 -delete 2>/dev/null
-echo "OK"`
+  // find -mindepth 1 -depth -delete：只删内容不删路径本身；BSD find(mac) 与 GNU find(linux) 均支持
+  return `p=${shq(path)}
+if [ -d "$p" ]; then
+  before=$(du -sk "$p" 2>/dev/null | awk '{print $1}'); [ -z "$before" ] && before=0
+  b=$(find "$p" -mindepth 1 2>/dev/null | wc -l | tr -d ' ')
+  find "$p" -mindepth 1 -depth -delete 2>/dev/null
+  after=$(du -sk "$p" 2>/dev/null | awk '{print $1}'); [ -z "$after" ] && after=0
+  a=$(find "$p" -mindepth 1 2>/dev/null | wc -l | tr -d ' ')
+  db=$(( (before - after) * 1024 )); [ "$db" -lt 0 ] && db=0
+  dc=$(( b - a )); [ "$dc" -lt 0 ] && dc=0
+  printf '{"deletedBytes":%s,"deletedCount":%s,"failedCount":%s,"locked":[]}' "$db" "$dc" "$a"
+else
+  printf '{"deletedBytes":0,"deletedCount":0,"failedCount":0,"locked":[]}'
+fi`
 }
 
 export function buildStartupListScript(platform: Platform = detectPlatform()): string {
@@ -353,7 +442,11 @@ function toStartupItem(raw: Record<string, unknown>): StartupItem {
 // Service 工厂（接口不变，内部按平台分发脚本）
 // ─────────────────────────────────────────────────────────────
 
-export function createOptimizerService(runner: ExecRunner, platform: Platform = detectPlatform()) {
+export function createOptimizerService(
+  runner: ExecRunner,
+  platform: Platform = detectPlatform(),
+  meter?: SpaceMeter
+) {
   const scanCleanup = async (): Promise<CleanupPlan[]> => {
     const { stdout } = await runner.run(buildScanScript(platform))
     return parseJsonArray(stdout).map((r) => toPlan(r as Record<string, unknown>))
@@ -367,23 +460,46 @@ export function createOptimizerService(runner: ExecRunner, platform: Platform = 
       roots.some((r) => p === r || p.startsWith(r + '\\') || p.startsWith(r + '/'))
     const results: CleanupResult[] = []
     for (const item of items) {
+      // 实测：清理前后各量一次该卷的可用空间，差值才是真实释放量
+      const before = meter ? await meter.freeBytesForPath(item.path, platform) : null
+
+      let raw: CleanupResult
       if (item.kind === 'recycle') {
-        const { code, stderr } = await runner.run(buildRecycleCleanupScript(platform))
-        results.push({
-          id: item.id,
-          ok: code === 0,
-          error: code === 0 ? undefined : stderr.trim() || '清理回收站失败'
-        })
-        continue
+        const { code, stdout, stderr } = await runner.run(buildRecycleCleanupScript(platform))
+        const ok = code === 0 || stdout.includes('OK')
+        raw = { id: item.id, ok, error: ok ? undefined : stderr.trim() || '清理回收站失败（可能需要管理员权限）' }
+      } else if (!isSafePath(item.path)) {
+        raw = { id: item.id, ok: false, error: '路径不在安全白名单内，已跳过' }
+      } else {
+        const { code, stdout, stderr } = await runner.run(buildPathCleanupScript(item.path, platform))
+        const stats = parseCleanupStats(stdout)
+        if (code !== 0 && !stats) {
+          raw = { id: item.id, ok: false, error: stderr.trim() || '清理失败（可能需要管理员权限）' }
+        } else if (stats) {
+          // 只要删掉了东西就算成功；全部被占用（一个都没删掉）则如实报失败
+          const ok = stats.failedCount === 0 || stats.deletedCount > 0
+          raw = {
+            id: item.id,
+            ok,
+            error:
+              stats.failedCount > 0
+                ? `${stats.failedCount} 个文件被占用或无权删除，已跳过${
+                    stats.locked.length ? `（如 ${stats.locked[0]}）` : ''
+                  }`
+                : undefined,
+            deletedCount: stats.deletedCount,
+            failedCount: stats.failedCount,
+            locked: stats.locked.length ? stats.locked : undefined
+          }
+        } else {
+          const ok = code === 0 && stdout.includes('OK')
+          raw = { id: item.id, ok, error: ok ? undefined : stderr.trim() || '清理失败' }
+        }
       }
-      if (!isSafePath(item.path)) {
-        results.push({ id: item.id, ok: false, error: '路径不在安全白名单内，已跳过' })
-        continue
-      }
-      const script = buildPathCleanupScript(item.path, platform)
-      const { code, stdout, stderr } = await runner.run(script)
-      const ok = code === 0 && stdout.includes('OK')
-      results.push({ id: item.id, ok, error: ok ? undefined : stderr.trim() || '清理失败' })
+
+      const after = meter ? await meter.freeBytesForPath(item.path, platform) : null
+      const released = diffReleasedBytes(before, after)
+      results.push(released === undefined ? raw : { ...raw, releasedBytes: released })
     }
     return results
   }

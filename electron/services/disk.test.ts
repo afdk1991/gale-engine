@@ -169,9 +169,9 @@ describe('scanDeepCleanup', () => {
     ]
     const { runner, calls } = recordingRunner(() => ({ ...ok(), stdout: JSON.stringify(raw) }))
     const plans = await createDiskService(runner, 'win32').scanDeepCleanup()
-    // path 项 1 个 + action 项（dism/hibernate）2 个
+    // path 项 1 个 + action 项（explorer-thumb/dism/hibernate）3 个
     expect(plans.filter((p) => p.kind === 'path')).toHaveLength(1)
-    expect(plans.filter((p) => p.kind === 'action')).toHaveLength(2)
+    expect(plans.filter((p) => p.kind === 'action')).toHaveLength(3)
     expect(plans.find((p) => p.id === 'win-prefetch')?.sizeBytes).toBe(2048)
     expect(calls[0].script).toContain('__galeSizeDir')
   })
@@ -261,7 +261,7 @@ describe('runDeepCleanup', () => {
     ])
     expect(res[0].ok).toBe(true)
     expect(calls[0].script).toContain('find')
-    expect(calls[0].script).toContain('-mindepth 1 -delete')
+    expect(calls[0].script).toContain('-mindepth 1 -depth -delete')
   })
 
   it('执行器非零退出码返回失败回执', async () => {

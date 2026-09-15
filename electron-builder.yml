@@ -15,6 +15,13 @@ win:
   # 若在此写 arch: [x64, arm64]，NSIS 会额外生成一个合并两架构的 setup.exe
   # （artifactName 中 ${arch} 为空），导致产物冗余。
   target: nsis
+  # ★ 提权清单（写入 exe 的 requestedExecutionLevel）：
+  # 这里必须保持 asInvoker —— 若设为 requireAdministrator，每次启动都弹 UAC，
+  # 会直接破坏「开机自启」（登录项不会自动过 UAC）与自动更新体验；
+  # 且 Electron 无法在运行时给自身提权。正确姿势是：asInvoker 启动，
+  # 需要高权限时经 electron/services/elevate.ts 走 ShellExecute(runas) 按需提权，
+  # 用户也可在设置里点「以提升权限重启」整体切到管理员模式。
+  requestedExecutionLevel: asInvoker
   # 代码签名：由环境变量驱动，无需改本文件。
   #   CSC_LINK=<证书 .pfx/.p12 路径或 base64>、CSC_KEY_PASSWORD=<证书密码>
   # 两项为空时 electron-builder 自动跳过签名（当前默认），SmartScreen 提示"未知发布者"，属预期。
@@ -25,6 +32,14 @@ win:
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
+  # ★ 安装路径与安装期提权：
+  # 默认按「当前用户」安装到 %LOCALAPPDATA%\Programs\疾风引擎，无需管理员即可完成安装，
+  # 因此自动更新（electron-updater）也不会因权限不足失败。
+  # allowElevation=true 保留「为所有用户安装」的能力：用户在安装向导里选了 per-machine
+  # 或安装目录写到 Program Files 时，NSIS 才会申请一次 UAC 提权。
+  # 注意：安装包默认装到用户目录 ≠ 应用运行时有管理员权限，二者互不影响。
+  perMachine: false
+  allowElevation: true
   # 必须用 ASCII 文件名：electron-builder 在 latest.yml 中对非 ASCII artifactName
   # 会生成净化名（gale-engine-setup-x.y.z.exe），与实际产物名不一致会导致
   # electron-updater 下载 404。安装界面展示名仍取 productName（疾风引擎）。

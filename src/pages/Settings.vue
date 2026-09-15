@@ -14,15 +14,30 @@ const version = ref('')
 const checking = ref(false)
 const updateState = ref<AppUpdateResult>({ status: 'up-to-date' })
 const autoLaunch = ref(false)
+const elevated = ref(false)
+const elevateMsg = ref('')
 
 onMounted(async () => {
   try {
     version.value = await window.gale.app.getVersion()
     autoLaunch.value = await window.gale.app.getAutoLaunch()
+    elevated.value = await window.gale.app.isElevated()
   } catch {
     /* 初始化失败时静默降级，避免阻塞设置页 */
   }
 })
+
+/** 以提升权限重启本应用（Windows 弹 UAC；macOS 弹认证框；Linux 提示手动 sudo） */
+async function restartElevated(): Promise<void> {
+  elevateMsg.value = ''
+  try {
+    const r = await window.gale.app.restartElevated()
+    elevateMsg.value = r.message
+    if (r.ok) elevated.value = true
+  } catch (e) {
+    elevateMsg.value = e instanceof Error ? e.message : String(e)
+  }
+}
 
 async function checkUpdate(): Promise<void> {
   checking.value = true
@@ -109,6 +124,26 @@ function updateText(s: AppUpdateResult): string {
     </div>
 
     <div class="card">
+      <h2 class="card-title">管理员权限</h2>
+      <p class="row-line">
+        当前状态：
+        <strong :class="elevated ? 'ok-text' : 'warn-text'">
+          {{ elevated ? '已提升为管理员/root' : '普通权限' }}
+        </strong>
+      </p>
+      <p class="hint">
+        应用默认以普通权限启动（保证开机自启与自动更新可用）。遇到需要高权限的优化项时，
+        可在此重启为管理员模式；日常使用无需常驻管理员。
+      </p>
+      <div class="row">
+        <button class="btn btn-primary" :disabled="elevated" @click="restartElevated">
+          {{ elevated ? '已具备管理员权限' : '以管理员身份重启' }}
+        </button>
+      </div>
+      <p v-if="elevateMsg" class="hint" :class="{ bad: elevateMsg.includes('失败') }">{{ elevateMsg }}</p>
+    </div>
+
+    <div class="card">
       <h2 class="card-title">开机自启</h2>
       <label class="switch-line">
         <input type="checkbox" :checked="autoLaunch" @change="toggleAutoLaunch" />
@@ -170,6 +205,8 @@ function updateText(s: AppUpdateResult): string {
 .btn:disabled { opacity: .6; cursor: default; }
 .btn-primary { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); font-weight: 600; }
 .row-line { font-size: 13px; color: var(--text-secondary); margin: 0 0 12px; }
+.ok-text { color: #059669; }
+.warn-text { color: #d97706; }
 .switch-line { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); cursor: pointer; }
 
 @media (max-width: 640px) {
