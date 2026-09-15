@@ -207,6 +207,18 @@ export interface GaleApi {
     listStartup(): Promise<StartupItem[]>
     toggleStartup(id: string, enable: boolean, command?: string): Promise<StartupItem[]>
   }
+  disk: {
+    /** 各卷空间占用与空间不足预警（systeminformation 跨平台） */
+    volumes(): Promise<DiskVolume[]>
+    /** 扫描可深度释放的空间（更新缓存/系统临时/组件存储等，按平台分发） */
+    scanDeepCleanup(): Promise<DeepCleanupPlan[]>
+    /** 按选中的 id 执行深度清理，id 由服务端权威清单解析（客户端无法注入路径） */
+    runDeepCleanup(items: { id: string; kind: DeepCleanupKind; path: string }[]): Promise<CleanupResult[]>
+    /** 检查/在线修复指定卷的文件系统错误（Win chkdsk / mac diskutil；linux 诚实降级） */
+    checkVolume(mount: string, fix: boolean): Promise<DiskRepairResult>
+    /** 修复系统文件与 DLL（Win sfc /scannow 或 DISM RestoreHealth；非 Win 诚实降级） */
+    repairSystemFiles(kind: SystemRepairKind): Promise<DiskRepairResult>
+  }
   process: {
     list(sort?: ProcessSortKey): Promise<ProcessInfo[]>
     kill(pid: number): Promise<ProcessActionResult>
@@ -300,6 +312,68 @@ export interface StartupItem {
   location: 'HKCU' | 'HKLM' | 'launchd' | 'autostart'
   enabled: boolean
 }
+
+// ---- Disk（磁盘空间 / 深度释放 / 磁盘修复 / 系统文件修复）----
+/** 单个卷（分区/挂载点）的空间占用 */
+export interface DiskVolume {
+  /** 挂载点：Windows 为 "C:"，unix 为 "/" 等 */
+  mount: string
+  /** 文件系统/卷名（fsSize.fs，如 C:\ 或 /dev/disk1s1） */
+  label: string
+  /** 文件系统类型（NTFS / ext4 / apfs 等），无为 '' */
+  fsType: string
+  /** 总容量 bytes */
+  sizeBytes: number
+  /** 已用 bytes */
+  usedBytes: number
+  /** 可用 bytes */
+  freeBytes: number
+  /** 已用百分比 0-100 */
+  percent: number
+  /** 是否空间不足（已用 ≥90% 或可用 <10GiB） */
+  lowSpace: boolean
+}
+
+/** 深度清理项类型：path=删除目录内容；action=执行维护命令（如 DISM） */
+export type DeepCleanupKind = 'path' | 'action'
+
+/** 深度空间释放项（区别于优化中心的基础清理） */
+export interface DeepCleanupPlan {
+  id: string
+  kind: DeepCleanupKind
+  label: string
+  /** 说明文字（路径或命令作用） */
+  detail: string
+  /** 可释放字节数；action 项执行前无法预估为 0 */
+  sizeBytes: number
+  /** 是否需要管理员/root 权限 */
+  needsAdmin: boolean
+  /** 是否在安全白名单内（恒为 true，目录由服务端权威清单给出） */
+  safe: boolean
+  /** 是否默认勾选（改变系统行为的项如关闭休眠默认不勾） */
+  defaultChecked: boolean
+}
+
+/** 磁盘/系统文件修复结果（chkdsk / diskutil / sfc / dism） */
+export interface DiskRepairResult {
+  /** 操作目标（盘符 / 挂载点 / 工具名） */
+  target: string
+  /** 命令是否成功执行（退出码 0） */
+  ok: boolean
+  /** 是否检测到问题并完成修复 */
+  repaired: boolean
+  /** 一句话结论 */
+  summary: string
+  /** 原始输出尾部，供界面展示 */
+  output: string
+  /** 是否需要管理员/root 权限 */
+  needsAdmin: boolean
+  /** 当前平台不支持该能力（诚实降级，未执行任何命令） */
+  unsupported: boolean
+}
+
+/** 系统文件（含 DLL）修复工具：sfc=系统文件检查器；dism-restore=组件存储修复 */
+export type SystemRepairKind = 'sfc' | 'dism-restore'
 
 // ---- GameMode（游戏模式）----
 export interface GameModeStatus {

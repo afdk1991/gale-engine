@@ -51,6 +51,7 @@
 | ⚙️ 进程管理 | 进程列表（双采样 CPU% / 内存 / 状态，按 CPU/内存/名称排序）；结束、挂起/恢复进程（Win NtSuspendProcess / unix signal）、调整优先级；系统关键进程保护 |
 | 🌐 网络诊断 | Ping 延迟测试（最小/平均/最大延迟、丢包率，host 白名单防注入）；本机网卡名称/IP/状态（Win Test-Connection / unix ping+ip/ifconfig） |
 | 🧹 优化中心 | 垃圾清理（Temp / 回收站 / 浏览器缓存，白名单安全路径，逐项回执 + 失败隔离）；启动项管理（Win 注册表 / mac launchd plist / Linux XDG autostart） |
+| 💽 磁盘修复 | 各卷空间总览与空间不足预警（已用≥90% 或可用<10GiB）；深度空间释放（Win 更新缓存/系统临时/缩略图/错误报告/Prefetch + DISM 组件清理/休眠文件，mac 缓存日志 + brew，linux journal/apt）；文件系统检查与在线修复（Win chkdsk /scan、mac diskutil，linux 诚实降级）；DLL/系统文件修复（sfc /scannow + DISM RestoreHealth，仅 Windows） |
 | 🎮 游戏模式 | 一键切换高性能模式（Win powercfg 电源计划 / mac caffeinate 防休眠 / Linux CPU governor），退出自动还原，安全可逆 |
 | 🖥️ 服务管理 | 系统服务列表（Win Win32_Service / mac launchctl / Linux systemctl）；启动 / 停止、切换启动类型；系统关键服务保护 |
 | ⏰ 计划任务 | 计划任务列表（Win Get-ScheduledTask / mac launchd / Linux systemctl timer+cron）；启用 / 禁用、立即运行、结束运行中任务 |
@@ -63,10 +64,10 @@
 ## 技术架构
 
 - **框架**：Electron 33 + Vue 3 + TypeScript（electron-vite 多进程构建）
-- **渲染层**：`src/pages/` 十三个页面，左侧导航（720px 以下收窄为图标栏）
-- **主进程**：`electron/main.ts` 注册 42 个 IPC handler，`electron/preload.ts` 桥接为 `window.gale`（`contextIsolation: true`）
+- **渲染层**：`src/pages/` 十四个页面，左侧导航（720px 以下收窄为图标栏）
+- **主进程**：`electron/main.ts` 注册 47 个 IPC handler，`electron/preload.ts` 桥接为 `window.gale`（`contextIsolation: true`）
 - **服务层**：`electron/services/<module>.ts`，全部可注入依赖（fetcher / exec runner / storage），纯逻辑可单测；`shell.ts` 为平台抽象层（PAL），按 `process.platform` 选择 PowerShell / bash 执行器
-- **跨平台**：13 个 service 全部跨平台（9 个手动 win/unix 脚本分发 + 4 个天然跨平台库）；支持 Win10/11 + macOS + Linux，x64 + arm64
+- **跨平台**：14 个 service 全部跨平台（10 个手动 win/unix 脚本分发 + 4 个天然跨平台库）；支持 Win10/11 + macOS + Linux，x64 + arm64
 - **安全**：所有用户输入（进程 PID / 主机名 / 任务路径 / 服务名 / 规则名）经字符白名单校验，防 shell 注入
 - **持久化**：electron-store（设置与优化记录）
 - **自动更新**：electron-updater，指向 GitHub Releases（各平台 `latest*.yml` 驱动）
@@ -75,7 +76,7 @@
 ```
 项目002/
 ├── electron/            # 主进程 + 服务层（含 vitest 单测）
-│   └── services/        # monitor / hardware / process / network / optimizer / gamemode
+│   └── services/        # monitor / hardware / process / network / optimizer / disk / gamemode
 │                        # / toolbox / history / settings / winservices / tasks
 │                        # / firewall / autolaunch / update / shell(PAL)
 │                        #（每个模块配套 .test.ts）
@@ -95,7 +96,7 @@
 npm install              # 安装依赖
 npm run dev              # 启动开发模式（electron-vite dev）
 npm run typecheck        # vue-tsc 类型检查（发布准入）
-npm test                 # vitest 全量单测（当前 231 项全绿）
+npm test                 # vitest 全量单测（当前 265 项全绿）
 ```
 
 ## 打包与发布
@@ -158,7 +159,7 @@ npm run package
 
 ## 验证与验收
 
-- **单测**：`npm test`（231 项，覆盖全部 service 纯逻辑 + 跨平台分支 + 主题系统 + 侧边栏组件）
+- **单测**：`npm test`（265 项，覆盖全部 service 纯逻辑 + 跨平台分支 + 主题系统 + 侧边栏组件）
 - **类型**：`npm run typecheck`
 - **核心命令直测**：服务层脚本可在本机直接验证（Win PowerShell / mac-linux bash）
 - **主题持久化 E2E**（真实 GUI，Windows 实机）：

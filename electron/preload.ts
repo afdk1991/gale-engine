@@ -23,6 +23,13 @@ const api: GaleApi = {
     listStartup: () => ipcRenderer.invoke('optimizer:listStartup'),
     toggleStartup: (id, enable, command) => ipcRenderer.invoke('optimizer:toggleStartup', id, enable, command)
   },
+  disk: {
+    volumes: () => ipcRenderer.invoke('disk:volumes'),
+    scanDeepCleanup: () => ipcRenderer.invoke('disk:scanDeepCleanup'),
+    runDeepCleanup: (items) => ipcRenderer.invoke('disk:runDeepCleanup', items),
+    checkVolume: (mount, fix) => ipcRenderer.invoke('disk:checkVolume', mount, fix),
+    repairSystemFiles: (kind) => ipcRenderer.invoke('disk:repairSystemFiles', kind)
+  },
   gameMode: {
     status: () => ipcRenderer.invoke('gameMode:status'),
     boost: () => ipcRenderer.invoke('gameMode:boost'),

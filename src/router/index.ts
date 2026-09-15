@@ -9,6 +9,7 @@ export const router = createRouter({
     { path: '/process', name: 'process', component: () => import('../pages/Process.vue'), meta: { title: '进程管理' } },
     { path: '/network', name: 'network', component: () => import('../pages/Network.vue'), meta: { title: '网络诊断' } },
     { path: '/optimizer', name: 'optimizer', component: () => import('../pages/Optimizer.vue'), meta: { title: '优化中心' } },
+    { path: '/disk', name: 'disk', component: () => import('../pages/DiskRepair.vue'), meta: { title: '磁盘修复' } },
     { path: '/game', name: 'game', component: () => import('../pages/GameMode.vue'), meta: { title: '游戏模式' } },
     { path: '/services', name: 'services', component: () => import('../pages/Services.vue'), meta: { title: '服务管理' } },
     { path: '/tasks', name: 'tasks', component: () => import('../pages/Tasks.vue'), meta: { title: '计划任务' } },

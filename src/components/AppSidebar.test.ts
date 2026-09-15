@@ -13,6 +13,7 @@ function mountSidebar(): ReturnType<typeof mount> {
       { path: '/process', component: { render: () => null } },
       { path: '/network', component: { render: () => null } },
       { path: '/optimizer', component: { render: () => null } },
+      { path: '/disk', component: { render: () => null } },
       { path: '/game', component: { render: () => null } },
       { path: '/services', component: { render: () => null } },
       { path: '/tasks', component: { render: () => null } },
@@ -26,13 +27,13 @@ function mountSidebar(): ReturnType<typeof mount> {
 }
 
 describe('AppSidebar', () => {
-  it('渲染品牌名与 13 个导航项', () => {
+  it('渲染品牌名与 14 个导航项', () => {
     const wrapper = mountSidebar()
     expect(wrapper.find('.brand-name').text()).toBe('疾风引擎')
     const items = wrapper.findAll('.nav-item')
-    expect(items).toHaveLength(13)
+    expect(items).toHaveLength(14)
     expect(items.map((item) => item.text())).toEqual([
-      '首页', '硬件监控', '硬件信息', '进程管理', '网络诊断', '优化中心', '游戏模式', '服务管理', '计划任务', '防火墙', '工具箱', '优化记录', '设置'
+      '首页', '硬件监控', '硬件信息', '进程管理', '网络诊断', '优化中心', '磁盘修复', '游戏模式', '服务管理', '计划任务', '防火墙', '工具箱', '优化记录', '设置'
     ])
   })
 
@@ -40,7 +41,7 @@ describe('AppSidebar', () => {
     const wrapper = mountSidebar()
     const hrefs = wrapper.findAll('.nav-item').map((item) => item.attributes('href'))
     expect(hrefs).toEqual([
-      '#/', '#/monitor', '#/hardware', '#/process', '#/network', '#/optimizer', '#/game', '#/services', '#/tasks', '#/firewall', '#/toolbox', '#/history', '#/settings'
+      '#/', '#/monitor', '#/hardware', '#/process', '#/network', '#/optimizer', '#/disk', '#/game', '#/services', '#/tasks', '#/firewall', '#/toolbox', '#/history', '#/settings'
     ])
   })
 

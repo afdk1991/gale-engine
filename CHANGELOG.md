@@ -5,6 +5,26 @@
 
 ---
 
+## Unreleased（磁盘修复模块：空间总览 + 深度释放 + 磁盘修复 + DLL/系统文件修复）
+
+新增第 14 个页面「磁盘修复」与第 14 个 service `disk.ts`，沿用可注入依赖 + 平台脚本分发 + 白名单安全范式。
+
+### 新增功能
+- **磁盘空间总览**：基于 systeminformation fsSize 跨平台展示各卷容量/已用/剩余与占用条；已用 ≥90% 或可用 <10GiB 自动判定「空间不足」并顶部告警。
+- **硬盘空间深度释放**：服务端权威清单（客户端只能传 id，无法注入路径）+ 白名单纵深防御。
+  - Windows：Windows 更新下载缓存、系统临时文件、缩略图/图标缓存（仅删 thumbcache/iconcache）、错误报告 WER、传递优化缓存、Prefetch，以及 DISM `StartComponentCleanup` 组件存储清理与关闭休眠释放 hiberfil.sys（后两项需管理员、默认不勾、不用激进的 ResetBase）。
+  - macOS：~/Library/Caches、~/Library/Logs、`brew cleanup -s`。
+  - Linux：~/.cache、`journalctl --vacuum-size=100M`、`apt-get clean`。
+- **硬盘错误检查与修复**：Windows `chkdsk`（只读检查 / NTFS 在线 `/scan` 修复，不锁定、不自动安排重启，不做需离线的 /f /r）；macOS `diskutil verifyVolume/repairVolume`；Linux 挂载态 fsck 有数据风险，诚实降级不执行。盘符/挂载点经严格白名单校验防注入。
+- **DLL / 系统文件修复（仅 Windows）**：`sfc /scannow` 扫描还原受保护系统文件（含 DLL），`DISM /Online /Cleanup-Image /RestoreHealth` 修复组件存储；按中英文输出关键词给出「完整/已修复/需管理员」结论与原始输出尾部；非 Windows 诚实降级。
+
+### 工程
+- IPC 新增 5 个 handler（`disk:volumes/scanDeepCleanup/runDeepCleanup/checkVolume/repairSystemFiles`），共 47 个；preload `window.gale.disk` 与 `shared/types.ts` 契约同步扩展。
+- 新增路由 `/disk`、侧边栏第 14 项（硬盘图标），AppSidebar 测试同步更新为 14 项。
+- vitest 231 → 265（新增 disk.test.ts 34 项，覆盖空间阈值、三平台清单/脚本、白名单拒绝、chkdsk/diskutil、SFC/DISM 与诚实降级）；vue-tsc 0 错误；electron-vite build 通过。
+
+---
+
 ## v0.1.7 — 2026-09-08（跨平台收尾：测试修复 + 文档同步 + 落地页多平台）
 
 在 v0.1.6 跨平台代码 100% 完成基础上，修复跨平台测试在多环境下的失败、全面同步文档至跨平台现状、落地页适配多平台下载。

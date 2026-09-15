@@ -6,6 +6,7 @@ import { createMonitorService } from './services/monitor'
 import { createHardwareService } from './services/hardware'
 import { createHistoryService } from './services/history'
 import { createOptimizerService } from './services/optimizer'
+import { createDiskService } from './services/disk'
 import { createGameModeService } from './services/gamemode'
 import { createToolboxService } from './services/toolbox'
 import { createProcessService } from './services/process'
@@ -27,6 +28,7 @@ const monitorService = createMonitorService()
 const hardwareService = createHardwareService()
 const historyService = createHistoryService(store as unknown as StorageAdapter)
 const optimizerService = createOptimizerService(runner, platform)
+const diskService = createDiskService(runner, platform)
 const gameModeService = createGameModeService(runner, store as unknown as StorageAdapter)
 const toolboxService = createToolboxService(runner, platform)
 const processService = createProcessService(runner, platform)
@@ -58,6 +60,17 @@ function registerIpc(): void {
   ipcMain.handle('optimizer:toggleStartup', (_event, id, enable, command) =>
     optimizerService.toggleStartup(id, Boolean(enable), command)
   )
+  ipcMain.handle('disk:volumes', () => diskService.volumes())
+  ipcMain.handle('disk:scanDeepCleanup', () => diskService.scanDeepCleanup())
+  ipcMain.handle('disk:runDeepCleanup', (_event, items) => diskService.runDeepCleanup(items ?? []))
+  ipcMain.handle('disk:checkVolume', (_event, mount, fix) =>
+    diskService.checkVolume(String(mount), Boolean(fix))
+  )
+  ipcMain.handle('disk:repairSystemFiles', (_event, kind) => {
+    // 仅允许两个合法工具，其余一律收敛为 sfc，避免任意字符串透传
+    const k = String(kind) === 'dism-restore' ? 'dism-restore' : 'sfc'
+    return diskService.repairSystemFiles(k)
+  })
   ipcMain.handle('gameMode:status', () => gameModeService.status())
   ipcMain.handle('gameMode:boost', () => gameModeService.boost())
   ipcMain.handle('gameMode:restore', () => gameModeService.restore())
