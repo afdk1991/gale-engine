@@ -203,7 +203,7 @@
   <main>
     <section class="hero" id="download">
       <div class="wrap">
-        <span class="badge">v0.1.7 · 跨平台全平台支持</span>
+        <span class="badge">v0.1.8 · 新增磁盘修复模块</span>
         <h1>让你的电脑 <span class="grad">更快更稳</span></h1>
         <p>硬件监控与型号规格、进程管理、垃圾清理、游戏模式、网络诊断、服务管理、计划任务与防火墙，集成在一个轻量桌面应用里。支持 Windows / macOS / Linux（x64 + arm64）。</p>
 
@@ -213,7 +213,7 @@
             <button class="dl-tab" data-os="macos" role="tab">🍎 macOS</button>
             <button class="dl-tab" data-os="linux" role="tab">🐧 Linux</button>
           </div>
-          <div class="dl-panel" id="dl-panel"><div class="os-name">Windows</div><div class="os-hint">NSIS 安装包，支持自定义安装目录，双击即可安装</div><div class="arch-row"><div class="arch-card"><div class="arch-label">x64</div><div class="arch-desc">Intel / AMD 64 位</div><a class="btn btn-primary" href="https://github.com/afdk1991/gale-engine/releases/download/v0.1.7/gale-engine-0.1.7-x64-setup.exe" target="_blank" rel="noopener">⬇ 下载</a></div><div class="arch-card"><div class="arch-label">arm64</div><div class="arch-desc">Surface / 骁龙 ARM</div><a class="btn btn-primary" href="https://github.com/afdk1991/gale-engine/releases/download/v0.1.7/gale-engine-0.1.7-arm64-setup.exe" target="_blank" rel="noopener">⬇ 下载</a></div></div></div>
+          <div class="dl-panel" id="dl-panel"><div class="os-name">Windows</div><div class="os-hint">NSIS 安装包，支持自定义安装目录，双击即可安装</div><div class="arch-row"><div class="arch-card"><div class="arch-label">x64</div><div class="arch-desc">Intel / AMD 64 位</div><a class="btn btn-primary" href="https://github.com/afdk1991/gale-engine/releases/download/v0.1.8/gale-engine-0.1.8-x64-setup.exe" target="_blank" rel="noopener">⬇ 下载</a></div><div class="arch-card"><div class="arch-label">arm64</div><div class="arch-desc">Surface / 骁龙 ARM</div><a class="btn btn-primary" href="https://github.com/afdk1991/gale-engine/releases/download/v0.1.8/gale-engine-0.1.8-arm64-setup.exe" target="_blank" rel="noopener">⬇ 下载</a></div></div></div>
           <div class="dl-all">不确定选哪个？查看 <a href="https://github.com/afdk1991/gale-engine/releases/latest" target="_blank" rel="noopener">全部下载产物</a></div>
         </div>
         <div class="req">系统要求：Windows 10/11 · macOS 11+ · 主流 Linux（systemd）· 64 位或 ARM64 · 无需联网即可使用</div>
@@ -333,8 +333,18 @@ sudo dpkg -i gale-engine-*.deb</code></pre>
     <section class="section" id="changelog">
       <div class="wrap">
         <h2>更新日志</h2>
-        <p class="sub">v0.1.7 跨平台收尾发版说明</p>
+        <p class="sub">v0.1.8 磁盘修复模块发版说明</p>
         <div class="log reveal in">
+          <div class="log-item">
+            <div><span class="log-version">v0.1.8</span><span class="log-date">2026-09-15</span></div>
+            <ul>
+              <li>新增「磁盘修复」：各卷空间总览与空间不足预警（已用≥90% 或剩余&lt;10GiB）</li>
+              <li>硬盘空间深度释放：更新缓存/系统临时/缩略图/错误报告/Prefetch + DISM 组件清理/休眠文件</li>
+              <li>硬盘错误检查与在线修复（chkdsk /scan、diskutil），盘符白名单防注入</li>
+              <li>DLL / 系统文件修复：sfc /scannow 与 DISM RestoreHealth（Windows）</li>
+              <li>265 项自动化测试全绿，第 14 个页面、第 14 个跨平台 service</li>
+            </ul>
+          </div>
           <div class="log-item">
             <div><span class="log-version">v0.1.7</span><span class="log-date">2026-09-08</span></div>
             <ul>
@@ -448,7 +458,7 @@ sudo dpkg -i gale-engine-*.deb</code></pre>
         </div>
       </div>
       <div style="margin-top:24px;padding-top:18px;border-top:1px solid var(--border);text-align:center;">
-        <div>v0.1.7 · MIT License · 231 项自动化测试全绿</div>
+        <div>v0.1.8 · MIT License · 265 项自动化测试全绿</div>
         <div style="margin-top:6px;">© 2026 GaleEngine · 仅供学习与个人优化使用</div>
         <div class="beian" style="margin-top:10px;font-size:12px;color:var(--ink-3);">
           <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">苏ICP备2025161175号-2</a>
@@ -503,7 +513,7 @@ sudo dpkg -i gale-engine-*.deb</code></pre>
         });
       }
 
-      var V = '0.1.7';
+      var V = '0.1.8';
       var BASE = 'https://github.com/afdk1991/gale-engine/releases/download/v' + V + '/gale-engine-' + V + '-';
 
       // 资产名映射（exe/dmg 用 x64|arm64，AppImage 用 x86_64|arm64，deb 用 amd64）
