@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
 cask "gale-engine" do
-  version "0.1.7"
+  version "0.1.8"
 
   arch = Hardware::CPU.arm? ? "arm64" : "x64"
   sha256_map = {
-    "arm64" => "bd310847eaa12172c58a7199e505378586bc0fa82a1225ce4626a985bb6cd860",
-    "x64"   => "98e799348a9ae4635792efc18e0aea1706fdf9fca040f22a8e371da4af1e8ba1",
+    "arm64" => "490e01ce83344b1f327332801066d3af4ad8192587e0048cc1534545dc2d82e2",
+    "x64"   => "f4f7bda34fcac7ad0cf4561e92cd0106d3c557e0bff429b869c348cba9852ef9",
   }
 
   on_arm do
