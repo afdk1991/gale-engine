@@ -10,3 +10,5 @@ release-build/
 .edgeone/
 .env
 landing/release/
+__pycache__/
+*.pyc
