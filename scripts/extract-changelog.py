@@ -98,8 +98,10 @@ def collect_assets(dist_dir: str | None, assets_file: str | None) -> list[str]:
     names: list[str] = []
 
     if assets_file and os.path.isfile(assets_file):
-        with open(assets_file, encoding="utf-8") as fh:
-            names.extend(ln.strip() for ln in fh if ln.strip())
+        # utf-8-sig：容忍 Windows PowerShell 的 `Set-Content -Encoding utf8` 写入的 BOM，
+        # 否则首行资产名会带上 \ufeff 而匹配不到扩展名、被静默丢弃。
+        with open(assets_file, encoding="utf-8-sig") as fh:
+            names.extend(ln.strip().lstrip("\ufeff").strip() for ln in fh if ln.strip())
 
     if dist_dir and os.path.isdir(dist_dir):
         names.extend(sorted(os.listdir(dist_dir)))
@@ -204,6 +206,12 @@ def main() -> int:
     parser.add_argument("--assets-file", default=None)
     parser.add_argument("--mode", choices=("release", "backfill"), default="release")
     parser.add_argument("--repo", default=os.environ.get("GITHUB_REPOSITORY", "afdk1991/gale-engine"))
+    parser.add_argument(
+        "--out",
+        default=None,
+        help="写入指定文件（UTF-8 无 BOM）而不是 stdout。"
+        "PowerShell 直接调用时建议用它，避免控制台代码页导致的乱码。",
+    )
     args = parser.parse_args()
 
     version = args.tag[1:] if args.tag.startswith("v") else args.tag
@@ -243,7 +251,17 @@ def main() -> int:
         "",
     ]
 
-    sys.stdout.write("\n".join(parts))
+    md = "\n".join(parts)
+
+    if args.out:
+        # UTF-8 无 BOM：GitHub 会把 BOM 渲染成一个多余字符
+        with open(args.out, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(md)
+        # 走 stdout 而非 stderr：PowerShell 在 $ErrorActionPreference='Stop' 下
+        # 可能把原生命令的 stderr 当作错误处理。消息保持 ASCII 以免代码页问题。
+        print(f"[ok] wrote {args.out} ({len(md)} chars)")
+    else:
+        sys.stdout.write(md)
     return 0
 
 

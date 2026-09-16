@@ -1,7 +1,7 @@
 # 疾风引擎 (gale-engine) 更新日志
 
 > 版本格式遵循语义化版本（SemVer）：`主版本.次版本.修订`。
-> 发版流程：在 `package.json` 升级版本后打 Git tag（如 `v0.1.9`）并推送，`.github/workflows/release.yml` 自动在 win/macos/linux × x64/arm64 六矩阵构建并发布到 GitHub Releases；也可在本机运行 `scripts/publish-release.ps1` 构建上传。历史版本补发走 `release-backfill.yml`（基于 master 构建，仅按 tag 钉定版本号）。
+> 发版流程：在 `package.json` 升级版本后打 Git tag（如 `v0.1.9`）并推送，`.github/workflows/release.yml` 自动在 win/macos/linux × x64/arm64 六矩阵构建并发布到 GitHub Releases；也可在本机运行 `scripts/publish-release.ps1`（支持 `-DryRun` 预演）构建上传。历史版本补发走 `release-backfill.yml`（基于 master 构建，仅按 tag 钉定版本号）。各通道的 Release 说明统一由 `scripts/extract-changelog.py` 从本文件对应版本章节生成。
 
 ---
 
@@ -14,11 +14,15 @@
   - 新增 `scripts/extract-changelog.py`：从 `CHANGELOG.md` 按 tag 抽取对应版本章节，支持 `v0.1.5 / v0.1.4` 这类合并标题的 **token 级精确匹配**（避免 `v0.1.1` 误命中 `v0.1.10`），并按实际产物生成「平台 / 架构 / 文件」下载表。
   - `release.yml` 发布 job 改为 `body_path: release-notes.md`。⚠️ checkout 必须置于**下载构建产物之前**：`actions/checkout` 默认 `clean: true` 会执行 `git clean`，放在其后将清空 `dist/`。
   - `release-backfill.yml` 同步改用该脚本，并强制 `--mode backfill` 附「代码来源说明」。
+- **本地发布通道漏传更新元数据**：`scripts/publish-release.ps1` 原先只上传 `.exe`，缺 `latest.yml` 与 `.blockmap`。而本项目冒烟清单本来就要求「exe + `.blockmap` + `latest.yml` 三件齐全」，且 `electron-updater` 依赖 `latest.yml` 才能发现新版本——**走该通道发出去的版本，自动更新会静默失效**。现改为自动收集三者一并上传，缺失时明确告警；发版说明改由 `scripts/extract-changelog.py` 从 CHANGELOG 生成（不再是一行硬编码文案）；新增 `-DryRun` 预演模式，可在不产生任何远端写操作的前提下校验资产与说明。
+- **PowerShell 脚本编码**：`publish-release.ps1` 原为 UTF-8 **无 BOM** 且含中文注释，Windows PowerShell 5.1 会按 GBK 解码，存在「引号被吞、报解析错误」的风险（本项目已踩过此类坑）。已统一为 **UTF-8 with BOM + CRLF**，并在 PowerShell 5.1 下通过语法解析校验。
+- `scripts/extract-changelog.py` 新增 `--out`（直接落盘、不经控制台管道，避免代码页乱码）；资产清单读取改为 `utf-8-sig` 以容忍 BOM。
 
 ### 文档
 - **历史 Release 说明回填**：v0.1.0–v0.1.9 共 10 个 Release 的说明由 74–83 字符补全为 978–2513 字符，含真实下载表。
   - `v0.1.1`–`v0.1.6` 的说明中显式声明：本包由当前 `master` 源码构建、**并非该版本的历史快照**，并给出真实的 tag → commit → `package.json` 版本对照（其中 `v0.1.4` 与 `v0.1.5` 实际指向同一 commit）。
 - 落地页（EdgeOne Makers / `makers-rleonupjhtz0`）重新部署，线上版本更新至 v0.1.9。
+- **冒烟清单与实现脱节，已补全**：`docs/smoke-test-checklist.md` 修正多处过期内容——测试数 142 → **309**、产物名补上 `${arch}`、导航项 12 → **14**（补「硬件信息」「磁盘修复」）；并补齐此前**完全没有**覆盖的冒烟项：首页一键优化（v0.1.9）、硬件信息（v0.1.5）、磁盘修复（v0.1.8）；§五 新增「Release 说明非空」「Latest 归属正确」「本地通道必须含 `latest.yml`」等发版校验项。HTML 交互版经 `scripts/gen-smoke-html.py` 重新生成（**72 → 95 项**）。
 
 ---
 

@@ -6,13 +6,13 @@
 ## 一、构建与门禁（本机可验 ✅）
 
 - [ ] `npm run typecheck`（`vue-tsc --noEmit`）零错误
-- [ ] `npm run test`（`vitest run`）全绿（当前 142 项）
+- [ ] `npm run test`（`vitest run`）全绿（当前 309 项）
 - [ ] `npm run build`（`electron-vite build`）主进程/预加载/渲染产物均生成，无报错
 - [ ] 版本号 `package.json#version` 与计划发版号一致（当前 `0.1.9`）
 
 ## 二、安装包产出（本机可验 ✅）
 
-- [ ] 执行 `scripts/package-win.cmd` 产出 `release/gale-engine-${version}-setup.exe`（ASCII 文件名，保证 `latest.yml` 正确）
+- [ ] 执行 `scripts/package-win.cmd` 产出 `release/gale-engine-${version}-${arch}-setup.exe`（ASCII 文件名，保证 `latest.yml` 正确；`${arch}` 为 `x64` / `arm64`）
 - [ ] 安装包为合法 NSIS（PE 头 `MZ`、含 `NullsoftInst` 区段）
 - [ ] 镜像源 `ELECTRON_BUILDER_BINARIES_MIRROR` 带结尾斜杠（国内 `npmmirror` 同构路径）
 
@@ -30,14 +30,27 @@
 ## 四、GUI 冒烟（⚙️ 需 Windows 实机）
 
 ### 启动与导航
-- [ ] 双击 `gale-engine-${version}-setup.exe` 完成安装（支持自定义目录）
+- [ ] 双击 `gale-engine-${version}-${arch}-setup.exe` 完成安装（支持自定义目录；默认装到用户目录，不应弹 UAC）
 - [ ] 桌面/开始菜单快捷方式可启动应用，主窗口正常显示（1080×720）
-- [ ] 左侧 12 个导航项均可点击，路由切换无白屏：首页 / 硬件监控 / 进程管理 / 网络诊断 / 优化中心 / 游戏模式 / 服务管理 / 计划任务 / 防火墙 / 工具箱 / 优化记录 / 设置
+- [ ] 左侧 14 个导航项均可点击，路由切换无白屏：首页 / 硬件监控 / 硬件信息 / 进程管理 / 网络诊断 / 优化中心 / 磁盘修复 / 游戏模式 / 服务管理 / 计划任务 / 防火墙 / 工具箱 / 优化记录 / 设置
 - [ ] 窗口关闭后重新打开，主题（外观/强调色）设置保持
+
+### 首页一键优化（OneKey）
+- [ ] 首页 Hero 区显示「⚡ 一键优化」入口，点击后开始按序执行各可优化项
+- [ ] 执行过程中实时显示进度与当前执行项，不卡界面
+- [ ] 每项结果明确标注成功 / 失败 / 跳过，结束时给出汇总报告
+- [ ] 「停止」可中途取消：已完成项保留结果，未执行项标为跳过
+- [ ] 存在失败项时可「重试」，重试只针对失败项（默认 1 次，不无限循环）
+- [ ] 一键优化过程与结果在「优化记录」中留痕
 
 ### 硬件监控（Monitor）
 - [ ] 进入后每秒刷新一次；CPU 负载、内存占用、网络速率、温度/电量/运行时长均有数值
 - [ ] 磁盘列表显示各盘占用百分比；无任何字段为 `NaN` 或异常负值
+
+### 硬件信息（Hardware）
+- [ ] 主板 / CPU / 内存 / 显卡 / 显示器 / 硬盘 / 电源 七类信息均有展示，无 `undefined` 或空白项
+- [ ] CPU 显示型号与核心数；内存显示容量与频率；硬盘列出各盘型号与容量
+- [ ] 采集失败的字段显示明确占位（如「未知」），不导致整页崩溃或长时间白屏
 
 ### 进程管理（Process）
 - [ ] 进程列表按 CPU / 内存 / 名称排序切换正常，数值非 NaN
@@ -57,6 +70,16 @@
 - [ ] 勾选安全项 → 「清理选中项」回执成功计数；非安全路径项被禁用不可勾选
 - [ ] 「启动项管理」列出 HKCU/HKLM 启动项；禁用/启用切换后状态即时更新
 - [ ] 上述操作均在「优化记录」中留痕
+
+### 磁盘修复（Disk）
+- [ ] 空间总览列出各卷容量 / 已用 / 剩余与占用条；已用 ≥90% 或可用 <10GiB 时顶部出现「空间不足」告警
+- [ ] 深度释放：清单来自服务端白名单，客户端无法传路径；勾选后回执「实测释放字节数」
+- [ ] 深度释放默认**不勾选**需管理员的两项（DISM 组件清理、关闭休眠释放 hiberfil.sys）
+- [ ] 缩略图缓存清理执行后资源管理器外壳自动重启，桌面不消失
+- [ ] 硬盘错误检查：Windows 提供只读检查与 NTFS 在线 `/scan` 修复；**不应**出现需离线的 `/f` `/r` 选项
+- [ ] DLL / 系统文件修复（`sfc /scannow` + `DISM /RestoreHealth`）给出「完整 / 已修复 / 需管理员」结论与原始输出尾部
+- [ ] 非 Windows 平台对上述仅 Windows 的能力**诚实降级**（明确提示不支持），不静默失败
+- [ ] 盘符 / 挂载点经过白名单校验，注入型输入被拒绝且给出错误提示
 
 ### 游戏模式（GameMode）
 - [ ] 「进入游戏模式」后状态切换为已开启，提示切换到高性能计划
@@ -95,13 +118,24 @@
 - [ ] 外观（系统/浅色/深色）、强调色切换即时生效并持久化
 - [ ] 「优化记录」时间线按时间倒序；「清空记录」后列表为空
 
-## 五、CI 自动发布（⚙️ GitHub Actions）
+## 五、Release 发布（CI tag 触发 + 本地备用通道）
 
+### CI 自动发布（⚙️ GitHub Actions）
 - [ ] 推送 `v*` tag 触发 `.github/workflows/release.yml`，工作流 `completed / success`
-- [ ] Release 产物齐全：`gale-engine-${version}-setup.exe` + `.blockmap` + `latest.yml`
+- [ ] Release 产物齐全：`gale-engine-${version}-x64-setup.exe` / `-arm64-setup.exe` + 各自 `.blockmap` + `latest.yml`（macOS 为 `.dmg`，Linux 为 `.AppImage` / `.deb`）
 - [ ] `latest.yml` 内文件名与实际产物名一致（ASCII，避免净化名导致自动更新 404）
+- [ ] **Release 说明非空**：body 含本版本功能条目 + 下载表（由 `scripts/extract-changelog.py` 从 CHANGELOG 对应章节生成）
+  - ⚠️ 历史坑：曾用 `generate_release_notes`，无 PR 时只产出一行 `Full Changelog` 链接 → body 近乎空，而 `electron-updater` 把 body 当更新弹窗内容，导致用户点「检查更新」看不到任何说明
+  - 快速校验：`gh release view <tag> --json body --jq '.body' | wc -c` 应明显大于 200 字符
+- [ ] **Latest 归属正确**：`gh release list` 中最新版本为 `Latest`（补发/重建旧版本后易被旧版本抢走，修正：`gh release edit <tag> --latest`）
 - [ ] 应用内「设置 → 检查更新」能读到该 Release 版本
 - [ ] 仓库 Actions 权限已启用（Settings → Actions → Allow all actions）
+
+### 本地备用通道（CI 不可用时）
+- [ ] `pwsh scripts/publish-release.ps1 -DryRun` 预演通过，且不产生任何远端写操作
+- [ ] 预演输出的「待上传资产」中**必须包含 `latest.yml`**；缺失即自动更新链路失效
+- [ ] 正式发布后，Release 中 exe + `.blockmap` + `latest.yml` **三件齐全**（只传 exe 会让自动更新静默失效）
+- [ ] 历史版本补发走 `.github/workflows/release-backfill.yml`（基于 master 构建，说明中须含「代码来源声明」）
 
 ## 六、发布与托管（EdgeOne Makers）
 
