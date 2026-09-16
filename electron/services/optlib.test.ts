@@ -10,8 +10,8 @@ import {
 
 // ── fake 服务集（只实现能力用到的几个方法，注入式，不触真实系统）──
 const fakeScan: CleanupPlan[] = [
-  { id: 't1', kind: 'temp', path: 'C:\\TESTTEMP', safe: true },
-  { id: 'r1', kind: 'recycle', path: 'C:\\RECYCLE', safe: true }
+  { id: 't1', kind: 'temp', label: '临时文件', path: 'C:\\TESTTEMP', sizeBytes: 0, safe: true },
+  { id: 'r1', kind: 'recycle', label: '回收站', path: 'C:\\RECYCLE', sizeBytes: 0, safe: true }
 ]
 
 const deepScan: DeepCleanupPlan[] = [

@@ -1,11 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { createOneKeyService, NEED_ADMIN_REASON } from './onekey'
+import type { OptCapabilityMeta, OptOutcome } from '../../shared/types'
 import {
   createOptCache,
   type OptLibrary,
-  type OptCapabilityMeta,
-  type OptContext,
-  type OptOutcome
+  type OptContext
 } from './optlib'
 import type { OneKeyProgress } from '../../shared/types'
 
