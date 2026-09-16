@@ -188,6 +188,15 @@ def build_backfill_note(tag: str) -> str:
 
 
 def main() -> int:
+    # Windows runner 上 Python 的 stdout 默认走 locale 编码（如 cp1252），
+    # 输出中文会直接 UnicodeEncodeError 导致发版说明生成失败。
+    # CI 里本脚本的输出被重定向到文件，必须强制 UTF-8。
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except (AttributeError, ValueError):  # pragma: no cover - 极旧解释器/非标准流
+        pass
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--tag", required=True, help="如 v0.1.9")
     parser.add_argument("--changelog", default="CHANGELOG.md")
