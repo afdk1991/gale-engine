@@ -1,12 +1,11 @@
 name: Release — 补发历史版本安装包
 
-# 用途：为库里已存在、但从未产出安装包的旧 tag 补发 GitHub Release。
-# 背景：v0.1.0 时仓库还没有本工作流；v0.2.0 的 release.yml 依赖 package:ci 脚本（当时不存在），
-#       且 v0.2.0 的 artifactName 为非 ASCII，会导致 electron-updater 下载 404。
-# 做法：checkout 指定 tag 的源码，但用当前规范的打包配置覆盖，保证产物命名与自动更新源一致。
-# 重要：旧 tag（v0.1.1~v0.1.6）实际指向 package.json 为 0.2.0~0.5.0 的历史 commit，
-#       历史中并不存在 0.1.1~0.1.6 版本。故打包时强制以 tag 名推导版本号（v0.1.1→0.1.1）注入，
-#       使产物文件名为 gale-engine-0.1.x-setup.exe，与 tag 对齐。
+# 用途：为 v0.1.0~v0.1.7 等历史 tag 补发 GitHub Release 安装包。
+# 做法：checkout 当前 master（真实最新代码）构建，但以 tag 名推导版本号（v0.1.3→0.1.3）
+#       强制注入打包配置与 package.json，使产物文件名为 gale-engine-0.1.x-setup.exe。
+# 重要：仓库历史上 v0.1.1~v0.1.6 从未作为真实版本存在（版本是 0.1.0→0.2.0→0.3.0→0.4.0→0.5.0→…→0.1.7→0.1.8 跳进的），
+#       旧 tag 实际指向 0.2.0~0.5.0 的 commit。为避免发布任何历史旧代码，这里统一基于当前 master 源码构建，
+#       仅把版本号钉成 tag 对应值，保证整条阶梯安装包内含的都是真实最新代码。
 
 on:
   workflow_dispatch:
@@ -28,10 +27,10 @@ jobs:
     name: 补发 ${{ inputs.tag }} (windows-latest)
     runs-on: windows-latest
     steps:
-      - name: Checkout 指定 tag
+      - name: Checkout 当前 master（真实最新代码）
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.tag }}
+          ref: master
           fetch-depth: 0
 
       - name: Setup Node.js
@@ -54,9 +53,9 @@ jobs:
           REPO_NAME: ${{ github.event.repository.name }}
           TAG_NAME: ${{ inputs.tag }}
         run: |
-          # 从 tag（如 v0.1.1）推导纯版本号 0.1.1，强制用于打包，
-          # 以覆盖旧 commit 里错位的 package.json 版本
-          #（v0.1.1~v0.1.6 的 tag 实际指向 0.2.0~0.5.0 的 commit，历史中并无 0.1.1~0.1.6 版本）。
+          # 从 tag（如 v0.1.1）推导纯版本号 0.1.1，强制用于打包。
+          # 源码来自 master（当前真实代码），此处仅把版本号钉成 tag 对应值，
+          # 确保产物内部版本号/文件名与 tag 一致，且不含任何历史旧代码。
           VERSION="${TAG_NAME#v}"
           cat > electron-builder.yml <<'EOF'
           appId: com.galeengine.app
