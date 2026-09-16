@@ -69,7 +69,8 @@ jobs:
           electronLanguages:
             - zh-CN
           compression: maximum
-          version: VERSION_PLACEHOLDER
+          # 注意：electron-builder 配置不接受顶层 version 字段（schema 校验会失败）。
+          # 版本号统一由下方 sed 写入 package.json 后由工具链自动读取。
           win:
             target:
               - target: nsis
