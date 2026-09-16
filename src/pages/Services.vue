@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import type { ServiceStartupType, WinService } from '../../shared/types'
+import { useFlash } from '../composables/useFlash'
 
 const list = ref<WinService[]>([])
 const filter = ref('')
 const loading = ref(false)
 const error = ref<string | null>(null)
 const busy = ref<string | null>(null)
-const feedback = ref<Record<string, string>>({})
+const { feedback, tone, flash } = useFlash()
 const confirmStop = ref<string | null>(null)
 
 const statusClass: Record<string, string> = {
@@ -30,15 +31,6 @@ const filtered = () => {
   )
 }
 
-function flash(key: string, message: string): void {
-  feedback.value = { ...feedback.value, [key]: message }
-  setTimeout(() => {
-    const next = { ...feedback.value }
-    delete next[key]
-    feedback.value = next
-  }, 3000)
-}
-
 async function refresh(): Promise<void> {
   loading.value = true
   error.value = null
@@ -55,7 +47,7 @@ async function act(s: WinService, label: string, fn: () => Promise<{ ok: boolean
   busy.value = s.name
   try {
     const r = await fn()
-    flash(s.name, r.message)
+    flash(s.name, r.message, r.ok ? 'ok' : 'bad')
     if (r.ok) {
       await window.gale.history.add({ type: 'optimize', label: `${label}服务`, detail: s.name })
     }
@@ -132,7 +124,7 @@ onMounted(() => void refresh())
                   <button class="btn danger mini" :disabled="s.status !== 'Running' || !s.canStop || s.protected || busy === s.name" @click="confirmStop = s.name">停止</button>
                 </template>
               </div>
-              <p v-if="feedback[s.name]" class="fb">{{ feedback[s.name] }}</p>
+              <p v-if="feedback[s.name]" class="fb" :class="{ bad: tone(s.name) === 'bad' }">{{ feedback[s.name] }}</p>
             </td>
           </tr>
         </tbody>

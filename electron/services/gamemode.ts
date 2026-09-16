@@ -2,6 +2,7 @@ import type { GameModeStatus } from '../../shared/types'
 import type { ExecRunner, Platform } from './shell'
 import { detectPlatform } from './shell'
 import type { StorageAdapter } from './settings'
+import { parseActionOutcome } from './actionResult'
 
 /** 高性能电源计划（Windows 固定 GUID） */
 export const HIGH_PERFORMANCE_GUID = '8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c'
@@ -10,7 +11,10 @@ export const HIGH_PERFORMANCE_GUID = '8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c'
 export const PERFORMANCE_GOVERNOR = 'performance'
 
 const KEY_BOOSTED = 'gamemode.boosted'
+/** boost 前的电源方案 GUID（win32）或 governor 名（linux）；macOS 不使用此键 */
 const KEY_PREVIOUS = 'gamemode.previous'
+/** macOS caffeinate 进程 PID，独立于 KEY_PREVIOUS 存储，避免互相覆盖导致进程泄漏 */
+const KEY_CAFF_PID = 'gamemode.caffeinatePid'
 
 /** Windows 电源计划 GUID 解析 */
 const GUID_RE =
@@ -153,38 +157,54 @@ export function createGameModeService(
       active,
       activeName,
       boosted: read<boolean>(KEY_BOOSTED, false),
-      previous: read<string | null>(KEY_PREVIOUS, null)
+      // previous = 「还原所需的凭据」：win/linux 是 boost 前的方案/governor，
+      // macOS 是 caffeinate 的 PID。两者分键存储，对外仍统一由 previous 暴露。
+      previous:
+        platform === 'darwin'
+          ? read<string | null>(KEY_CAFF_PID, null)
+          : read<string | null>(KEY_PREVIOUS, null)
     }
   }
 
   const boost = async (): Promise<GameModeStatus> => {
     const cur = await status()
-    // 记录 boost 前的状态用于还原（仅首次 boost 时记录）
-    if (!cur.boosted && cur.active) {
+    // 记录 boost 前的状态用于还原（仅首次 boost 时记录）。
+    // macOS 没有"上一个电源方案"概念，靠 kill caffeinate 还原，故不占用 KEY_PREVIOUS。
+    if (platform !== 'darwin' && !cur.boosted && cur.active) {
       write(KEY_PREVIOUS, cur.active)
+    } else if (platform === 'darwin' && cur.boosted) {
+      // 重复 boost：先收掉上一轮残留的 caffeinate，避免多实例叠加
+      const oldPid = read<string | null>(KEY_CAFF_PID, null)
+      if (oldPid && /^\d+$/.test(oldPid)) {
+        await runner.run(buildRestoreScript(oldPid, platform)).catch(() => undefined)
+      }
     }
-    const { stdout } = await runner.run(buildBoostScript(platform))
-    // macOS：boost 脚本输出 PID，需存入 storage 供 restore kill
+    const { stdout, code } = await runner.run(buildBoostScript(platform))
+    // macOS：boost 脚本输出 PID，存入独立键供 restore kill
     if (platform === 'darwin') {
       const pid = stdout.trim()
       if (/^\d+$/.test(pid)) {
-        write(KEY_PREVIOUS, pid)
+        write(KEY_CAFF_PID, pid)
       }
     }
-    const ok = platform === 'darwin'
-      ? /^\d+$/.test(stdout.trim())
-      : stdout.includes('OK')
+    // 统一走严格回执解析（ERR: 优先 / OK 必须独立成行），不再用 includes('OK') 子串匹配
+    const ok = platform === 'darwin' ? /^\d+$/.test(stdout.trim()) : parseActionOutcome(stdout, code).ok
     write(KEY_BOOSTED, ok)
     return status()
   }
 
   const restore = async (): Promise<GameModeStatus> => {
-    const prev = read<string | null>(KEY_PREVIOUS, null)
+    // macOS 还原靠 caffeinate PID，其他平台还原靠 boost 前的电源方案/governor
+    const prev =
+      platform === 'darwin'
+        ? read<string | null>(KEY_CAFF_PID, null)
+        : read<string | null>(KEY_PREVIOUS, null)
     if (prev) {
       await runner.run(buildRestoreScript(prev, platform))
     }
     write(KEY_BOOSTED, false)
     write(KEY_PREVIOUS, null)
+    write(KEY_CAFF_PID, null)
     return status()
   }
 

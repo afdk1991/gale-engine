@@ -27,10 +27,22 @@ function buildPingScriptWin(host: string, count: number): string {
 $host_ = '${host}'
 $count = ${count}
 $r = Test-Connection -ComputerName $host_ -Count $count -ErrorAction SilentlyContinue
-if ($r) {
-  $times = @($r | ForEach-Object { [int]$_.ResponseTime })
+# ResponseTime 在某些情况下为 $null 或非数值（如 -Quiet、部分协议回退），
+# 直接 [int] 强转会抛错或静默变 0，这里逐个 TryParse 并丢弃非法值。
+$times = @(
+  $r | ForEach-Object {
+    $rt = $_.ResponseTime
+    if ($null -ne $rt) {
+      $d = 0.0
+      if ([double]::TryParse([string]$rt, [ref]$d) -and $d -ge 0) { $d }
+    }
+  }
+)
+if ($times.Count -gt 0) {
   $okN = $times.Count
   $loss = [math]::Round((($count - $okN) / $count) * 100.0, 1)
+  if ($loss -lt 0) { $loss = 0 }
+  if ($loss -gt 100) { $loss = 100 }
   [pscustomobject]@{
     min = ($times | Measure-Object -Minimum).Minimum
     avg = [math]::Round(($times | Measure-Object -Average).Average, 1)
@@ -72,7 +84,9 @@ min=$(echo "$times" | sort -n | head -1)
 max=$(echo "$times" | sort -n | tail -1)
 okN=$(echo "$times" | wc -l | tr -d ' ')
 avg=$(echo "$times" | awk '{s+=$1} END {printf "%.1f", s/NR}')
-loss=$(awk "BEGIN {printf \"%.1f\", ($count - $okN) / $count * 100}")
+# 丢包率钳制到 0-100：某些 ping 实现每包可能输出多行 time=，
+# 使 okN 大于 count 而算出负数丢包率
+loss=$(awk "BEGIN {l = ($count - $okN) / $count * 100; if (l < 0) l = 0; if (l > 100) l = 100; printf \"%.1f\", l}")
 echo "{\"min\":$min,\"avg\":$avg,\"max\":$max,\"loss\":$loss,\"ok\":true}"
 `
 }
@@ -162,14 +176,19 @@ export function parsePing(stdout: string, host: string): PingResult {
       const x = Number(v)
       return Number.isFinite(x) ? x : fallback
     }
-    const loss = n(raw.loss, 100)
-    const avg = n(raw.avg, 0)
-    const ok = raw.ok === true || raw.ok === 'True' || (loss < 100 && avg > 0)
+    // 契约范围在服务端兜底，不依赖脚本产出：
+    // 丢包率夹到 0-100，时延不允许为负（脚本按平台差异可能给出越界值）
+    const pct = (x: number): number => Math.min(100, Math.max(0, x))
+    const nonNeg = (x: number): number => (x > 0 ? x : 0)
+    const loss = pct(n(raw.loss, 100))
+    const avg = nonNeg(n(raw.avg, 0))
+    // ok 必须与 loss 自洽：丢包 100% 就是不通，不能因为脚本自称 ok 而翻转
+    const ok = loss < 100 && (raw.ok === true || raw.ok === 'True' || avg > 0)
     return {
       host,
-      min: n(raw.min, 0),
+      min: nonNeg(n(raw.min, 0)),
       avg,
-      max: n(raw.max, 0),
+      max: nonNeg(n(raw.max, 0)),
       loss,
       ok
     }

@@ -130,4 +130,109 @@ describe('createOptLibrary', () => {
     expect(caps).toHaveLength(9)
     expect(caps[0]).not.toBe(lib.listCapabilities()[0])
   })
+
+  it('listCapabilities 标注 source（内置为 builtin）', () => {
+    const { normal, admin } = makeServices()
+    const lib = createOptLibrary({ normal, admin, isElevated: async () => true })
+    expect(lib.listCapabilities().every((c) => c.source === 'builtin')).toBe(true)
+  })
+})
+
+// ── 远端能力接入（可独立更新的能力库）──────────────────────────
+describe('createOptLibrary + 远端能力', () => {
+  const remoteCap = (id: string) => ({
+    meta: {
+      id,
+      label: `远端 ${id}`,
+      description: '由远端清单下发',
+      needsAdmin: false,
+      defaultEnabled: false,
+      source: 'remote' as const
+    },
+    run: async () => ({ status: 'success' as const, releasedBytes: 4096 })
+  })
+
+  it('远端能力出现在清单中并可被 runSingle 调用', async () => {
+    const { normal, admin } = makeServices()
+    const lib = createOptLibrary({
+      normal,
+      admin,
+      isElevated: async () => true,
+      externalCapabilities: () => [remoteCap('meta-remote-a')]
+    })
+    const caps = lib.listCapabilities()
+    expect(caps).toHaveLength(10)
+    expect(caps.find((c) => c.id === 'meta-remote-a')?.source).toBe('remote')
+
+    const o = await lib.runSingle('meta-remote-a')
+    expect(o.status).toBe('success')
+    expect(o.releasedBytes).toBe(4096)
+  })
+
+  // ★ 安全断言：远端 id 与内置重名时，内置实现必须胜出
+  it('远端能力与内置 id 重名时被忽略，内置实现不被替换', async () => {
+    const { normal, admin } = makeServices()
+    const lib = createOptLibrary({
+      normal,
+      admin,
+      isElevated: async () => true,
+      // 伪装成 clean-temp 的恶意实现
+      externalCapabilities: () => [remoteCap('clean-temp')]
+    })
+    const caps = lib.listCapabilities()
+    expect(caps).toHaveLength(9) // 未新增
+    expect(caps.find((c) => c.id === 'clean-temp')?.source).toBe('builtin')
+
+    // 执行的仍是内置实现（走 optimizer.runCleanup → 1024），而非远端的 4096
+    const o = await lib.runSingle('clean-temp')
+    expect(o.releasedBytes).toBe(1024)
+  })
+
+  it('外部能力实时求值：清单生效后无需重启即可用上新能力', async () => {
+    const { normal, admin } = makeServices()
+    let external: ReturnType<typeof remoteCap>[] = []
+    const lib = createOptLibrary({
+      normal,
+      admin,
+      isElevated: async () => true,
+      externalCapabilities: () => external
+    })
+    expect(lib.listCapabilities()).toHaveLength(9)
+    external = [remoteCap('meta-late')]
+    expect(lib.listCapabilities()).toHaveLength(10)
+  })
+
+  it('metaOverrides 覆盖文案与默认勾选，但不改变实现', async () => {
+    const { normal, admin } = makeServices()
+    const lib = createOptLibrary({
+      normal,
+      admin,
+      isElevated: async () => true,
+      metaOverrides: () => new Map([['clean-temp', { label: '换个名字', defaultEnabled: false }]])
+    })
+    const c = lib.listCapabilities().find((x) => x.id === 'clean-temp')!
+    expect(c.label).toBe('换个名字')
+    expect(c.defaultEnabled).toBe(false)
+    // 实现未变：仍是内置的 optimizer.runCleanup
+    expect((await lib.runSingle('clean-temp')).releasedBytes).toBe(1024)
+  })
+
+  it('metaOverrides 不能凭空创造能力，也不能放宽 needsAdmin', () => {
+    const { normal, admin } = makeServices()
+    const lib = createOptLibrary({
+      normal,
+      admin,
+      isElevated: async () => true,
+      metaOverrides: () =>
+        new Map([
+          ['does-not-exist', { label: '幽灵' }],
+          ['deep-update-cache', { needsAdmin: false, label: '降权尝试' }]
+        ])
+    })
+    const caps = lib.listCapabilities()
+    expect(caps.find((c) => c.id === 'does-not-exist')).toBeUndefined()
+    const target = caps.find((c) => c.id === 'deep-update-cache')!
+    expect(target.label).toBe('降权尝试') // 文案可改
+    expect(target.needsAdmin).toBe(true) // 提权边界不可被远端放宽
+  })
 })

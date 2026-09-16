@@ -13,8 +13,34 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # 发版前置门禁：类型检查 + 单元测试必须全绿，才允许进入下面六矩阵构建。
+  # 早前本工作流只负责打包，类型错误（如 preload 契约与 shared/types.ts 不同步）
+  # 与测试回归只能靠本地手动跑 vue-tsc / vitest 才会暴露。
+  quality:
+    name: 质量门禁（类型检查 + 单元测试）
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 类型检查（vue-tsc --noEmit）
+        run: npx vue-tsc --noEmit
+
+      - name: 单元测试（vitest）
+        run: npx vitest run --reporter=dot
+
   build:
     name: 构建 ${{ matrix.os }} / ${{ matrix.arch }}
+    needs: quality
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false      # 单平台失败不取消其他平台，便于定位

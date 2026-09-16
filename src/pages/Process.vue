@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import type { ProcessActionResult, ProcessInfo, ProcessPriorityLevel, ProcessSortKey } from '../../shared/types'
+import { useFlash } from '../composables/useFlash'
 
 const list = ref<ProcessInfo[]>([])
 const sort = ref<ProcessSortKey>('cpu')
 const loading = ref(false)
 const error = ref<string | null>(null)
 const busy = ref<number | null>(null)
-const feedback = ref<Record<number, string>>({})
+const { feedback, tone, flash } = useFlash()
 const confirmKill = ref<number | null>(null)
 
 const priorityLevels: { value: ProcessPriorityLevel; label: string }[] = [
@@ -30,15 +31,6 @@ async function refresh(): Promise<void> {
   }
 }
 
-function flash(pid: number, message: string): void {
-  feedback.value = { ...feedback.value, [pid]: message }
-  setTimeout(() => {
-    const next = { ...feedback.value }
-    delete next[pid]
-    feedback.value = next
-  }, 3000)
-}
-
 async function act(
   pid: number,
   label: string,
@@ -48,7 +40,7 @@ async function act(
   busy.value = pid
   try {
     const r = await fn()
-    flash(pid, r.message)
+    flash(pid, r.message, r.ok ? 'ok' : 'bad')
     if (r.ok) {
       await window.gale.history.add({ type: 'optimize', label: historyLabel, detail: `PID ${pid} ${label}` })
     }
@@ -147,7 +139,7 @@ onMounted(() => void refresh())
                   </select>
                 </template>
               </div>
-              <p v-if="feedback[p.pid]" class="fb" :class="{ bad: feedback[p.pid].startsWith('✗') || feedback[p.pid].includes('失败') || feedback[p.pid].includes('拒绝') }">
+              <p v-if="feedback[p.pid]" class="fb" :class="{ bad: tone(p.pid) === 'bad' }">
                 {{ feedback[p.pid] }}
               </p>
             </td>

@@ -1,0 +1,42 @@
+name: CI — 类型检查与单元测试
+
+# 日常质量门禁：push / PR 到主分支时跑类型检查 + 单元测试。
+# 注意：vue-tsc 能发现 vitest 覆盖不到的类型问题（例如 preload 契约与 shared/types.ts
+# 不同步），此前正是因为没有常驻 CI，这类错误只在本地手动跑时才会暴露。
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: 类型检查 + 单元测试
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 类型检查（vue-tsc --noEmit）
+        run: npx vue-tsc --noEmit
+
+      - name: 单元测试（vitest）
+        run: npx vitest run --reporter=dot

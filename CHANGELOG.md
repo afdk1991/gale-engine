@@ -9,14 +9,45 @@
 
 以下改进已提交，将随下次 **v0.1.10** 发布合并进版本说明：
 
+### 新增功能
+
+- **三端自动更新真正打通（此前 macOS / Linux 实际不可用）**：
+  - macOS 构建目标补 `zip`。**electron-updater 在 macOS 上只认 zip**（靠 zip 做增量替换），原来只出 `dmg` 会导致「提示有新版本，却永远装不上」。dmg 仍保留给用户手动拖拽安装，两者并存。
+  - Linux 区分安装方式：仅 **AppImage** 可应用内自更新（依赖 `APPIMAGE` 环境变量定位自身）；`deb/rpm` 归系统包管理器管辖，应用内诚实降级并给出可执行命令（`sudo apt update && sudo apt install --only-upgrade …`）与改用 AppImage 的建议。
+  - 未打包的开发模式明确提示「没有可用更新源」，不再出现「点了没反应」。
+  - `latest*.yml` 缺对应平台元数据、macOS 签名失败、权限不足、网络不可达等底层错误统一翻译成**可行动的**中文提示（`update.capability.ts`）。
+- **更新入口铺到所有端 + 全自动流程**：新增 `src/composables/useAppUpdate.ts`（模块级单例状态 + 事件订阅）与 `src/components/UpdateCard.vue`。
+  - 三个入口：**侧边栏底部**、**首页**（compact 版）、**设置页**（完整版，含偏好开关），任意页面都能检查更新。
+  - 检查→发现→**自动下载（带真实进度条）**→下载完可一键「立即安装并重启」；失败可重试；启动后按偏好后台静默自检（失败不打扰用户、不重试轰炸）。
+  - 偏好落盘：启动自动检查 / 自动下载 / 退出时自动安装，经 `updater.configure()` 下发到底层。
+  - 主进程把更新状态广播到所有窗口，任意页面打开都能直接读到当前进展。
+- **DLL 缺失检测与修复（新页面「DLL 修复」）**：新增 `electron/services/dllrepair.ts`。
+  - Windows 扫描 `System32` / `SysWOW64` 关键系统 DLL、**VC++ 运行库**（`msvcp140` / `vcruntime140` / `vcruntime140_1` / `concrt140` 等）与 UCRT，做「存在 / **位数不全（32 位有 64 位无）** / 缺失」三态判定，并读取 VC++ Redistributable 注册表版本。
+  - 按缺失项产出可执行修复建议：`sfc /scannow`、`DISM /RestoreHealth`、`winget install` 或官方下载链接；修复统一走既有**提权通道**（UAC），不在无权限时静默失败。
+  - macOS / Linux 诚实降级为**只读共享库探针**（macOS 查 `/usr/lib` 系统库，Linux 用 `ldconfig -p` 解析缓存），并明确说明「系统库由包管理器/系统维护，本工具不改动」。
+  - 页面内附 DLL（动态链接库）知识说明（核心作用 / 常见使用场景），把概念与工具能力对应起来。
+- **能力库改造为可独立更新（本项目的「DLL」语义落地）**：新增 `electron/services/capabilityFeed.ts` 与 `capabilities/manifest.json`。
+  - 这正是 DLL 的核心价值——**替换某个模块即可升级该功能，无需重新编译整个程序**：新增/调整一项优化能力，只需更新远端清单，**不必重新发版应用**；清单生效后无需重启即可用上新能力。
+  - ★ **安全边界（不可放宽）**：远端清单**不能下发可执行代码**。它只能 ① 覆盖内置能力的 `label`/`description`/`defaultEnabled`；② 用**配方（recipe）编排白名单内的既有服务方法**，参数逐字段校验，未知调用**整条拒绝**。
+    - 内置能力的**实现不可被替换**（命中内置 id 且带 `recipe` 直接拒绝），重名远端能力被忽略；`needsAdmin` 不允许被远端修改——**提权边界只能由本地代码定义**；远端新能力**默认不纳入一键优化**，须显式 `defaultEnabled: true`。
+  - 防护：清单 `schema` 版本校验、体积上限 256 KB、条目上限 200、单配方步数上限 8、`libraryVersion` **只增不减**（防降级攻击）、`minAppVersion` 过滤；任何整体性问题一律**整份作废并回落内置**，被拒条目及原因在界面**如实列出**（不静默吞掉）。
+  - 界面：优化中心新增「能力库（可独立更新）」面板，展示来源（内置/远端）、版本、可用能力数、远端能力清单、被拒条目；支持检查更新 / 应用 / **回退内置**。
+
 ### 修复
+- **「已是最新版本」永远不会出现、永远误报有新版本**：`autoUpdater.checkForUpdates()` 在「无更新」时**并不返回 null**，而是返回 `{ isUpdateAvailable: false, versionInfo: … }`，且此时 `versionInfo` 装的是仓库里的**最新版**信息。原实现「非 null 即视为有更新」，导致该状态机分支实际不可达。现抽出纯函数 `interpretCheckResult()` 统一解释（并区分 `null`=更新器未启用），补回归单测。
+- **能力库 id 被静默截断（安全缺陷）**：`validateRemoteCapability` 原先用 `asString(o.id, 48)` 先截断再校验正则，导致 ① 超长 id 被截断后反而通过；② 前 48 位相同的不同 id **碰撞成同一条能力**（可被用来覆盖/绕过校验）。现改为超长直接判非法，`libraryVersion` / `minAppVersion` 同理。
+- **本地发布通道漏传更新元数据**：`scripts/publish-release.ps1` 原先只上传 `.exe`，缺 `latest.yml` 与 `.blockmap`。而本项目冒烟清单本来就要求「exe + `.blockmap` + `latest.yml` 三件齐全」，且 `electron-updater` 依赖 `latest.yml` 才能发现新版本——**走该通道发出去的版本，自动更新会静默失效**。现改为自动收集三者一并上传，缺失时明确告警；发版说明改由 `scripts/extract-changelog.py` 从 CHANGELOG 生成（不再是一行硬编码文案）；新增 `-DryRun` 预演模式，可在不产生任何远端写操作的前提下校验资产与说明。
+- **PowerShell 脚本编码**：`publish-release.ps1` 原为 UTF-8 **无 BOM** 且含中文注释，Windows PowerShell 5.1 会按 GBK 解码，存在「引号被吞、报解析错误」的风险（本项目已踩过此类坑）。已统一为 **UTF-8 with BOM + CRLF**，并在 PowerShell 5.1 下通过语法解析校验。
+- `scripts/extract-changelog.py` 新增 `--out`（直接落盘、不经控制台管道，避免代码页乱码）；资产清单读取改为 `utf-8-sig` 以容忍 BOM。
 - **GitHub Release 说明为空**（影响自动更新体验）：`release.yml` 原使用 `generate_release_notes`，仓库无 PR 时只会生成一行 `Full Changelog` 链接，使 10 个 Release 的 body 全部为空。而 `electron-updater` 会把 Release body 当作更新弹窗的 `releaseNotes` 展示——即用户点「检查更新」时看不到任何发版内容。
   - 新增 `scripts/extract-changelog.py`：从 `CHANGELOG.md` 按 tag 抽取对应版本章节，支持 `v0.1.5 / v0.1.4` 这类合并标题的 **token 级精确匹配**（避免 `v0.1.1` 误命中 `v0.1.10`），并按实际产物生成「平台 / 架构 / 文件」下载表。
   - `release.yml` 发布 job 改为 `body_path: release-notes.md`。⚠️ checkout 必须置于**下载构建产物之前**：`actions/checkout` 默认 `clean: true` 会执行 `git clean`，放在其后将清空 `dist/`。
   - `release-backfill.yml` 同步改用该脚本，并强制 `--mode backfill` 附「代码来源说明」。
-- **本地发布通道漏传更新元数据**：`scripts/publish-release.ps1` 原先只上传 `.exe`，缺 `latest.yml` 与 `.blockmap`。而本项目冒烟清单本来就要求「exe + `.blockmap` + `latest.yml` 三件齐全」，且 `electron-updater` 依赖 `latest.yml` 才能发现新版本——**走该通道发出去的版本，自动更新会静默失效**。现改为自动收集三者一并上传，缺失时明确告警；发版说明改由 `scripts/extract-changelog.py` 从 CHANGELOG 生成（不再是一行硬编码文案）；新增 `-DryRun` 预演模式，可在不产生任何远端写操作的前提下校验资产与说明。
-- **PowerShell 脚本编码**：`publish-release.ps1` 原为 UTF-8 **无 BOM** 且含中文注释，Windows PowerShell 5.1 会按 GBK 解码，存在「引号被吞、报解析错误」的风险（本项目已踩过此类坑）。已统一为 **UTF-8 with BOM + CRLF**，并在 PowerShell 5.1 下通过语法解析校验。
-- `scripts/extract-changelog.py` 新增 `--out`（直接落盘、不经控制台管道，避免代码页乱码）；资产清单读取改为 `utf-8-sig` 以容忍 BOM。
+
+### 工程
+- `shared/types.ts` 新增更新状态机（`UpdateState` / 进度 / 能力探测）、`AppUpdatePrefs`、DLL 扫描与修复、能力库清单与状态等契约；IPC 新增 `optlib:libraryState/checkLibrary/applyLibrary/resetLibrary` 与 `dll:*`、`app:openExternal`（带 host 白名单）等 handler。
+- 新增单测：`update.capability.test.ts`（返回值解释 + 平台能力探测 + 错误翻译）、`capabilityFeed.test.ts`（清单校验 / 配方白名单 / 安全边界 / 降级回退）、`dllrepair.test.ts`、`optlib.test.ts` 扩充远端能力与覆盖边界用例。vitest 309 → **417**。
+- `capabilities/README.md` 说明清单结构、**安全边界**与配方白名单（白名单权威来源是代码里的 `createRecipeRuntime()`，只能由主程序扩大、不能由远端扩大）。
 
 ### 文档
 - **历史 Release 说明回填**：v0.1.0–v0.1.9 共 10 个 Release 的说明由 74–83 字符补全为 978–2513 字符，含真实下载表。

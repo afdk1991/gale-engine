@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import type { SystemSnapshot } from '../../shared/types'
 import OneKeyPanel from '../components/OneKeyPanel.vue'
+import UpdateCard from '../components/UpdateCard.vue'
 import { useOneKey } from '../composables/useOneKey'
+import { usePolling } from '../composables/usePolling'
 
 // 一键优化的状态由 composable 单例持有，Hero 按钮与下方面板共用同一份
 const { running, busy, start } = useOneKey()
@@ -10,7 +12,6 @@ const { running, busy, start } = useOneKey()
 const snap = ref<SystemSnapshot | null>(null)
 const version = ref('')
 const error = ref<string | null>(null)
-let timer: ReturnType<typeof setInterval> | null = null
 
 function fmtSpeed(bytesPerSec: number): string {
   const kb = bytesPerSec / 1024
@@ -48,23 +49,27 @@ const scoreClass = computed<string>(() => {
 async function refresh(): Promise<void> {
   try {
     snap.value = await window.gale.monitor.snapshot()
+    error.value = null
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e)
   }
 }
 
+// 2s 一次；采集慢时跳过本次而不是叠加请求（原先 setInterval 无守卫会持续堆积）
+const poll = usePolling(refresh, 2000)
+
 onMounted(async () => {
   void refresh()
-  timer = setInterval(() => void refresh(), 2000)
+  poll.start()
   try {
     version.value = await window.gale.app.getVersion()
   } catch {
     /* 版本获取失败时不影响主页展示 */
   }
 })
-onUnmounted(() => {
-  if (timer) clearInterval(timer)
-})
+
+/** 降级提示：单项采集失败时如实标注，而不是整块报错 */
+const degradedText = (): string => (snap.value?.degraded ?? []).join(' / ')
 </script>
 
 <template>
@@ -95,6 +100,9 @@ onUnmounted(() => {
     </div>
 
     <p v-if="error" class="error">监控数据获取失败：{{ error }}</p>
+    <p v-else-if="degradedText()" class="degraded">
+      部分数据采集失败（{{ degradedText() }}），已按 0 显示；其余指标正常
+    </p>
 
     <!-- 首页一键优化入口：进度、逐项结果、汇总报告、中途停止与失败重试 -->
     <OneKeyPanel />
@@ -120,6 +128,10 @@ onUnmounted(() => {
       </div>
     </div>
 
+    <h2 class="section-title">更新</h2>
+    <!-- 首页也是「端」之一：点检查更新即自动下载，下载完可直接安装 -->
+    <UpdateCard compact />
+
     <h2 class="section-title">功能模块</h2>
     <div class="modules">
       <RouterLink class="module" to="/monitor">
@@ -131,6 +143,11 @@ onUnmounted(() => {
         <span class="module-icon">🧹</span>
         <span class="module-name">优化中心</span>
         <span class="module-desc">一键清理系统垃圾、管理开机启动项</span>
+      </RouterLink>
+      <RouterLink class="module" to="/dll">
+        <span class="module-icon">🧩</span>
+        <span class="module-name">DLL 修复</span>
+        <span class="module-desc">检测缺失的动态链接库并给出修复方案</span>
       </RouterLink>
       <RouterLink class="module" to="/game">
         <span class="module-icon">🎮</span>
@@ -244,6 +261,7 @@ onUnmounted(() => {
 .module-desc { font-size: 12px; color: var(--text-tertiary); line-height: 1.5; }
 
 .error { color: #ef4444; font-size: 13px; margin-bottom: 12px; }
+.degraded { color: #f59e0b; font-size: 13px; margin-bottom: 12px; }
 
 @media (max-width: 900px) {
   .modules { grid-template-columns: repeat(2, minmax(0, 1fr)); }

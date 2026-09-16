@@ -48,12 +48,19 @@ nsis:
 # ── macOS ─────────────────────────────────────────────────────
 mac:
   # 不指定 arch：CI 通过 --x64 / --arm64 显式控制，避免产生合并产物。
-  target: dmg
+  # ★ 必须同时产出 dmg 与 zip：
+  #   dmg 是给用户手动拖拽安装的；而 electron-updater 在 macOS 上**只认 zip**
+  #   （它用 zip 做增量替换）。只出 dmg 会导致「检查更新提示有新版本，却永远装不上」。
+  target:
+    - dmg
+    - zip
   category: public.app-category.utilities
   # 签名与公证：配置 Apple Developer 证书后由 CI 自动签名（CSC_LINK/CSC_KEY_PASSWORD 同 Win 复用）。
   # 公证需额外设置 APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD / APPLE_TEAM_ID 环境变量。
   # identity: null 表示无证书时显式跳过签名（ad-hoc 签名），避免 CI 在未配置 CSC_LINK 时
   # 因 hardenedRuntime+entitlements 在 Apple Silicon (arm64) 上构建失败。
+  # 注意：未签名的应用会被 macOS 拒绝自动替换，此时自动更新会失败——
+  # 应用内已把该错误翻译为「请手动下载 dmg 覆盖安装」，见 update.capability.ts。
   identity: null
   hardenedRuntime: false
   gatekeeperAssess: false

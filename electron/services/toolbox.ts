@@ -1,10 +1,19 @@
 import type { ToolResult } from '../../shared/types'
 import type { ExecRunner, Platform } from './shell'
 import { detectPlatform } from './shell'
+import { parseActionOutcome } from './actionResult'
 
 const DARK_KEY = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize'
 
-/** 统一包装：执行脚本，按退出码返回 ToolResult */
+/**
+ * 统一包装：执行脚本并判定结果。
+ *
+ * 脚本有两种风格，必须都支持：
+ *   1. 带回执令牌：`OK` / `OK:细节` / `ERR:原因`（多数脚本）；
+ *   2. 只有退出码：如 `ipconfig /flushdns`，既无 OK 也无 ERR。
+ * 同时存在时**以令牌为准** —— 否则 `try { ...; "OK" } catch { "ERR:..." }` 这类写法
+ * 在失败分支只输出字符串、退出码仍为 0，会被误判成功（回收站清空失败却报「已清空」）。
+ */
 async function runTool(
   runner: ExecRunner,
   script: string,
@@ -12,8 +21,14 @@ async function runTool(
   failMsg: string
 ): Promise<ToolResult> {
   const { code, stdout, stderr } = await runner.run(script)
-  const ok = code === 0
-  return { ok, message: ok ? okMsg : (stderr.trim() || stdout.trim() || failMsg) }
+  const text = String(stdout ?? '')
+  const tokenized = /^[ \t]*(OK(?::.*)?|ERR:.*)$/m.test(text)
+  if (tokenized) {
+    const outcome = parseActionOutcome(stdout, code)
+    return outcome.ok ? { ok: true, message: okMsg } : { ok: false, message: outcome.message }
+  }
+  if (code === 0) return { ok: true, message: okMsg }
+  return { ok: false, message: stderr.trim() || text.trim() || failMsg }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -25,7 +40,13 @@ export function buildFlushDnsScript(platform: Platform): string {
     case 'win32':
       return 'ipconfig /flushdns'
     case 'darwin':
-      return `dscacheutil -flushcache >/dev/null 2>&1; killall -HUP mDNSResponder >/dev/null 2>&1 || true; echo "OK"`
+      // 原写法 `... ; echo "OK"` 无条件成功：dscacheutil 失败也报「DNS 缓存已刷新」。
+      // runTool 按退出码判定，故失败必须显式 exit 1。
+      return (
+        'if dscacheutil -flushcache >/dev/null 2>&1; then ' +
+        'killall -HUP mDNSResponder >/dev/null 2>&1 || true; echo "OK"; ' +
+        'else echo "ERR:刷新 DNS 缓存失败（dscacheutil 执行失败）"; exit 1; fi'
+      )
     default:
       // Linux：resolvectl（systemd 239+）或 systemd-resolve（旧版）
       return `if command -v resolvectl >/dev/null 2>&1; then resolvectl flush-caches >/dev/null 2>&1 && echo "OK"; elif command -v systemd-resolve >/dev/null 2>&1; then systemd-resolve --flush-caches >/dev/null 2>&1 && echo "OK"; else echo "ERR:未找到 DNS 刷新工具(resolvectl/systemd-resolve)"; exit 1; fi`
@@ -35,13 +56,14 @@ export function buildFlushDnsScript(platform: Platform): string {
 export function buildEmptyRecycleBinScript(platform: Platform): string {
   switch (platform) {
     case 'win32':
-      return 'Clear-RecycleBin -Force -ErrorAction SilentlyContinue; if ($?) { "OK" }'
+      // 不可 SilentlyContinue + 无条件 "OK"：权限不足时会静默失败却报成功
+      return 'try { Clear-RecycleBin -Force -ErrorAction Stop; "OK" } catch { "ERR:$($_.Exception.Message)" }'
     case 'darwin':
       // 首选 Finder 原生清空（安全走回收站机制）；osascript 不可用/无自动化权限时回退 rm
-      return `osascript -e 'tell application "Finder" to empty trash' >/dev/null 2>&1 && echo "OK" || { rm -rf "$HOME/.Trash/"* 2>/dev/null; echo "OK"; }`
+      return `osascript -e 'tell application "Finder" to empty trash' >/dev/null 2>&1 && echo "OK" || { rm -rf "$HOME/.Trash/"* 2>/dev/null && echo "OK" || echo "ERR:清空回收站失败（可能需要授权）"; }`
     default:
       // XDG Trash（~/.local/share/Trash/files）
-      return `rm -rf "$HOME/.local/share/Trash/files/"* "$HOME/.local/share/Trash/files/".[!.]* 2>/dev/null; echo "OK"`
+      return `rm -rf "$HOME/.local/share/Trash/files/"* "$HOME/.local/share/Trash/files/".[!.]* 2>/dev/null && echo "OK" || echo "ERR:清空回收站失败"`
   }
 }
 
@@ -65,10 +87,12 @@ export function buildToggleDarkModeScript(enable: boolean, platform: Platform): 
       return `Set-ItemProperty -Path "${DARK_KEY}" -Name AppsUseLightTheme -Value ${value} -ErrorAction Stop; "OK"`
     }
     case 'darwin':
-      // defaults 即时生效于新进程；注销/重启后全局生效
+      // defaults 即时生效于新进程；注销/重启后全局生效。
+      // 切换深色失败必须报错（原写法 `defaults write ...; echo "OK"` 无条件成功）；
+      // 切回浅色时键可能本就不存在，属预期状态，故视为成功。
       return enable
-        ? `defaults write -g AppleInterfaceStyle -string Dark; echo "OK"`
-        : `defaults delete -g AppleInterfaceStyle 2>/dev/null; echo "OK"`
+        ? `defaults write -g AppleInterfaceStyle -string Dark >/dev/null 2>&1 && echo "OK" || { echo "ERR:切换深色模式失败"; exit 1; }`
+        : `defaults delete -g AppleInterfaceStyle >/dev/null 2>&1; echo "OK"`
     default:
       // GNOME gsettings；其他桌面环境无统一接口
       return enable

@@ -103,6 +103,15 @@ export function createOneKeyService(deps: OneKeyDeps): OneKeyService {
 
   const listeners = new Set<(p: OneKeyProgress) => void>()
   let state: RunState | null = null
+  /**
+   * 同步占位锁。
+   *
+   * `start()` 在通过守卫后还有 `await deps.isElevated()` 等异步步骤，之后才把 `state` 置上。
+   * 只靠 `state.phase === 'running'` 判断时，两次快速调用（双击按钮、界面重试与自动重试撞车）
+   * 会**同时通过守卫**，随后两次 `state = run` 互相覆盖：进度错乱、同一批目录被并发清理、
+   * 文件句柄互抢导致删除失败率上升。此锁在**同步阶段**就占位，杜绝该窗口期。
+   */
+  let starting = false
 
   const snapshot = (): OneKeyProgress | null =>
     state === null
@@ -157,103 +166,116 @@ export function createOneKeyService(deps: OneKeyDeps): OneKeyService {
     return { outcome, durationMs }
   }
 
+  const RUNNING_MSG = '已有一键优化任务正在执行，请等待完成或先取消'
+  const isActive = (): boolean =>
+    state !== null && (state.phase === 'running' || state.phase === 'cancelling')
+  /** 被守卫拦下时返回的空摘要（total=0，仅带提示） */
+  const rejected = (error: string): OneKeySummary => ({
+    runId: state?.runId ?? '',
+    total: 0,
+    success: 0,
+    failed: 0,
+    skipped: 0,
+    releasedBytes: 0,
+    durationMs: 0,
+    cancelled: false,
+    outcomes: [],
+    error
+  })
+
   const start = async (ids?: string[]): Promise<OneKeySummary> => {
-    if (state && (state.phase === 'running' || state.phase === 'cancelling')) {
-      return {
-        runId: state.runId,
-        total: 0,
-        success: 0,
-        failed: 0,
-        skipped: 0,
-        releasedBytes: 0,
-        durationMs: 0,
-        cancelled: false,
+    // 守卫必须在**任何 await 之前**完成占位，否则并发窗口期依然存在
+    if (isActive() || starting) return rejected(RUNNING_MSG)
+    starting = true
+
+    let run: RunState
+    let plan: string[]
+    let metaMap: Map<string, ReturnType<OptLibrary['listCapabilities']>[number]>
+    let ctx: ReturnType<OptLibrary['createContext']>
+    try {
+      const caps = deps.library.listCapabilities()
+      metaMap = new Map(caps.map((c) => [c.id, c]))
+      const requested =
+        Array.isArray(ids) && ids.length > 0
+          ? ids.map(String)
+          : caps.filter((c) => c.defaultEnabled).map((c) => c.id)
+
+      // 去重 + 过滤未知 id（渲染进程传什么都得先过这道闸）
+      plan = [...new Set(requested)].filter((id) => metaMap.has(id))
+      if (plan.length === 0) return rejected('没有可执行的优化项')
+
+      const elevated = deps.isElevated ? await deps.isElevated() : false
+      // 整轮共享同一个上下文：扫描结果走缓存，一轮里只扫一次
+      ctx = deps.library.createContext()
+
+      run = {
+        runId: newRunId(now()),
+        phase: 'running',
+        total: plan.length,
+        completed: 0,
+        currentId: null,
+        currentLabel: null,
         outcomes: [],
-        error: '已有一键优化任务正在执行，请等待完成或先取消'
-      }
-    }
-
-    const caps = deps.library.listCapabilities()
-    const metaMap = new Map(caps.map((c) => [c.id, c]))
-    const requested =
-      Array.isArray(ids) && ids.length > 0
-        ? ids.map(String)
-        : caps.filter((c) => c.defaultEnabled).map((c) => c.id)
-
-    // 去重 + 过滤未知 id（渲染进程传什么都得先过这道闸）
-    const plan = [...new Set(requested)].filter((id) => metaMap.has(id))
-    if (plan.length === 0) {
-      return {
-        runId: '',
-        total: 0,
-        success: 0,
-        failed: 0,
-        skipped: 0,
+        startedAt: now(),
+        finishedAt: null,
         releasedBytes: 0,
-        durationMs: 0,
-        cancelled: false,
-        outcomes: [],
-        error: '没有可执行的优化项'
+        elevated,
+        cancelRequested: false
       }
-    }
-
-    const elevated = deps.isElevated ? await deps.isElevated() : false
-    const ctx = deps.library.createContext()
-
-    const run: RunState = {
-      runId: newRunId(now()),
-      phase: 'running',
-      total: plan.length,
-      completed: 0,
-      currentId: null,
-      currentLabel: null,
-      outcomes: [],
-      startedAt: now(),
-      finishedAt: null,
-      releasedBytes: 0,
-      elevated,
-      cancelRequested: false
-    }
-    state = run
-    emit()
-
-    for (const id of plan) {
-      if (run.cancelRequested) break
-      const meta = metaMap.get(id)
-      if (!meta) continue
-
-      run.currentId = id
-      run.currentLabel = meta.label
+      state = run
       emit()
+      // 从这一刻起由 state 接管互斥，占位锁可以放开
+    } finally {
+      starting = false
+    }
 
-      let outcome: OptOutcome
-      if (meta.needsAdmin && !elevated) {
-        // 统一预检：不逐项弹 UAC，直接跳过并给出可执行指引
-        outcome = {
-          id,
-          label: meta.label,
-          status: 'skipped',
-          durationMs: 0,
-          reason: NEED_ADMIN_REASON,
-          needsAdmin: true,
-          attempts: 0
+    try {
+      for (const id of plan) {
+        if (run.cancelRequested) break
+        const meta = metaMap.get(id)
+        if (!meta) continue
+
+        run.currentId = id
+        run.currentLabel = meta.label
+        emit()
+
+        let outcome: OptOutcome
+        if (meta.needsAdmin && !run.elevated) {
+          // 统一预检：不逐项弹 UAC，直接跳过并给出可执行指引
+          outcome = {
+            id,
+            label: meta.label,
+            status: 'skipped',
+            durationMs: 0,
+            reason: NEED_ADMIN_REASON,
+            needsAdmin: true,
+            attempts: 0
+          }
+        } else {
+          const r = await runWithRetry(ctx, id)
+          outcome = r.outcome
         }
-      } else {
-        const r = await runWithRetry(ctx, id)
-        outcome = r.outcome
-      }
 
-      run.outcomes.push(outcome)
-      run.completed += 1
-      run.releasedBytes += outcome.releasedBytes ?? 0
-      run.currentId = null
-      run.currentLabel = null
-      emit()
+        run.outcomes.push(outcome)
+        run.completed += 1
+        run.releasedBytes += outcome.releasedBytes ?? 0
+        run.currentId = null
+        run.currentLabel = null
+        emit()
+      }
+    } finally {
+      // 无论正常跑完还是中途抛错，都必须收尾。
+      // 否则 state 会永久停在 running：界面一直转圈，且并发守卫会把之后
+      // 每一次 start 都拦下（"请等待完成或先取消"），只能重启应用才能恢复。
+      if (run.phase === 'running' || run.phase === 'cancelling') {
+        run.finishedAt = now()
+        run.phase = run.cancelRequested ? 'cancelled' : 'done'
+        run.currentId = null
+        run.currentLabel = null
+        emit()
+      }
     }
 
-    run.finishedAt = now()
-    run.phase = run.cancelRequested ? 'cancelled' : 'done'
-    emit()
     return toSummary(run)
   }
 

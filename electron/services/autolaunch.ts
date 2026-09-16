@@ -4,6 +4,13 @@ import { homedir } from 'os'
 import type { App } from 'electron'
 import type { Platform } from './shell'
 import { detectPlatform } from './shell'
+import { escapeDesktopExecArg, escapeDesktopValue } from './desktopEntry'
+
+/**
+ * .desktop 字段转义与「启用启动项」共用 `desktopEntry` 里的同一实现，
+ * 避免两处规则漂移（一边安全、一边可注入）。
+ */
+export { escapeDesktopExecArg, escapeDesktopValue } from './desktopEntry'
 
 /** 对 Electron app 登录项 API 的抽象，便于注入测试 */
 export interface LoginItemApi {
@@ -34,8 +41,8 @@ export function autostartFilePath(baseDir = homedir()): string {
 export function buildAutostartContent(execPath: string, appName = '疾风引擎'): string {
   return `[Desktop Entry]
 Type=Application
-Name=${appName}
-Exec="${execPath}"
+Name=${escapeDesktopValue(appName)}
+Exec=${escapeDesktopExecArg(execPath)}
 X-GNOME-Autostart-enabled=true`
 }
 
@@ -76,7 +83,8 @@ export function createAutoLaunchService(
         // 文件不存在视为已关闭
       }
     }
-    return next
+    // 回读真实状态而非回显意图：写入失败或删除无权限时如实返回，界面据此提示
+    return get()
   }
 
   return { get, set }

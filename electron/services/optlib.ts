@@ -3,6 +3,7 @@ import type {
   CleanupResult,
   DeepCleanupPlan,
   OptCapabilityMeta,
+  OptCapabilityMetaPatch,
   OptOutcome,
   OptStatus
 } from '../../shared/types'
@@ -98,6 +99,17 @@ export interface OptLibraryDeps {
   admin: OptServiceSet
   isElevated: () => Promise<boolean>
   platform?: Platform
+  /**
+   * 由「可独立更新的能力库」下发的附加能力（配方能力）。
+   * 每次取用时实时求值，因此远端清单生效后无需重启应用即可用上新能力。
+   */
+  externalCapabilities?: () => OptCapability[]
+  /**
+   * 远端对内置能力的元信息覆盖。
+   * 只能改 label / description / defaultEnabled —— 不能替换实现，也不能改 needsAdmin
+   * （类型 OptCapabilityMetaPatch 已在编译期排除 needsAdmin 与 id/source）。
+   */
+  metaOverrides?: () => Map<string, OptCapabilityMetaPatch>
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -263,8 +275,50 @@ export function buildCapabilityRegistry(): OptCapability[] {
 
 export function createOptLibrary(deps: OptLibraryDeps): OptLibrary {
   const platform = deps.platform ?? detectPlatform()
-  const registry = new Map<string, OptCapability>()
-  for (const c of buildCapabilityRegistry()) registry.set(c.meta.id, c)
+
+  /**
+   * 每次调用实时组装注册表，使远端下发的附加能力「生效即用」，无需重启应用。
+   *
+   * 安全边界（重要）：内置能力**不可被远端覆盖实现**。
+   *   - 远端能力 id 若与内置能力重名 → 直接忽略该远端项（内置实现优先）；
+   *   - 远端只能通过 metaOverrides 修改内置项的展示文案与默认勾选，
+   *     且 needsAdmin 不允许被改（提权边界不能由远端放宽）。
+   */
+  const resolveRegistry = (): Map<string, OptCapability> => {
+    const reg = new Map<string, OptCapability>()
+    for (const c of buildCapabilityRegistry()) reg.set(c.meta.id, c)
+
+    const overrides = deps.metaOverrides?.()
+    if (overrides && overrides.size > 0) {
+      for (const [id, patch] of overrides) {
+        const base = reg.get(id)
+        if (!base) continue // 不能给不存在的能力凭空加元信息
+        reg.set(id, {
+          meta: {
+            ...base.meta,
+            label: typeof patch.label === 'string' && patch.label ? patch.label : base.meta.label,
+            description:
+              typeof patch.description === 'string' && patch.description
+                ? patch.description
+                : base.meta.description,
+            defaultEnabled:
+              typeof patch.defaultEnabled === 'boolean'
+                ? patch.defaultEnabled
+                : base.meta.defaultEnabled
+            // needsAdmin 有意不参与覆盖：提权边界只能由本地代码定义
+          },
+          run: base.run
+        })
+      }
+    }
+
+    for (const c of deps.externalCapabilities?.() ?? []) {
+      const id = String(c?.meta?.id ?? '')
+      if (!id || reg.has(id)) continue // 重名一律拒绝，内置实现优先
+      reg.set(id, c)
+    }
+    return reg
+  }
 
   const createContext = (): OptContext => ({
     platform,
@@ -276,7 +330,7 @@ export function createOptLibrary(deps: OptLibraryDeps): OptLibrary {
 
   const runInContext = async (ctx: OptContext, id: string): Promise<OptOutcome> => {
     const key = String(id ?? '')
-    const c = registry.get(key)
+    const c = resolveRegistry().get(key)
     if (!c) {
       return {
         id: key,
@@ -309,7 +363,11 @@ export function createOptLibrary(deps: OptLibraryDeps): OptLibrary {
   }
 
   return {
-    listCapabilities: () => [...registry.values()].map((c) => ({ ...c.meta })),
+    listCapabilities: () =>
+      [...resolveRegistry().values()].map((c) => ({
+        ...c.meta,
+        source: c.meta.source ?? 'builtin'
+      })),
     runSingle: (id) => runInContext(createContext(), id),
     createContext,
     runInContext

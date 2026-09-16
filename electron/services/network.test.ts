@@ -78,6 +78,23 @@ describe('parsePing', () => {
     const r = parsePing('{"avg":"abc"}', 'x')
     expect(r.avg).toBe(0)
   })
+  it('丢包率越界被钳制到 0-100（脚本产出不可全信）', () => {
+    // 负数：某些 ping 每包输出多行 time=，使成功数大于请求数
+    expect(parsePing(JSON.stringify({ avg: 5, loss: -25, ok: true }), 'x').loss).toBe(0)
+    // 超上限
+    expect(parsePing(JSON.stringify({ avg: 5, loss: 250, ok: true }), 'x').loss).toBe(100)
+    expect(parsePing(JSON.stringify({ avg: 5, loss: 1000 }), 'x').loss).toBe(100)
+  })
+  it('时延为负时归零', () => {
+    const r = parsePing(JSON.stringify({ min: -3, avg: -1, max: -0.5, loss: 0, ok: true }), 'x')
+    expect(r.min).toBe(0)
+    expect(r.avg).toBe(0)
+    expect(r.max).toBe(0)
+  })
+  it('丢包率 100 时 ok 必为 false（即使脚本自称 ok）', () => {
+    const r = parsePing(JSON.stringify({ avg: 0, loss: 100, ok: true }), 'x')
+    expect(r.ok).toBe(false)
+  })
 })
 
 describe('parseInterfaces', () => {

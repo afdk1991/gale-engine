@@ -6,6 +6,7 @@ import type {
 } from '../../shared/types'
 import type { ExecRunner, Platform } from './shell'
 import { detectPlatform } from './shell'
+import { parseActionOutcome } from './actionResult'
 
 /** 系统关键进程名：结束 / 挂起一律拒绝（双保险：JS 构造 guard + PowerShell 权威校验） */
 export const PROTECTED_NAMES = [
@@ -185,7 +186,7 @@ export function buildListScript(platform: Platform = detectPlatform()): string {
 
 export function buildKillScript(pid: number, platform: Platform = detectPlatform()): string {
   return platform === 'win32'
-    ? `${buildGuardWin(pid)}\nStop-Process -Id ${pid} -Force -ErrorAction SilentlyContinue; "OK"`
+    ? `${buildGuardWin(pid)}\ntry { Stop-Process -Id ${pid} -Force -ErrorAction Stop; "OK" } catch { "ERR:$($_.Exception.Message)" }`
     : `${buildGuardUnix(pid)}\nkill -9 "$pid" 2>/dev/null && echo "OK" || { echo "ERR:结束进程失败（可能需要管理员权限）"; exit 0; }`
 }
 
@@ -264,11 +265,11 @@ export function sortProcesses(list: ProcessInfo[], sort?: ProcessSortKey): Proce
   return arr
 }
 
-export function parseActionResult(stdout: string): ProcessActionResult {
-  const text = stdout.trim()
-  if (text.startsWith('ERR:')) return { ok: false, message: text.slice(4) }
-  if (text.includes('OK')) return { ok: true, message: '操作成功' }
-  return { ok: false, message: text || '操作失败' }
+export function parseActionResult(stdout: string, code = 0): ProcessActionResult {
+  // 统一走 actionResult 的严格判定：ERR: 优先、OK 必须独立成行、
+  // 空输出/无令牌一律如实报失败（原先 has('OK') 子串匹配会误判成功）。
+  const { ok, message } = parseActionOutcome(stdout, code)
+  return { ok, message }
 }
 
 export function createProcessService(runner: ExecRunner, platform: Platform = detectPlatform()) {

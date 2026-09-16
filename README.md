@@ -2,7 +2,7 @@
 
 跨平台桌面优化加速软件：硬件监控与型号规格、进程管理、垃圾清理、启动项管理、游戏模式、系统服务、计划任务与防火墙管理，集成在一个轻量 Electron 桌面应用里。支持 **Windows 10/11、macOS、Linux**（x64 + arm64）。
 
-当前版本：**v0.1.9**（首页一键优化 + DLL 单项目优化能力库 + 运行时提权通道 + 磁盘空间实测释放修复，309 项测试全绿）
+当前版本：**v0.1.9**（首页一键优化 + DLL 单项目优化能力库 + 运行时提权通道 + 磁盘空间实测释放修复，417 项测试全绿）
 
 - 官网：https://gy.mixm.top
 - 仓库：https://github.com/afdk1991/gale-engine
@@ -52,6 +52,9 @@
 | 🌐 网络诊断 | Ping 延迟测试（最小/平均/最大延迟、丢包率，host 白名单防注入）；本机网卡名称/IP/状态（Win Test-Connection / unix ping+ip/ifconfig） |
 | 🧹 优化中心 | 垃圾清理（Temp / 回收站 / 浏览器缓存，白名单安全路径，逐项回执 + 失败隔离）；启动项管理（Win 注册表 / mac launchd plist / Linux XDG autostart） |
 | 💽 磁盘修复 | 各卷空间总览与空间不足预警（已用≥90% 或可用<10GiB）；深度空间释放（Win 更新缓存/系统临时/缩略图/错误报告/Prefetch + DISM 组件清理/休眠文件，mac 缓存日志 + brew，linux journal/apt）；文件系统检查与在线修复（Win chkdsk /scan、mac diskutil，linux 诚实降级）；DLL/系统文件修复（sfc /scannow + DISM RestoreHealth，仅 Windows） |
+| 🧩 DLL 修复 | 系统关键 DLL 与 VC++ 运行库（msvcp140 / vcruntime140 / concrt140 等）三态检测（存在 / **位数不全** / 缺失）+ UCRT；读取已装 VC++ Redistributable 版本；按缺失项给出可执行修复建议（sfc / DISM / winget / 官方链接），修复走提权通道；mac/Linux 诚实降级为只读共享库探针；页面内附 DLL 概念说明 |
+| 🔄 自动更新 | **三端应用内自更新**：检查 → 自动下载（真实进度）→ 一键安装重启；侧边栏 / 首页 / 设置页三处入口；启动后台静默自检、失败可重试、偏好（自动检查/自动下载/退出时安装）持久化；平台差异诚实处理（mac 需 zip、Linux 仅 AppImage 可自更新、deb 指引包管理器） |
+| 📦 能力库（可独立更新） | 把每项优化能力封装为独立单元，支持从**远端清单**更新——新增/调整能力**无需重新发版应用**，生效后无需重启即可用。安全边界：远端**不能下发可执行代码**，只能覆盖文案与用**白名单配方**编排既有能力；清单 schema/体积/条目/版本单调/`minAppVersion` 严格校验，被拒条目在界面如实列出，可一键回退内置 |
 | 🎮 游戏模式 | 一键切换高性能模式（Win powercfg 电源计划 / mac caffeinate 防休眠 / Linux CPU governor），退出自动还原，安全可逆 |
 | 🖥️ 服务管理 | 系统服务列表（Win Win32_Service / mac launchctl / Linux systemctl）；启动 / 停止、切换启动类型；系统关键服务保护 |
 | ⏰ 计划任务 | 计划任务列表（Win Get-ScheduledTask / mac launchd / Linux systemctl timer+cron）；启用 / 禁用、立即运行、结束运行中任务 |
@@ -59,31 +62,40 @@
 | 🧰 系统工具箱 | 刷新 DNS、清空回收站、清空剪贴板、切换深色模式，按平台分发命令，幂等且失败有反馈 |
 | 🕘 优化记录 | 每次清理 / 模式切换 / 服务与防火墙操作持久化到时间线，倒序展示、可清空 |
 | 🎨 主题设置 | 3 种外观（系统/浅/深）× 6 种强调色（蓝/青/紫/绿/橙/渐变），electron-store 持久化，跨重启保持 |
-| 🔄 自动更新 | 应用内「设置 → 检查更新」，指向 GitHub Releases（各平台 `latest*.yml` 驱动） |
 
 ## 技术架构
 
 - **框架**：Electron 33 + Vue 3 + TypeScript（electron-vite 多进程构建）
-- **渲染层**：`src/pages/` 十四个页面，左侧导航（720px 以下收窄为图标栏）
-- **主进程**：`electron/main.ts` 注册 47 个 IPC handler，`electron/preload.ts` 桥接为 `window.gale`（`contextIsolation: true`）
+- **渲染层**：`src/pages/` 十五个页面，左侧导航（720px 以下收窄为图标栏）
+- **主进程**：`electron/main.ts` 注册 **67** 个 IPC handler，`electron/preload.ts` 桥接为 `window.gale`（`contextIsolation: true`）
 - **服务层**：`electron/services/<module>.ts`，全部可注入依赖（fetcher / exec runner / storage），纯逻辑可单测；`shell.ts` 为平台抽象层（PAL），按 `process.platform` 选择 PowerShell / bash 执行器
-- **跨平台**：14 个 service 全部跨平台（10 个手动 win/unix 脚本分发 + 4 个天然跨平台库）；支持 Win10/11 + macOS + Linux，x64 + arm64
-- **安全**：所有用户输入（进程 PID / 主机名 / 任务路径 / 服务名 / 规则名）经字符白名单校验，防 shell 注入
+- **跨平台**：**15** 个 service 按平台分发命令（依赖 PAL），另 **10** 个不依赖平台（纯逻辑 / 跨平台库）；支持 Win10/11 + macOS + Linux，x64 + arm64
+- **安全**：所有用户输入（进程 PID / 主机名 / 任务路径 / 服务名 / 规则名）经字符白名单校验，防 shell 注入；**能力库远端清单被禁止下发任何可执行代码**（只能覆盖文案 + 用白名单配方编排既有能力）
 - **持久化**：electron-store（设置与优化记录）
-- **自动更新**：electron-updater，指向 GitHub Releases（各平台 `latest*.yml` 驱动）
-- **打包**：electron-builder，Win NSIS / macOS dmg / Linux AppImage+deb，产物名带 `${arch}`
+- **自动更新**：electron-updater，指向 GitHub Releases（各平台 `latest*.yml` 驱动）；平台差异见下表
+- **打包**：electron-builder，Win NSIS / macOS **dmg + zip**（zip 是自更新所必需）/ Linux AppImage+deb，产物名带 `${arch}`
+
+| 平台 | 安装格式 | 应用内自更新 |
+| --- | --- | --- |
+| Windows | NSIS（默认装用户目录，不弹 UAC） | ✅ 支持 |
+| macOS | dmg（手动安装）+ **zip**（自动更新） | ✅ 支持（**必须同时产出 zip**；未签名时自动更新会被系统拒绝，应用内会提示手动下载 dmg） |
+| Linux | AppImage | ✅ 支持 |
+| Linux | deb / rpm | ❌ 由系统包管理器管辖，应用内**诚实降级**并给出 `apt` 命令与改用 AppImage 的建议 |
 
 ```
 项目002/
 ├── electron/            # 主进程 + 服务层（含 vitest 单测）
-│   └── services/        # monitor / hardware / process / network / optimizer / disk / gamemode
-│                        # / toolbox / history / settings / winservices / tasks
-│                        # / firewall / autolaunch / update / shell(PAL)
-│                        #（每个模块配套 .test.ts）
-├── src/                 # 渲染层（Vue3 页面 + 主题令牌系统）
+│   └── services/        # monitor / hardware / process / network / optimizer / disk / dllrepair
+│                        # / gamemode / toolbox / history / settings / winservices / tasks / space
+│                        # / firewall / autolaunch / elevate / onekey / optlib
+│                        # / capabilityFeed(可独立更新的能力库) / update(+.capability/.electron)
+│                        # / shell(PAL)（每个模块配套 .test.ts）
+├── capabilities/        # 能力库远端清单 + README（清单结构、安全边界、配方白名单）
+├── src/                 # 渲染层（Vue3 页面 + 主题令牌系统 + 更新 composable/组件）
 ├── shared/              # 类型契约 GaleApi
 ├── landing/             # 静态落地页（EdgeOne Makers 部署，多平台下载适配）
-├── scripts/             # package-win.cmd / gen-smoke-html.py / generate-icon.mjs / verify-theme-persistence.mjs
+├── scripts/             # publish-release.ps1 / extract-changelog.py（发版说明）
+│                        # / package-win.cmd / gen-smoke-html.py / generate-icon.mjs 等
 ├── docs/                # M2/M3/M4 计划、冒烟清单、跨平台路线图、鸿蒙调研、平台验证
 ├── build/               # 应用图标 + entitlements.mac.plist
 └── .github/workflows/   # release.yml（6 矩阵 CI：win/macos/linux × x64/arm64）
@@ -105,23 +117,25 @@ npm test                 # vitest 全量单测（当前 265 项全绿）
 
 ```bash
 npm run package:win      # Windows（NSIS，x64+arm64）
-npm run package:mac      # macOS（dmg，x64+arm64）
+npm run package:mac      # macOS（dmg + zip，x64+arm64）
 npm run package:linux    # Linux（AppImage+deb，x64+arm64）
 ```
 
 - 自动设置 npmmirror 的 electron-builder 二进制镜像，绕过 GitHub 下载阻塞
-- 产出：`release/gale-engine-<version>-<arch>-setup.exe` / `.dmg` / `.AppImage` / `.deb`
+- 产出：`release/gale-engine-<version>-<arch>-setup.exe` / `.dmg` / `.zip` / `.AppImage` / `.deb`
+- macOS 的 `zip` **不可省略**：`electron-updater` 在 macOS 上只认 zip 做增量替换，只出 dmg 会导致自动更新「提示有新版本却永远装不上」
 
 ### CI 自动发布（GitHub Actions 6 矩阵）
 
 推送 `v*` tag 即触发 `.github/workflows/release.yml`，在 win/macos/linux × x64/arm64 六个矩阵上并行构建：
 
 ```bash
-git tag v0.1.9 && git push origin v0.1.9
+git tag v0.1.9 && git push origin v0.1.9   # 示例，实际请用当前版本号
 ```
 
-- 6 个平台产物汇聚到同一 Release：exe / dmg / AppImage / deb + blockmap + 各平台 `latest*.yml`
+- 6 个平台产物汇聚到同一 Release：exe / dmg / zip / AppImage / deb + blockmap + 各平台 `latest*.yml`
 - Linux arm64 在 x64 runner 上用 qemu 交叉编译
+- Release 说明由 `scripts/extract-changelog.py` 从 `CHANGELOG.md` 对应版本章节生成（含下载表）。**打 tag 前请先写好该版本的 CHANGELOG 章节**，否则会走兜底文案
 - CI 会在构建前把 `electron-builder.yml` 中的 owner / repo 替换为真实仓库信息
 
 > **产物名**：`artifactName` 带 `${arch}`，按格式分：exe/dmg 用 `x64`/`arm64`，AppImage 用 `x86_64`/`arm64`，deb 用 `amd64`（仅 x64）。各平台独立 `latest*.yml` 驱动 electron-updater 按当前 OS+架构拉取对应增量包。
@@ -141,11 +155,29 @@ curl -X POST \
   -d '{"ref":"master","inputs":{"tag":"v0.1.0"}}'
 ```
 
-补发工作流与常规发版的区别：
+补发工作流的做法（与常规发版的区别）：
 
-- checkout **指定 tag 的源码**，但用当前规范的 `electron-builder.yml` 覆盖（ASCII 产物名 + 真实 owner/repo）
+- checkout **当前 `master` 的真实源码**构建，**仅把版本号按 tag 名钉定**（`v0.1.3` → `0.1.3`）；用当前规范的 `electron-builder.yml`（ASCII 产物名 + 真实 owner/repo）
+  - 原因：`v0.1.1`–`v0.1.6` 的 tag 实际指向 `package.json` 为 `0.2.0`–`0.5.0` 的历史 commit，按其构建会把**历史旧代码**打进 `0.1.x` 安装包
+  - 因此这些包内含的是**当前代码**，Release 说明中会显式附「代码来源声明」，避免下载者误解为历史快照
 - 直接调用 `electron-vite build` 与 `electron-builder --win --publish never`，不依赖各 tag 的 npm script（v0.1.0 / v0.1.1 无 `package:ci`）
 - 用 `npm install` 而非 `npm ci`，容忍历史 lockfile 与当前 Node 版本的解析差异
+- ⚠️ 补发/重建 Release 后须复查 **Latest 归属**（GitHub 会把最后完成构建的版本标为 Latest）：`gh release edit <最新版本tag> --latest`
+
+### 能力库清单更新（不发版即可新增/调整优化能力）
+
+`capabilities/manifest.json` 是「优化能力库」的远端清单。新增或调整一项优化能力**只需改这个文件并提交**，不必重新发版应用——这正是本项目的「DLL」语义：替换模块即升级功能。
+
+```bash
+# 1) 编辑 capabilities/manifest.json，并提升 libraryVersion（只增不减）
+# 2) 提交到 master
+git add capabilities/manifest.json && git commit -m "feat(capabilities): ..." && git push
+# 3) 用户在「优化中心 → 能力库」点「检查能力库更新」→ 应用
+```
+
+- ⚠️ **安全边界**：清单**不能下发可执行代码**。只能 ① 覆盖内置能力的文案与默认勾选；② 用 `recipe` 引用**白名单内的既有服务方法**。白名单权威来源是代码里的 `createRecipeRuntime()`，**只能由主程序扩大，不能由远端扩大**。
+- 内置能力的**实现不可被远端替换**（同名 id 带 `recipe` 直接拒绝）；`needsAdmin` 不允许被远端修改。
+- 详见 [`capabilities/README.md`](capabilities/README.md)（清单结构、字段表、白名单调用表、校验与回退规则）。
 
 ### 代码签名
 
@@ -159,15 +191,16 @@ npm run package
 
 ## 验证与验收
 
-- **单测**：`npm test`（265 项，覆盖全部 service 纯逻辑 + 跨平台分支 + 主题系统 + 侧边栏组件）
+- **单测**：`npm test`（**417** 项，覆盖全部 service 纯逻辑 + 跨平台分支 + 主题系统 + 侧边栏组件 + 更新状态机/能力探测 + 能力库安全边界 + DLL 检测）
 - **类型**：`npm run typecheck`
+- **构建**：`npm run build`
 - **核心命令直测**：服务层脚本可在本机直接验证（Win PowerShell / mac-linux bash）
 - **主题持久化 E2E**（真实 GUI，Windows 实机）：
   ```bash
   node scripts/verify-theme-persistence.mjs
   ```
   通过 CDP 驱动真实应用：点击「深色 + 能量橙」→ 关闭 → 重启验证主题保持。
-- **冒烟清单**：`docs/smoke-test-checklist.html`（交互式，231 项，含 44 项实机 GUI 冒烟）
+- **冒烟清单**：`docs/smoke-test-checklist.html`（交互式，**121** 项，含 84 项可自动/脚本验证项）
 
 ## 已知限制
 

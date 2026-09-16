@@ -91,6 +91,49 @@ describe('一键优化编排', () => {
     expect(summary.outcomes).toHaveLength(1)
   })
 
+  it('start() 卡在 await isElevated 期间即被守卫拦下（回归：并发窗口期导致两轮任务并行）', async () => {
+    // 这是原实现的真实缺陷：守卫只看 state.phase，而 state 要等 await isElevated()
+    // 之后才建立。两次快速调用（双击按钮 / 界面重试与自动重试撞车）会同时通过守卫，
+    // 于是两轮任务并行、进度互相覆盖、同一批目录被并发清理。
+    const gate: { release: (() => void) | null } = { release: null }
+    const gatePromise = new Promise<void>((r) => {
+      gate.release = r
+    })
+    const { library, getRunCount } = makeLibrary()
+    const svc = createOneKeyService({
+      library,
+      isElevated: async () => {
+        await gatePromise
+        return false
+      },
+      maxRetries: 0,
+      retryDelayMs: 0
+    })
+
+    const first = svc.start()
+    // 此刻 first 仍卡在 await isElevated()，state 尚未建立 —— 第二轮必须被挡
+    const blocked = await svc.start()
+    expect(blocked.total).toBe(0)
+    expect(blocked.error).toContain('正在执行')
+    expect(svc.isRunning()).toBe(false) // 尚未真正开始
+
+    gate.release?.()
+    const summary = await first
+    expect(summary.total).toBe(3)
+    // a、b 各执行一次（admin 未提权被预检跳过，不进执行器）；
+    // 若守卫失效，第二轮会插进来把这两项再跑一遍变成 4 次。
+    expect(getRunCount()).toBe(2)
+  })
+
+  it('轮次结束后守卫放开，可再次 start', async () => {
+    const { library } = makeLibrary()
+    const svc = createOneKeyService(okDeps(library))
+    await svc.start()
+    const second = await svc.start()
+    expect(second.total).toBe(3)
+    expect(second.error).toBeUndefined()
+  })
+
   it('失败项可重试：先失败，清除失败源后重试成功', async () => {
     const { library, clearFails } = makeLibrary({ failIds: ['b'] })
     const svc = createOneKeyService(okDeps(library))

@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import type { SystemSnapshot } from '../../shared/types'
+import { usePolling } from '../composables/usePolling'
 
 const snap = ref<SystemSnapshot | null>(null)
 const error = ref<string | null>(null)
-const loading = ref(false)
-let timer: ReturnType<typeof setInterval> | null = null
 
 function fmtGB(bytes: number): string {
   return (bytes / 1024 / 1024 / 1024).toFixed(1)
@@ -22,24 +21,24 @@ function fmtUptime(sec: number): string {
 }
 
 async function refresh(): Promise<void> {
-  loading.value = true
-  error.value = null
   try {
     snap.value = await window.gale.monitor.snapshot()
+    error.value = null
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e)
-  } finally {
-    loading.value = false
   }
 }
 
+// 1s 一次；采集慢于 1s（机械盘 / 网络盘 / 多卷）时自动跳过本次而不是叠加请求
+const poll = usePolling(refresh, 1000)
+
 onMounted(() => {
   void refresh()
-  timer = setInterval(() => void refresh(), 1000)
+  poll.start()
 })
-onUnmounted(() => {
-  if (timer) clearInterval(timer)
-})
+
+/** 降级提示：单项采集失败时如实标注，而不是整块报错 */
+const degradedText = (): string => (snap.value?.degraded ?? []).join(' / ')
 </script>
 
 <template>
@@ -50,6 +49,9 @@ onUnmounted(() => {
     </header>
 
     <p v-if="error" class="error">监控数据获取失败：{{ error }}</p>
+    <p v-else-if="degradedText()" class="warn">
+      部分数据采集失败（{{ degradedText() }}），已按 0 显示；其余指标正常
+    </p>
 
     <div v-if="snap" class="grid">
       <div class="card metric">
@@ -96,7 +98,7 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <p v-else-if="!error" class="hint">{{ loading ? '加载中…' : '' }}</p>
+    <p v-else-if="!error" class="hint">加载中…</p>
   </section>
 </template>
 
@@ -133,5 +135,6 @@ onUnmounted(() => {
 }
 .disk-head { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
 .error { color: #ef4444; font-size: 13px; }
+.warn { color: #f59e0b; font-size: 13px; }
 .hint { color: var(--text-tertiary); font-size: 13px; }
 </style>

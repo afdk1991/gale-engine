@@ -6,7 +6,8 @@ import type {
 } from '../../shared/types'
 import type { ExecRunner, Platform } from './shell'
 import { detectPlatform } from './shell'
-import { diffReleasedBytes, type SpaceMeter } from './space'
+import { createSpaceMeter, createSystemInformationSpaceFetcher, diffReleasedBytes, type SpaceMeter } from './space'
+import { parseActionOutcome } from './actionResult'
 
 /**
  * 脚本回传的删除统计。旧脚本只 echo 一个 "OK"，
@@ -84,20 +85,25 @@ function allowedBrowserRoots(platform: Platform): string[] {
 // Windows：PowerShell 脚本
 // ─────────────────────────────────────────────────────────────
 
+// ★ 容量一律用 [long]（Int64），**不可用 [int]**：
+//   [int] 是 Int32，上限 2,147,483,647（约 2.1GB）。临时目录 / 回收站 / 浏览器缓存一旦超过
+//   该量级，PowerShell 5.1 会抛「Value was either too large or too small for an Int32」，
+//   整个扫描脚本中断或输出非法 JSON，界面反而显示「暂无垃圾项」——垃圾越多越扫不出来。
+//   disk.ts 的同类脚本已正确使用 [int64]，此处对齐。
 const SCAN_SCRIPT_WIN = `
 $temps = @($env:TEMP, "$env:SystemRoot\\Temp") | Where-Object { $_ -and (Test-Path $_) }
 $plans = @()
 foreach ($t in $temps) {
   $sz = (Get-ChildItem $t -Recurse -Force -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum -ErrorAction SilentlyContinue).Sum
   $b64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($t))
-  $plans += [pscustomobject]@{ id="temp:$b64"; kind="temp"; label="临时文件：$t"; path=$t; size=[int]([double]$sz); safe=$true }
+  $plans += [pscustomobject]@{ id="temp:$b64"; kind="temp"; label="临时文件：$t"; path=$t; size=[long]([double]$sz); safe=$true }
 }
 try {
   $shell = New-Object -ComObject Shell.Application
   $rb = $shell.NameSpace(10)
   $sz = 0
   foreach ($i in $rb.Items()) { $sz += $i.Size }
-  $plans += [pscustomobject]@{ id="recycle"; kind="recycle"; label="回收站"; path="RecycleBin"; size=[int]$sz; safe=$true }
+  $plans += [pscustomobject]@{ id="recycle"; kind="recycle"; label="回收站"; path="RecycleBin"; size=[long]$sz; safe=$true }
 } catch {}
 $browsers = @(
   @{ name = 'Chrome'; base = "$env:LOCALAPPDATA\\Google\\Chrome\\User Data\\Default" },
@@ -109,7 +115,7 @@ foreach ($b in $browsers) {
     if (Test-Path $p) {
       $sz = (Get-ChildItem $p -Recurse -Force -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum -ErrorAction SilentlyContinue).Sum
       $b64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($p))
-      $plans += [pscustomobject]@{ id="browser:$b64"; kind="browser"; label="$($b.name) 缓存：$sub"; path=$p; size=[int]([double]$sz); safe=$true }
+      $plans += [pscustomobject]@{ id="browser:$b64"; kind="browser"; label="$($b.name) 缓存：$sub"; path=$p; size=[long]([double]$sz); safe=$true }
     }
   }
 }
@@ -273,14 +279,24 @@ export function buildRecycleCleanupScript(platform: Platform = detectPlatform())
     case 'win32':
       // 无参 Clear-RecycleBin 只清当前用户在各卷的回收站，且遇到无权限卷会静默失败。
       // 这里显式遍历所有固定磁盘逐个清空，才能真正把 $Recycle.Bin 占的空间吐出来。
+      //
+      // 注意（曾有的假成功）：旧写法全程 `-ErrorAction SilentlyContinue` 后无条件 `"OK"`，
+      // 权限不足、卷被占用时用户看到「清理成功」而空间没变。现在逐个盘 try/catch，
+      // 有失败就回 ERR: 并带上原因；「回收站本已为空」不算失败（Clear-RecycleBin 对此会报错）。
       return [
         '$ErrorActionPreference = "Continue"',
-        'try { Clear-RecycleBin -Force -ErrorAction SilentlyContinue } catch {}',
-        'Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" -ErrorAction SilentlyContinue | ForEach-Object {',
-        '  $l = $_.DeviceID.Substring(0,1)',
-        '  try { Clear-RecycleBin -DriveLetter $l -Force -ErrorAction SilentlyContinue } catch {}',
+        '$failed = @()',
+        '$drives = @($env:SystemDrive.Substring(0,1))',
+        '$drives += @(Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" -ErrorAction SilentlyContinue | ForEach-Object { $_.DeviceID.Substring(0,1) })',
+        'foreach ($d in ($drives | Select-Object -Unique)) {',
+        '  try { Clear-RecycleBin -DriveLetter $d -Force -ErrorAction Stop }',
+        '  catch {',
+        '    $m = [string]$_.Exception.Message',
+        '    if ($m -match "empty|已空|找不到|0x80070002|cannot find") { continue }',
+        '    $failed += "$d 盘：$m"',
+        '  }',
         '}',
-        '"OK"'
+        'if ($failed.Count -gt 0) { "ERR:部分回收站未能清空（" + ($failed -join "；") + "）" } else { "OK" }'
       ].join('\n')
     case 'darwin':
       return `osascript -e 'tell application "Finder" to empty trash' >/dev/null 2>&1 || rm -rf "$HOME/.Trash/"* 2>/dev/null; echo "OK"`
@@ -364,7 +380,9 @@ export function buildToggleStartupScript(
       const cmd = (command ?? '').replace(/"/g, '`"')
       return `Set-ItemProperty -Path "${regKey}" -Name "${name}" -Value "${cmd}" -ErrorAction Stop; "OK"`
     }
-    return `Remove-ItemProperty -Path "${regKey}" -Name "${name}" -ErrorAction SilentlyContinue; "OK"`
+    // 属性本就不存在视为已禁用（幂等成功）；存在但删除失败（如权限不足）才如实报错。
+    // 不可用 -ErrorAction SilentlyContinue + 无条件 "OK"：那样无论成功失败都报成功。
+    return `$p = Get-ItemProperty -Path "${regKey}" -Name "${name}" -ErrorAction SilentlyContinue\nif ($null -eq $p) { "OK" } else { try { Remove-ItemProperty -Path "${regKey}" -Name "${name}" -ErrorAction Stop; "OK" } catch { "ERR:$($_.Exception.Message)" } }`
   }
 
   if (location === 'launchd') {
@@ -376,7 +394,7 @@ ${content}
 GALE_PLIST_EOF
 echo "OK"`
     }
-    return `rm -f ${plist} 2>/dev/null; echo "OK"`
+    return `rm -f ${plist} 2>/dev/null && echo "OK" || echo "ERR:删除启动项失败"`
   }
 
   if (location === 'autostart') {
@@ -389,7 +407,7 @@ ${content}
 GALE_DESKTOP_EOF
 echo "OK"`
     }
-    return `rm -f ${file} 2>/dev/null; echo "OK"`
+    return `rm -f ${file} 2>/dev/null && echo "OK" || echo "ERR:删除启动项失败"`
   }
 
   return null
@@ -442,10 +460,18 @@ function toStartupItem(raw: Record<string, unknown>): StartupItem {
 // Service 工厂（接口不变，内部按平台分发脚本）
 // ─────────────────────────────────────────────────────────────
 
+/**
+ * 优化中心服务。
+ *
+ * `meter` 拥有**默认实现**（systeminformation 实测卷可用空间）。
+ * 这一点很重要：此前它是可选参数而调用方（main.ts）忘了传，导致优化中心与一键优化里
+ * temp / browser / recycle 类项目的「释放了多少」永远为 0，而同类磁盘项却正常 ——
+ * 用户看到的是「清理成功但空间没变」。默认实现让「忘记注入」不再可能发生。
+ */
 export function createOptimizerService(
   runner: ExecRunner,
   platform: Platform = detectPlatform(),
-  meter?: SpaceMeter
+  meter: SpaceMeter = createSpaceMeter(createSystemInformationSpaceFetcher())
 ) {
   const scanCleanup = async (): Promise<CleanupPlan[]> => {
     const { stdout } = await runner.run(buildScanScript(platform))
@@ -461,13 +487,19 @@ export function createOptimizerService(
     const results: CleanupResult[] = []
     for (const item of items) {
       // 实测：清理前后各量一次该卷的可用空间，差值才是真实释放量
-      const before = meter ? await meter.freeBytesForPath(item.path, platform) : null
+      const before = await meter.freeBytesForPath(item.path, platform)
 
       let raw: CleanupResult
       if (item.kind === 'recycle') {
         const { code, stdout, stderr } = await runner.run(buildRecycleCleanupScript(platform))
-        const ok = code === 0 || stdout.includes('OK')
-        raw = { id: item.id, ok, error: ok ? undefined : stderr.trim() || '清理回收站失败（可能需要管理员权限）' }
+        // 严格判定：脚本按约定回传 OK / ERR:原因。
+        // 旧写法 `code === 0 || stdout.includes('OK')` 会因脚本本身无条件输出 OK 而永远成功。
+        const outcome = parseActionOutcome(stdout, code)
+        raw = {
+          id: item.id,
+          ok: outcome.ok,
+          error: outcome.ok ? undefined : outcome.message || stderr.trim() || '清理回收站失败（可能需要管理员权限）'
+        }
       } else if (!isSafePath(item.path)) {
         raw = { id: item.id, ok: false, error: '路径不在安全白名单内，已跳过' }
       } else {
@@ -497,7 +529,7 @@ export function createOptimizerService(
         }
       }
 
-      const after = meter ? await meter.freeBytesForPath(item.path, platform) : null
+      const after = await meter.freeBytesForPath(item.path, platform)
       const released = diffReleasedBytes(before, after)
       results.push(released === undefined ? raw : { ...raw, releasedBytes: released })
     }

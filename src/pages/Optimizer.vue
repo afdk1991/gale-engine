@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import type { CleanupPlan, CleanupResult, StartupItem } from '../../shared/types'
+import CapabilityLibraryPanel from '../components/CapabilityLibraryPanel.vue'
 
 const plans = ref<CleanupPlan[]>([])
 const selected = ref<Set<string>>(new Set())
@@ -182,6 +183,8 @@ onMounted(() => {
         </li>
       </ul>
     </div>
+
+    <CapabilityLibraryPanel />
   </section>
 </template>
 

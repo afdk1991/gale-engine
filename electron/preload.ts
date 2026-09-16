@@ -26,7 +26,11 @@ const api: GaleApi = {
   // 优化能力动态库（DLL）——单项能力可独立调用
   optlib: {
     listCapabilities: () => ipcRenderer.invoke('optlib:listCapabilities'),
-    runSingle: (id) => ipcRenderer.invoke('optlib:runSingle', id)
+    runSingle: (id) => ipcRenderer.invoke('optlib:runSingle', id),
+    libraryState: () => ipcRenderer.invoke('optlib:libraryState'),
+    checkLibrary: () => ipcRenderer.invoke('optlib:checkLibrary'),
+    applyLibrary: () => ipcRenderer.invoke('optlib:applyLibrary'),
+    resetLibrary: () => ipcRenderer.invoke('optlib:resetLibrary')
   },
   // 一键优化
   onekey: {
@@ -46,6 +50,12 @@ const api: GaleApi = {
     runDeepCleanup: (items) => ipcRenderer.invoke('disk:runDeepCleanup', items),
     checkVolume: (mount, fix) => ipcRenderer.invoke('disk:checkVolume', mount, fix),
     repairSystemFiles: (kind) => ipcRenderer.invoke('disk:repairSystemFiles', kind)
+  },
+  // DLL（动态链接库）缺失检测与修复
+  dll: {
+    scan: () => ipcRenderer.invoke('dll:scan'),
+    advice: () => ipcRenderer.invoke('dll:advice'),
+    repair: (kind) => ipcRenderer.invoke('dll:repair', kind)
   },
   gameMode: {
     status: () => ipcRenderer.invoke('gameMode:status'),
@@ -90,11 +100,21 @@ const api: GaleApi = {
   app: {
     getVersion: () => ipcRenderer.invoke('app:getVersion'),
     checkUpdate: () => ipcRenderer.invoke('app:checkUpdate'),
+    getUpdateState: () => ipcRenderer.invoke('app:getUpdateState'),
+    getUpdateCapability: () => ipcRenderer.invoke('app:getUpdateCapability'),
+    getUpdatePrefs: () => ipcRenderer.invoke('app:getUpdatePrefs'),
+    setUpdatePrefs: (patch) => ipcRenderer.invoke('app:setUpdatePrefs', patch),
+    onUpdateEvent: (cb) => {
+      const listener = (_event: unknown, state: Parameters<typeof cb>[0]) => cb(state)
+      ipcRenderer.on('app:update', listener)
+      return () => ipcRenderer.removeListener('app:update', listener)
+    },
     installUpdate: () => ipcRenderer.invoke('app:installUpdate'),
     getAutoLaunch: () => ipcRenderer.invoke('app:getAutoLaunch'),
     setAutoLaunch: (enable) => ipcRenderer.invoke('app:setAutoLaunch', enable),
     isElevated: () => ipcRenderer.invoke('app:isElevated'),
-    restartElevated: () => ipcRenderer.invoke('app:restartElevated')
+    restartElevated: () => ipcRenderer.invoke('app:restartElevated'),
+    openExternal: (url) => ipcRenderer.invoke('app:openExternal', url)
   }
 }
 

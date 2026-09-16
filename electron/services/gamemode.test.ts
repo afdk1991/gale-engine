@@ -155,6 +155,27 @@ describe('GameMode unix 运行时（注入假 runner）', () => {
     expect(st.active).toBe('') // 初始 NONE → 空
   })
 
+  it('macOS 重复 boost 先收掉上一轮 caffeinate（回归：PID 与 previous 共用存储键被覆盖，导致进程泄漏持续阻止休眠）', async () => {
+    const pids = ['4567', '8901']
+    let n = 0
+    const { runner, calls } = recordingRunner((s) => {
+      if (s.includes('pgrep')) return ok('NONE')
+      if (s.includes('caffeinate -disu')) return ok(pids[n++] ?? '9999')
+      if (s.includes('kill')) return ok('OK')
+      return ok('NONE')
+    })
+    const svc = createGameModeService(runner, undefined, 'darwin')
+
+    const first = await svc.boost()
+    expect(first.previous).toBe('4567')
+    await svc.boost()
+
+    // 上一轮的 caffeinate 必须被 kill，否则后台残留进程会持续阻止系统休眠
+    expect(calls.some((c) => c.script.includes('kill 4567'))).toBe(true)
+    const st = await svc.status()
+    expect(st.previous).toBe('8901') // 新 PID 已接管
+  })
+
   it('Linux boost 切换 performance 成功时 boosted=true', async () => {
     const { runner } = linuxRunner(true)
     const svc = createGameModeService(runner, undefined, 'linux')

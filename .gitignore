@@ -12,3 +12,6 @@ release-build/
 landing/release/
 __pycache__/
 *.pyc
+
+# 会话临时脚本与输出快照
+_t/

@@ -181,11 +181,15 @@ export function createSystemInformationHardwareFetcher(): HardwareFetcher {
       try {
         const b = await si.battery()
         if (b.hasBattery) {
+          // systeminformation 的 designedCapacity 单位是 **mWh**（毫瓦时），既不是 Wh 也不是 W。
+          // 此前原样塞进 powerW、界面又按 "W" 渲染，笔记本会显示「45000 W」这种离谱数字。
+          // 这里换算为 Wh，界面按 type 分别标注 Wh / W。
+          const mWh = n(b.designedCapacity)
           return {
             model: s(b.model),
             vendor: s(b.manufacturer),
             type: 'battery',
-            powerW: n(b.designedCapacity)
+            powerW: mWh === null ? null : Math.round((mWh / 1000) * 10) / 10
           }
         }
       } catch {

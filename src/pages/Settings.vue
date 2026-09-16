@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { ACCENTS, ACCENT_ORDER } from '../theme/tokens'
 import { themeController } from '../theme/themeController'
-import type { AppUpdateResult } from '../../shared/types'
+import UpdateCard from '../components/UpdateCard.vue'
 
 const appearances = [
   { value: 'system', label: '跟随系统' },
@@ -10,16 +10,13 @@ const appearances = [
   { value: 'dark', label: '深色' }
 ] as const
 
-const version = ref('')
-const checking = ref(false)
-const updateState = ref<AppUpdateResult>({ status: 'up-to-date' })
 const autoLaunch = ref(false)
+const autoLaunchMsg = ref('')
 const elevated = ref(false)
 const elevateMsg = ref('')
 
 onMounted(async () => {
   try {
-    version.value = await window.gale.app.getVersion()
     autoLaunch.value = await window.gale.app.getAutoLaunch()
     elevated.value = await window.gale.app.isElevated()
   } catch {
@@ -39,29 +36,17 @@ async function restartElevated(): Promise<void> {
   }
 }
 
-async function checkUpdate(): Promise<void> {
-  checking.value = true
-  try {
-    updateState.value = await window.gale.app.checkUpdate()
-  } catch (e) {
-    updateState.value = { status: 'error', error: e instanceof Error ? e.message : String(e) }
-  } finally {
-    checking.value = false
-  }
-}
-
-async function installUpdate(): Promise<void> {
-  await window.gale.app.installUpdate()
-}
-
 async function toggleAutoLaunch(): Promise<void> {
-  autoLaunch.value = await window.gale.app.setAutoLaunch(!autoLaunch.value)
-}
-
-function updateText(s: AppUpdateResult): string {
-  if (s.status === 'available') return `发现新版本 v${s.version}，下载完成后点击「立即安装」`
-  if (s.status === 'error') return `检查失败：${s.error ?? '未知错误'}`
-  return '当前已是最新版本'
+  autoLaunchMsg.value = ''
+  const next = !autoLaunch.value
+  try {
+    const applied = await window.gale.app.setAutoLaunch(next)
+    // 以主进程回传的实际状态为准，避免 IPC 失败或平台不支持时 UI 与真实状态不一致
+    autoLaunch.value = applied
+    if (applied !== next) autoLaunchMsg.value = '当前平台未能切换开机自启（可能缺少权限）'
+  } catch (e) {
+    autoLaunchMsg.value = e instanceof Error ? e.message : String(e)
+  }
 }
 </script>
 
@@ -107,21 +92,8 @@ function updateText(s: AppUpdateResult): string {
       </div>
     </div>
 
-    <div class="card">
-      <h2 class="card-title">关于与更新</h2>
-      <p class="row-line">当前版本：<strong>{{ version || '—' }}</strong></p>
-      <div class="row">
-        <button class="btn" :disabled="checking" @click="checkUpdate">
-          {{ checking ? '检查中…' : '检查更新' }}
-        </button>
-        <button
-          v-if="updateState.status === 'available'"
-          class="btn btn-primary"
-          @click="installUpdate"
-        >立即安装</button>
-      </div>
-      <p class="hint" :class="{ bad: updateState.status === 'error' }">{{ updateText(updateState) }}</p>
-    </div>
+    <!-- 关于与更新：与首页/侧边栏共用同一份更新状态（composable 单例） -->
+    <UpdateCard />
 
     <div class="card">
       <h2 class="card-title">管理员权限</h2>
@@ -147,8 +119,9 @@ function updateText(s: AppUpdateResult): string {
       <h2 class="card-title">开机自启</h2>
       <label class="switch-line">
         <input type="checkbox" :checked="autoLaunch" @change="toggleAutoLaunch" />
-        <span>登录 Windows 时自动启动疾风引擎</span>
+        <span>登录系统时自动启动疾风引擎</span>
       </label>
+      <p v-if="autoLaunchMsg" class="hint bad">{{ autoLaunchMsg }}</p>
     </div>
   </section>
 </template>

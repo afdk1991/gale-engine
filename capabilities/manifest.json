@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "libraryVersion": "0.1.0",
+  "generatedAt": "2026-09-16T00:00:00Z",
+  "appVersion": "0.1.9",
+  "capabilities": [
+    {
+      "id": "meta-daily-cleanup",
+      "label": "日常清理三件套",
+      "description": "临时文件 + 浏览器缓存 + 回收站，一次跑完；适合每天开机后顺手执行",
+      "recipe": [
+        { "call": "optimizer.cleanupKind", "args": { "kind": "temp" } },
+        { "call": "optimizer.cleanupKind", "args": { "kind": "browser" } },
+        { "call": "toolbox.emptyRecycleBin" }
+      ]
+    },
+    {
+      "id": "meta-net-refresh",
+      "label": "网络状态复位",
+      "description": "刷新 DNS 解析缓存并清空剪贴板中的临时内容，用于域名解析异常的快速自救",
+      "recipe": [
+        { "call": "toolbox.flushDns" },
+        { "call": "toolbox.clearClipboard" }
+      ]
+    },
+    {
+      "id": "meta-disk-housekeeping",
+      "label": "磁盘空间日常整理",
+      "description": "清理系统临时文件、缩略图缓存与用户缓存，再清空回收站；不含耗时的组件存储清理",
+      "recipe": [
+        {
+          "call": "disk.deepCleanup",
+          "args": {
+            "ids": [
+              "win-system-temp",
+              "win-thumbnail",
+              "mac-user-cache",
+              "mac-user-logs",
+              "linux-user-cache"
+            ]
+          }
+        },
+        { "call": "toolbox.emptyRecycleBin" }
+      ]
+    },
+    {
+      "id": "meta-dll-health-check",
+      "label": "运行库健康体检",
+      "description": "只扫描不改动：检查系统关键 DLL 与 VC++ 运行库是否缺失或位数不全，出报告供判断",
+      "recipe": [{ "call": "dll.scan" }]
+    },
+    {
+      "id": "repair-system-files",
+      "label": "系统文件与 DLL 修复",
+      "description": "sfc /scannow 扫描并修复损坏或被替换的系统文件与 DLL（耗时数分钟，需管理员权限）",
+      "defaultEnabled": false
+    },
+    {
+      "id": "deep-component-store",
+      "label": "组件存储清理（WinSxS）",
+      "description": "DISM StartComponentCleanup 清理旧组件版本，可释放数 GB；耗时最长，建议单独执行",
+      "defaultEnabled": false
+    }
+  ]
+}

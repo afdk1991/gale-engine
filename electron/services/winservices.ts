@@ -1,6 +1,7 @@
 import type { ServiceStartupType, ToolResult, WinService } from '../../shared/types'
 import type { ExecRunner, Platform } from './shell'
 import { detectPlatform } from './shell'
+import { parseActionOutcome } from './actionResult'
 
 /**
  * 系统关键服务：停止一律拒绝（JS 白名单 + PowerShell 端 CanStop 双保险）。
@@ -80,11 +81,10 @@ export function parseServiceList(stdout: string): WinService[] {
   })
 }
 
-export function parseServiceResult(stdout: string): ToolResult {
-  const text = stdout.trim()
-  if (text.startsWith('ERR:')) return { ok: false, message: text.slice(4) }
-  if (text.includes('OK')) return { ok: true, message: '操作成功' }
-  return { ok: false, message: text || '操作失败' }
+export function parseServiceResult(stdout: string, code = 0): ToolResult {
+  // 严格判定（见 actionResult.ts）：原先 includes('OK') 会把含 OK 字样的错误当成功
+  const { ok, message } = parseActionOutcome(stdout, code)
+  return { ok, message }
 }
 
 const PROTECTED_PS_LIST = `@(${PROTECTED_SERVICES.map((n) => `'${n}'`).join(',')})`

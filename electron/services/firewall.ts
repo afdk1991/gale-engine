@@ -1,6 +1,7 @@
 import type { FirewallProfile, FirewallRule, ToolResult } from '../../shared/types'
 import type { ExecRunner, Platform } from './shell'
 import { detectPlatform } from './shell'
+import { parseActionOutcome } from './actionResult'
 
 /** 防火墙配置文件名白名单（PowerShell 端同样枚举校验，双保险） */
 export const FIREWALL_PROFILES = ['Domain', 'Private', 'Public'] as const
@@ -61,11 +62,10 @@ export function parseRules(stdout: string): FirewallRule[] {
   })
 }
 
-export function parseFirewallResult(stdout: string): ToolResult {
-  const text = stdout.trim()
-  if (text.startsWith('ERR:')) return { ok: false, message: text.slice(4) }
-  if (text.includes('OK')) return { ok: true, message: '操作成功' }
-  return { ok: false, message: text || '操作失败' }
+export function parseFirewallResult(stdout: string, code = 0): ToolResult {
+  // 严格判定（见 actionResult.ts）：原先用 includes('OK')，错误信息含 OK 字样即误判成功
+  const { ok, message } = parseActionOutcome(stdout, code)
+  return { ok, message }
 }
 
 const PROFILES_SCRIPT = `

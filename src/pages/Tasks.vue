@@ -1,13 +1,22 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import type { ScheduledTask } from '../../shared/types'
+import { useFlash } from '../composables/useFlash'
 
 const list = ref<ScheduledTask[]>([])
 const filter = ref('')
 const loading = ref(false)
 const error = ref<string | null>(null)
 const busy = ref<string | null>(null)
-const feedback = ref<Record<string, string>>({})
+const { feedback, tone, flash } = useFlash()
+
+/**
+ * 任务的唯一键。
+ * ⚠️ 脚本与模板**必须**用同一个函数生成键：曾经脚本写 `path|name`、模板写 `path+name`，
+ * 导致 `busy === key` 恒为 false（按钮永不置灰、可重复并发触发同一任务），
+ * 且 `feedback[key]` 永未命中（操作结果提示永不显示）。
+ */
+const taskKey = (t: ScheduledTask): string => `${t.path}|${t.name}`
 
 const stateClass: Record<string, string> = {
   Ready: 'st-ok',
@@ -23,15 +32,6 @@ const filtered = () => {
   )
 }
 
-function flash(key: string, message: string): void {
-  feedback.value = { ...feedback.value, [key]: message }
-  setTimeout(() => {
-    const next = { ...feedback.value }
-    delete next[key]
-    feedback.value = next
-  }, 3000)
-}
-
 async function refresh(): Promise<void> {
   loading.value = true
   error.value = null
@@ -45,11 +45,11 @@ async function refresh(): Promise<void> {
 }
 
 async function act(t: ScheduledTask, label: string, fn: () => Promise<{ ok: boolean; message: string }>): Promise<void> {
-  const key = `${t.path}|${t.name}`
+  const key = taskKey(t)
   busy.value = key
   try {
     const r = await fn()
-    flash(key, r.message)
+    flash(key, r.message, r.ok ? 'ok' : 'bad')
     if (r.ok) {
       await window.gale.history.add({ type: 'optimize', label: `${label}计划任务`, detail: `${t.path}${t.name}` })
     }
@@ -97,7 +97,7 @@ onMounted(() => void refresh())
           </tr>
         </thead>
         <tbody>
-          <tr v-for="t in filtered()" :key="t.path + t.name">
+          <tr v-for="t in filtered()" :key="taskKey(t)">
             <td>
               <span class="tname">{{ t.name }}</span>
               <span class="tpath">{{ t.path }}</span>
@@ -109,13 +109,13 @@ onMounted(() => void refresh())
             <td class="time">{{ t.nextRunTime || '—' }}</td>
             <td class="ops">
               <div class="row-ops">
-                <button class="btn mini" :disabled="busy === t.path + t.name" @click="void toggleTask(t)">
+                <button class="btn mini" :disabled="busy === taskKey(t)" @click="void toggleTask(t)">
                   {{ t.state === 'Disabled' ? '启用' : '禁用' }}
                 </button>
-                <button class="btn mini" :disabled="busy === t.path + t.name" @click="void runTask(t)">运行</button>
-                <button class="btn mini" :disabled="busy === t.path + t.name || t.state !== 'Running'" @click="void stopTask(t)">结束</button>
+                <button class="btn mini" :disabled="busy === taskKey(t)" @click="void runTask(t)">运行</button>
+                <button class="btn mini" :disabled="busy === taskKey(t) || t.state !== 'Running'" @click="void stopTask(t)">结束</button>
               </div>
-              <p v-if="feedback[t.path + t.name]" class="fb">{{ feedback[t.path + t.name] }}</p>
+              <p v-if="feedback[taskKey(t)]" class="fb" :class="{ bad: tone(taskKey(t)) === 'bad' }">{{ feedback[taskKey(t)] }}</p>
             </td>
           </tr>
         </tbody>

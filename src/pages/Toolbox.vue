@@ -76,8 +76,18 @@ function feedback(key: string): string {
         <h2 class="card-title">深色模式</h2>
         <p class="desc">切换 Windows 应用深色/浅色主题（注册表）</p>
         <div class="row">
-          <button class="btn" :disabled="busy === 'dark'" @click="run('dark', setDark, '切换深色模式')">深色</button>
-          <button class="btn" :disabled="busy === 'dark'" @click="run('light', setLight, '切换浅色模式')">浅色</button>
+          <!-- 两个按钮共用一个 busy 键：run('light') 置的是 'light'，
+               原先两个都只判断 'dark'，点「浅色」时两个按钮都不会置灰，可重复触发 -->
+          <button
+            class="btn"
+            :disabled="busy === 'dark' || busy === 'light'"
+            @click="run('dark', setDark, '切换深色模式')"
+          >{{ busy === 'dark' ? '执行中…' : '深色' }}</button>
+          <button
+            class="btn"
+            :disabled="busy === 'dark' || busy === 'light'"
+            @click="run('light', setLight, '切换浅色模式')"
+          >{{ busy === 'light' ? '执行中…' : '浅色' }}</button>
         </div>
         <p class="result" :class="{ bad: (results.dark && !results.dark.ok) || (results.light && !results.light.ok) }">
           {{ feedback('dark') || feedback('light') }}

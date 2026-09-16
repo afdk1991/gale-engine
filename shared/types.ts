@@ -47,6 +47,12 @@ export interface SystemSnapshot {
   uptimeSec: number
   /** 采样时间戳 */
   at: number
+  /**
+   * 本次采样中**采集失败、已按兜底值降级**的数据项（如 `['cpu','temp']`）。
+   * 空数组 = 全部正常。用于让界面如实提示「部分数据不可用」，
+   * 而不是整块报「监控数据获取失败」——单项失败不应拖垮整张快照。
+   */
+  degraded: string[]
 }
 
 // ---- Hardware（硬件型号规格，静态硬件信息，区别于实时监控快照）----
@@ -211,6 +217,14 @@ export interface GaleApi {
   optlib: {
     listCapabilities(): Promise<OptCapabilityMeta[]>
     runSingle(id: string): Promise<OptOutcome>
+    /** 能力库（本项目的「DLL」）当前状态：来源 / 版本 / 远端能力 / 被拒条目 */
+    libraryState(): Promise<CapabilityLibraryState>
+    /** 检查能力库是否有可更新版本（只检查，不生效） */
+    checkLibrary(): Promise<CapabilityLibraryState>
+    /** 把已下载的能力库落盘生效 */
+    applyLibrary(): Promise<CapabilityLibraryState>
+    /** 回退到内置能力库（丢弃远端清单） */
+    resetLibrary(): Promise<CapabilityLibraryState>
   }
   /** 一键优化：按序执行全部（或指定）优化项，实时推送进度，支持取消与重试 */
   onekey: {
@@ -234,6 +248,15 @@ export interface GaleApi {
     checkVolume(mount: string, fix: boolean): Promise<DiskRepairResult>
     /** 修复系统文件与 DLL（Win sfc /scannow 或 DISM RestoreHealth；非 Win 诚实降级） */
     repairSystemFiles(kind: SystemRepairKind): Promise<DiskRepairResult>
+  }
+  /** DLL（动态链接库）缺失检测与修复：扫描 → 建议 → 修复 */
+  dll: {
+    /** 扫描关键系统 DLL / 运行库 DLL 是否缺失或位数不全 */
+    scan(): Promise<DllScanResult>
+    /** 基于最近一次扫描结果给出可执行的修复建议（未扫描时返回通用建议） */
+    advice(): Promise<DllRepairAdvice[]>
+    /** 执行某项修复（走提权通道；非 Windows 诚实降级） */
+    repair(kind: DllRepairKind): Promise<DllRepairResult>
   }
   process: {
     list(sort?: ProcessSortKey): Promise<ProcessInfo[]>
@@ -280,6 +303,16 @@ export interface GaleApi {
     getVersion(): Promise<string>
     /** 检查更新（自动下载可用更新），返回结果摘要 */
     checkUpdate(): Promise<AppUpdateResult>
+    /** 当前更新状态快照：不发网络请求，仅读主进程内状态机 */
+    getUpdateState(): Promise<AppUpdateResult>
+    /** 当前平台的自动更新能力探测（能否自更新、走哪种包、不能时的替代方案） */
+    getUpdateCapability(): Promise<UpdateCapability>
+    /** 订阅更新状态推送（检查中 / 下载进度 / 已下载 / 失败），返回退订函数 */
+    onUpdateEvent(cb: (state: AppUpdateResult) => void): () => void
+    /** 读取自动更新偏好 */
+    getUpdatePrefs(): Promise<AppUpdatePrefs>
+    /** 写入自动更新偏好（部分字段） */
+    setUpdatePrefs(patch: Partial<AppUpdatePrefs>): Promise<AppUpdatePrefs>
     /** 退出并安装已下载的更新 */
     installUpdate(): Promise<void>
     /** 读取开机自启状态 */
@@ -290,6 +323,12 @@ export interface GaleApi {
     isElevated(): Promise<boolean>
     /** 以提升权限重启本应用（Windows 弹 UAC；macOS 弹认证框；Linux 诚实降级） */
     restartElevated(): Promise<{ ok: boolean; message: string }>
+    /**
+     * 用系统默认浏览器打开外部链接。
+     * 渲染进程里不能直接用 <a href>——那会变成应用内导航（把整个界面换掉）。
+     * 主进程侧按主机白名单校验，非白名单链接直接拒绝。
+     */
+    openExternal(url: string): Promise<ToolResult>
   }
 }
 
@@ -379,6 +418,171 @@ export interface OptCapabilityMeta {
   needsAdmin: boolean
   /** 是否默认纳入一键优化（改变系统行为的高危项默认 false） */
   defaultEnabled: boolean
+  /** 能力来源：builtin=主程序内置实现；remote=由可独立更新的能力库下发（配方能力） */
+  source?: 'builtin' | 'remote'
+}
+
+/**
+ * 远端能力库**允许覆盖**的内置能力元信息字段。
+ *
+ * `needsAdmin` 与 `id` / `source` 被**类型层面排除**：提权边界只能由本地代码定义。
+ * 若远端能把需要管理员的步骤标成 `needsAdmin: false`，`onekey` 的权限预检会据此放行，
+ * 未提权时就会去执行高危操作（失败或逐项弹 UAC），绕开「不轰炸 UAC」的设计。
+ * 用类型而非注释来守住这条边界，避免后来者在合并处补一行 `needsAdmin: patch.needsAdmin`。
+ */
+export type OptCapabilityMetaPatch = Partial<
+  Omit<OptCapabilityMeta, 'id' | 'needsAdmin' | 'source'>
+>
+
+// ---- 优化能力库（本项目的「DLL」：可独立更新的动态能力库）----
+// 设计口径见 electron/services/optlib.ts 头部注释与 electron/services/capabilityFeed.ts。
+// 关键安全边界：远端清单**只能编排既有能力**（白名单方法 + 严格参数校验），
+// 不能下发任意可执行代码——否则等同于给应用开一个远程代码执行后门。
+
+/** 配方步骤：调用白名单内的某个既有服务方法 */
+export interface CapabilityRecipeStep {
+  /** 白名单调用标识，如 'toolbox.flushDns' / 'optimizer.cleanupKind' / 'disk.deepCleanup' */
+  call: string
+  /** 调用参数（按白名单逐字段校验，未声明的字段一律拒绝） */
+  args?: Record<string, unknown>
+}
+
+/** 远端下发的单个能力定义 */
+export interface RemoteCapabilityDef {
+  id: string
+  label: string
+  description: string
+  needsAdmin?: boolean
+  defaultEnabled?: boolean
+  /** 远端可直接下线某个能力（false 时不计入可用清单；内置能力不可被下线到不可用） */
+  enabled?: boolean
+  /** 最低应用版本要求，低于该版本时忽略此条 */
+  minAppVersion?: string
+  /** 配方：为空表示仅覆盖同一 id 内置能力的元信息（不可替换其实现） */
+  recipe?: CapabilityRecipeStep[]
+}
+
+/** 能力库清单（远端 JSON） */
+export interface CapabilityManifest {
+  /** 清单结构版本，当前只接受 1 */
+  schema: number
+  /** 能力库版本（语义化版本号，必须单调递增才会被接受） */
+  libraryVersion: string
+  /** 生成时间（ISO 字符串，可选） */
+  generatedAt?: string
+  /** 面向的应用版本（仅用于展示，可选） */
+  appVersion?: string
+  capabilities: RemoteCapabilityDef[]
+}
+
+/** 能力库状态（界面展示用） */
+export interface CapabilityLibraryState {
+  /** 当前生效来源：builtin=内置；remote=远端清单 */
+  source: 'builtin' | 'remote'
+  /** 当前生效的能力库版本（内置为 '0.0.0'） */
+  libraryVersion: string
+  /** 远端清单地址 */
+  feedUrl: string
+  /** 合并后的完整能力清单（内置 + 远端） */
+  capabilities: OptCapabilityMeta[]
+  /** 来自远端的能力 id 列表 */
+  remoteIds: string[]
+  /** 远端清单中被本机拒绝的条目及原因（校验失败会明确列出，不静默吞掉） */
+  rejected: { id: string; reason: string }[]
+  /** 上次检查时间戳，未检查为 null */
+  checkedAt: number | null
+  /** 上次检查/拉取的错误信息 */
+  lastError?: string
+  /** 是否检测到可更新的能力库版本 */
+  updateAvailable: boolean
+  /** 可更新到的版本 */
+  availableVersion?: string
+}
+
+// ---- DLL（动态链接库）缺失检测与修复 ----
+// DLL = Dynamic Link Library：Windows 的代码共享机制，扩展名 .dll。
+// 多个程序共用同一份实现（kernel32.dll 等系统 API、VC++ 运行库 msvcp140.dll 等），
+// 因此某个公共 DLL 缺失会同时打挂一批程序；本模块负责检出并给出可执行的修复路径。
+
+/** DLL 归属分类 */
+export type DllCategory = 'system' | 'runtime' | 'crt' | 'graphics' | 'media' | 'legacy'
+
+/** 单个 DLL 检查项的定义（静态元信息） */
+export interface DllCheckItem {
+  /** 稳定 id（等于归一化后的文件名，如 vcruntime140） */
+  id: string
+  /** DLL 文件名 */
+  name: string
+  category: DllCategory
+  /** 这项 DLL 是干什么的 */
+  purpose: string
+  /** 归属组件 / 来源（系统组件、VC++ 2015-2022 运行库、DirectX 等） */
+  origin: string
+  /** 缺失后的典型症状（用于界面解释"为什么我会遇到报错"） */
+  impact: string
+  /** 是否关键项：缺失通常导致大量程序无法启动 */
+  critical: boolean
+}
+
+/** 单个 DLL 在目标机上的检出结果 */
+export interface DllScanItem extends DllCheckItem {
+  /** 64 位目录（System32）或 32 位目录（SysWOW64）至少有一份存在 */
+  present: boolean
+  /** 位数不全：只在其中一个目录存在（32 位程序仍可能报缺失） */
+  partial: boolean
+  /** 命中的实际文件（含位数与文件版本） */
+  paths: { path: string; bits: 32 | 64; version: string }[]
+}
+
+/** DLL 缺失扫描结果 */
+export interface DllScanResult {
+  platform: 'win32' | 'darwin' | 'linux' | 'other'
+  /** 当前平台是否支持 DLL 检测（DLL 是 Windows 机制，mac/linux 走共享库 .dylib/.so） */
+  supported: boolean
+  /** 平台说明（不支持时解释原因，避免用户误以为功能坏了） */
+  note: string
+  /** 实际扫描的目录（Windows: System32 / SysWOW64） */
+  roots: string[]
+  items: DllScanItem[]
+  /** 完全缺失的 DLL 文件名 */
+  missing: string[]
+  /** 位数不全的 DLL 文件名 */
+  partial: string[]
+  total: number
+  /** 已安装的 VC++ 运行库版本（注册表检出；空字符串=未检出） */
+  vcRedist: { x64: string; x86: string }
+  scannedAt: number
+}
+
+/** 可执行的修复动作类型 */
+export type DllRepairKind = 'sfc' | 'dism-restore' | 'vcredist-x64' | 'vcredist-x86'
+
+/** 修复建议（界面直接渲染为按钮） */
+export interface DllRepairAdvice {
+  kind: DllRepairKind
+  label: string
+  description: string
+  needsAdmin: boolean
+  /** 建议优先级，越小越优先 */
+  priority: number
+}
+
+/** 修复执行结果 */
+export interface DllRepairResult {
+  kind: DllRepairKind
+  label: string
+  /** 命令是否成功执行 */
+  ok: boolean
+  /** 是否真正完成了修复 */
+  repaired: boolean
+  summary: string
+  /** 原始输出尾部 */
+  output: string
+  needsAdmin: boolean
+  /** 当前平台不支持该修复（诚实降级，未执行任何命令） */
+  unsupported: boolean
+  /** 无法自动完成时的手动步骤（官方下载链接等） */
+  nextSteps: string[]
 }
 
 // ---- 一键优化（首页）----
@@ -505,13 +709,74 @@ export interface ToolResult {
 }
 
 // ---- App（关于 / 自动更新 / 开机自启）----
+
+/** 应用内自动更新的状态机 */
+export type AppUpdateStatus =
+  /** 尚未检查过 */
+  | 'idle'
+  /** 正在检查 */
+  | 'checking'
+  /** 已是最新 */
+  | 'up-to-date'
+  /** 有可用更新（已开始/等待下载） */
+  | 'available'
+  /** 正在下载 */
+  | 'downloading'
+  /** 下载完成，可立即安装 */
+  | 'downloaded'
+  /** 当前平台/安装方式不支持应用内自更新（诚实降级） */
+  | 'unsupported'
+  /** 检查或下载失败 */
+  | 'error'
+
+/** 更新包分发方式，决定能否应用内自更新 */
+export type UpdatePackageKind = 'nsis' | 'mac-zip' | 'appimage' | 'deb' | 'unknown'
+
+/** 平台自动更新能力探测结果 */
+export interface UpdateCapability {
+  /** 当前平台+安装方式是否支持应用内自动更新 */
+  canAutoUpdate: boolean
+  platform: 'win32' | 'darwin' | 'linux' | 'other'
+  packageKind: UpdatePackageKind
+  /** 不支持的原因与替代更新方式；支持时为 null */
+  reason: string | null
+}
+
+/** 自动更新偏好 */
+export interface AppUpdatePrefs {
+  /** 启动后静默检查更新（默认开） */
+  autoCheck: boolean
+  /** 检测到更新后自动下载（默认开） */
+  autoDownload: boolean
+  /** 下载完成后退出应用即自动安装（默认开） */
+  autoInstallOnQuit: boolean
+}
+
 export interface AppUpdateResult {
-  /** up-to-date=已是最新；available=有可用更新；error=检查失败 */
-  status: 'up-to-date' | 'available' | 'error'
-  /** 可用更新版本号（status==='available' 时） */
+  /** 状态机当前状态 */
+  status: AppUpdateStatus
+  /** 可用 / 已下载的版本号（status 为 available / downloading / downloaded 时） */
   version?: string
-  /** 失败原因（status==='error' 时） */
+  /** 当前应用版本 */
+  currentVersion?: string
+  /** 下载进度百分比 0-100（status === 'downloading'） */
+  percent?: number
+  /** 已下载字节 */
+  transferred?: number
+  /** 总字节（未知为 undefined） */
+  total?: number
+  /** 实时速率 bytes/s */
+  bytesPerSecond?: number
+  /** 失败原因（status === 'error'） */
   error?: string
+  /** status === 'unsupported' 时的原因与替代方案 */
+  reason?: string
+  /** 平台能力探测结果（随每次返回附带，便于界面直接展示） */
+  capability?: UpdateCapability
+  /** 是否为后台静默检查（静默检查失败不打扰用户） */
+  silent?: boolean
+  /** 状态时间戳 */
+  at?: number
 }
 
 // ---- Process（进程管理）----

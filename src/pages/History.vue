@@ -34,7 +34,14 @@ async function load(): Promise<void> {
 }
 
 async function clearAll(): Promise<void> {
-  await window.gale.history.clear()
+  error.value = null
+  try {
+    await window.gale.history.clear()
+  } catch (e) {
+    // 清空失败就不必再拉列表，直接如实报错，避免误以为已清空
+    error.value = e instanceof Error ? e.message : String(e)
+    return
+  }
   await load()
 }
 

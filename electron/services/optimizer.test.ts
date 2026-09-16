@@ -1,6 +1,32 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import { createOptimizerService } from './optimizer'
 import type { ExecRunner } from './shell'
+
+// createOptimizerService 的 meter 参数有**默认实现**（systeminformation 实测磁盘可用空间），
+// 目的是让「调用方忘记注入」不再可能（这正是一处历史缺陷的成因）。
+// 单元测试必须保持无 IO：这里**只替换读磁盘的那一层**（fetcher），
+// createSpaceMeter / mountOfPath / diffReleasedBytes 全部保留真实实现，
+// 因此测试覆盖的是真实接线逻辑，而不是被整体替换掉的桩。
+// 交替返回两个可用空间值，等价于「清理后腾出 2MB」。
+vi.mock('./space', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./space')>()
+  return {
+    ...actual,
+    createSystemInformationSpaceFetcher: () => {
+      let call = 0
+      return {
+        fsSize: async () => [
+          {
+            mount: 'C:',
+            size: 1_000_000_000,
+            used: 1,
+            available: call++ % 2 === 0 ? 1_000_000 : 3_000_000
+          }
+        ]
+      }
+    }
+  }
+})
 
 interface Call {
   script: string
@@ -103,6 +129,38 @@ describe('scanCleanup', () => {
 })
 
 describe('runCleanup', () => {
+  it('未显式注入 meter 时也会实测释放量（回归：此前调用方漏传 meter，releasedBytes 恒缺失，界面显示「释放 0 B」）', async () => {
+    const { runner } = recordingRunner(() => ok())
+    const res = await createOptimizerService(runner).runCleanup([
+      { id: 'temp:1', path: 'C:\\TESTTEMP', kind: 'temp' }
+    ])
+    // stub meter 交替返回 1MB / 3MB，差值应为 2MB —— 能取到数值即证明默认 meter 真的被接线了
+    expect(res[0].releasedBytes).toBe(2_000_000)
+  })
+
+  it('显式注入 meter 时使用注入的实现（便于主进程共享一份实测器）', async () => {
+    let call = 0
+    const injected = {
+      freeBytes: async () => 0,
+      freeBytesForPath: async () => (call++ % 2 === 0 ? 5_000_000 : 9_000_000)
+    }
+    const { runner } = recordingRunner(() => ok())
+    const res = await createOptimizerService(runner, 'win32', injected).runCleanup([
+      { id: 'temp:1', path: 'C:\\TESTTEMP', kind: 'temp' }
+    ])
+    expect(res[0].releasedBytes).toBe(4_000_000)
+  })
+
+  it('无法推断卷（如 RecycleBin 这类虚拟路径）时不产出 releasedBytes，而不是报 0', async () => {
+    const { runner } = recordingRunner((s) => (s.includes('Clear-RecycleBin') ? ok('OK') : fail()))
+    const res = await createOptimizerService(runner).runCleanup([
+      { id: 'recycle', path: 'RecycleBin', kind: 'recycle' }
+    ])
+    expect(res[0].ok).toBe(true)
+    // RecycleBin 无盘符 → mountOfPath 返回 null → 真实 meter 返回 null → 不写 releasedBytes
+    expect('releasedBytes' in res[0]).toBe(false)
+  })
+
   it('回收站项走 Clear-RecycleBin 并返回成功', async () => {
     const { runner } = recordingRunner((s) =>
       s.includes('Clear-RecycleBin') ? ok('OK') : fail()

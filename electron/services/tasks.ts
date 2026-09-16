@@ -1,6 +1,7 @@
 import type { ScheduledTask, ToolResult } from '../../shared/types'
 import type { ExecRunner, Platform } from './shell'
 import { detectPlatform } from './shell'
+import { parseActionOutcome } from './actionResult'
 
 /**
  * 任务路径 / 名称白名单校验：
@@ -40,12 +41,10 @@ export function parseTaskList(stdout: string): ScheduledTask[] {
   })
 }
 
-/** 解析操作回执：与进程模块同约定（ERR: 前缀 / OK） */
-export function parseTaskResult(stdout: string): ToolResult {
-  const text = stdout.trim()
-  if (text.startsWith('ERR:')) return { ok: false, message: text.slice(4) }
-  if (text.includes('OK')) return { ok: true, message: '操作成功' }
-  return { ok: false, message: text || '操作失败' }
+/** 解析操作回执：与进程模块同约定（ERR: 前缀 / 独立成行的 OK），实现在 actionResult.ts */
+export function parseTaskResult(stdout: string, code = 0): ToolResult {
+  const { ok, message } = parseActionOutcome(stdout, code)
+  return { ok, message }
 }
 
 /** 列表脚本：枚举全部计划任务及其上次/下次运行时间 */

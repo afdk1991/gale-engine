@@ -86,20 +86,56 @@ export function createSystemInformationFetcher(): MonitorFetcher {
 export function createMonitorService(fetcher?: Partial<MonitorFetcher>) {
   const f: MonitorFetcher = { ...createSystemInformationFetcher(), ...(fetcher ?? {}) }
 
+  /**
+   * 单项采集失败时**按字段降级**，不让整张快照 reject。
+   *
+   * 背景：原先 cpu/mem/disks/net/uptime 直接 await systeminformation，任一项抛错
+   * （虚拟机的温度接口、网络盘超时、容器里的 fsSize 等）都会让 snapshot() 整体失败，
+   * 界面整块显示「监控数据获取失败」，连正常项也看不到。
+   * 现在失败项记入 `degraded`，其余照常返回。
+   */
+  const attempt = async <T>(
+    label: string,
+    fn: () => Promise<T>,
+    fallback: T,
+    degraded: string[]
+  ): Promise<T> => {
+    try {
+      const v = await fn()
+      return v ?? fallback
+    } catch {
+      degraded.push(label)
+      return fallback
+    }
+  }
+
   const snapshot = async (): Promise<SystemSnapshot> => {
-    const cpu = await f.cpu()
-    const mem = await f.mem()
-    const disks = await f.disks()
+    const degraded: string[] = []
+
+    const cpu = await attempt<CpuSnapshot>('cpu', () => f.cpu(), { load: 0, cores: [] }, degraded)
+    const mem = await attempt<MemSnapshot>(
+      'mem',
+      () => f.mem(),
+      { used: 0, total: 0, percent: 0 },
+      degraded
+    )
+    const disks = await attempt<DiskSnapshot[]>('disks', () => f.disks(), [], degraded)
+    const net = await attempt<NetSnapshot>('net', () => f.net(), { rxSec: 0, txSec: 0 }, degraded)
+    const temp = await attempt<number | null>('temp', () => f.temp(), null, degraded)
+    const battery = await attempt<number | null>('battery', () => f.battery(), null, degraded)
+    const uptime = await attempt<number>('uptime', () => f.uptime(), 0, degraded)
+
     // 在快照边界统一钳制百分比字段，保证 API 契约（0-100）不依赖数据源
     return {
-      cpu: { load: pct(cpu.load), cores: cpu.cores.map(pct) },
+      cpu: { load: pct(cpu.load), cores: (cpu.cores ?? []).map(pct) },
       mem: { used: mem.used, total: mem.total, percent: pct(mem.percent) },
       disks: disks.map((d) => ({ ...d, percent: pct(d.percent) })),
-      net: await f.net(),
-      temp: await f.temp(),
-      battery: await f.battery(),
-      uptimeSec: await f.uptime(),
-      at: Date.now()
+      net,
+      temp,
+      battery,
+      uptimeSec: uptime,
+      at: Date.now(),
+      degraded
     }
   }
 

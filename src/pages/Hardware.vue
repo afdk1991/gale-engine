@@ -129,7 +129,8 @@ onMounted(() => void refresh())
           <dt>厂商</dt><dd>{{ orDash(info.power.vendor) }}</dd>
           <dt>类型</dt>
           <dd>{{ info.power.type === 'battery' ? '电池' : info.power.type === 'psu' ? '电源供应器' : '不可用' }}</dd>
-          <dt>额定功率</dt><dd>{{ info.power.powerW === null ? '—' : info.power.powerW + ' W' }}</dd>
+          <dt>{{ info.power.type === 'battery' ? '设计容量' : '额定功率' }}</dt>
+          <dd>{{ info.power.powerW === null ? '—' : info.power.powerW + (info.power.type === 'battery' ? ' Wh' : ' W') }}</dd>
         </dl>
         <p v-if="info.power.type === 'unknown'" class="muted note">台式机 PSU 通常无标准软件接口（需 PMBus/SMBus），型号不可读取</p>
       </div>

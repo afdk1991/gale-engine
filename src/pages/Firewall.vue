@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import type { FirewallProfile, FirewallRule } from '../../shared/types'
+import { useFlash } from '../composables/useFlash'
 
 const profiles = ref<FirewallProfile[]>([])
 const rules = ref<FirewallRule[]>([])
@@ -8,7 +9,7 @@ const ruleFilter = ref('')
 const loading = ref(false)
 const error = ref<string | null>(null)
 const busy = ref<string | null>(null)
-const feedback = ref<Record<string, string>>({})
+const { feedback, tone, flash } = useFlash()
 
 const filteredRules = () => {
   const kw = ruleFilter.value.trim().toLowerCase()
@@ -16,15 +17,6 @@ const filteredRules = () => {
   return rules.value.filter(
     (r) => r.displayName.toLowerCase().includes(kw) || r.name.toLowerCase().includes(kw)
   )
-}
-
-function flash(key: string, message: string): void {
-  feedback.value = { ...feedback.value, [key]: message }
-  setTimeout(() => {
-    const next = { ...feedback.value }
-    delete next[key]
-    feedback.value = next
-  }, 3000)
 }
 
 async function refresh(): Promise<void> {
@@ -45,7 +37,7 @@ async function toggleProfile(p: FirewallProfile): Promise<void> {
   busy.value = `profile:${p.name}`
   try {
     const r = await window.gale.firewall.setProfileEnabled(p.name, !p.enabled)
-    flash(`profile:${p.name}`, r.message)
+    flash(`profile:${p.name}`, r.message, r.ok ? 'ok' : 'bad')
     if (r.ok) {
       await window.gale.history.add({
         type: 'toolbox',
@@ -65,7 +57,7 @@ async function toggleRule(r: FirewallRule): Promise<void> {
   busy.value = r.name
   try {
     const res = await window.gale.firewall.toggleRule(r.name, !r.enabled)
-    flash(r.name, res.message)
+    flash(r.name, res.message, res.ok ? 'ok' : 'bad')
     if (res.ok) {
       await window.gale.history.add({
         type: 'toolbox',
@@ -107,7 +99,13 @@ onMounted(() => void refresh())
         <p class="card-desc">
           入站默认 {{ p.inbound }} · 出站默认 {{ p.outbound }}
         </p>
-        <p v-if="feedback[`profile:${p.name}`]" class="fb" :class="{ bad: !p.enabled === feedback[`profile:${p.name}`].includes('拒绝') }">
+        <!--
+          原先写的是 `!p.enabled === feedback[...].includes('拒绝')`：
+          把「配置文件是否启用」与「反馈是否含拒绝」两个布尔量做了相等比较，
+          语义完全反了（成功反馈被标红、真正被拒绝的反而不标红）。
+          改为读取结构化的 tone，不再靠字符串嗅探。
+        -->
+        <p v-if="feedback[`profile:${p.name}`]" class="fb" :class="{ bad: tone(`profile:${p.name}`) === 'bad' }">
           {{ feedback[`profile:${p.name}`] }}
         </p>
       </div>
@@ -143,7 +141,7 @@ onMounted(() => void refresh())
               <button class="btn mini" :disabled="busy === r.name" @click="void toggleRule(r)">
                 {{ r.enabled ? '禁用' : '启用' }}
               </button>
-              <p v-if="feedback[r.name]" class="fb">{{ feedback[r.name] }}</p>
+              <p v-if="feedback[r.name]" class="fb" :class="{ bad: tone(r.name) === 'bad' }">{{ feedback[r.name] }}</p>
             </td>
           </tr>
         </tbody>

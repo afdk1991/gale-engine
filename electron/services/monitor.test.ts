@@ -49,4 +49,62 @@ describe('createMonitorService', () => {
     expect(snap.cpu.cores).toEqual([100])
     expect(snap.mem.percent).toBe(0)
   })
+
+  it('全部数据源正常时 degraded 为空数组', async () => {
+    const snap = await createMonitorService(fakeFetcher()).snapshot()
+    expect(snap.degraded).toEqual([])
+  })
+
+  it('单项采集抛错时按字段降级，不让整张快照失败（回归：原先任一失败即整块报错）', async () => {
+    const svc = createMonitorService(
+      fakeFetcher({
+        disks: async () => {
+          throw new Error('fsSize 超时（网络盘）')
+        }
+      })
+    )
+    const snap = await svc.snapshot()
+    // 失败项降级为空数组并登记，其余项照常返回
+    expect(snap.disks).toEqual([])
+    expect(snap.degraded).toEqual(['disks'])
+    expect(snap.cpu.load).toBe(42.5)
+    expect(snap.mem.percent).toBe(25)
+    expect(snap.net.rxSec).toBe(1024)
+  })
+
+  it('多项失败时逐个登记，互不影响', async () => {
+    const svc = createMonitorService(
+      fakeFetcher({
+        cpu: async () => {
+          throw new Error('currentLoad 失败')
+        },
+        temp: async () => {
+          throw new Error('温度传感器不可用')
+        },
+        uptime: async () => {
+          throw new Error('time 失败')
+        }
+      })
+    )
+    const snap = await svc.snapshot()
+    expect(snap.degraded).toEqual(['cpu', 'temp', 'uptime'])
+    expect(snap.cpu).toEqual({ load: 0, cores: [] })
+    expect(snap.temp).toBeNull()
+    expect(snap.uptimeSec).toBe(0)
+    // 未失败项仍为真实值
+    expect(snap.battery).toBe(80)
+  })
+
+  it('数据源返回 null/undefined 时按兜底值处理，不写入 degraded（属于「无此项」而非「采集失败」）', async () => {
+    const svc = createMonitorService(
+      fakeFetcher({
+        disks: async () => null as never,
+        mem: async () => null as never
+      })
+    )
+    const snap = await svc.snapshot()
+    expect(snap.disks).toEqual([])
+    expect(snap.mem).toEqual({ used: 0, total: 0, percent: 0 })
+    expect(snap.degraded).toEqual([])
+  })
 })

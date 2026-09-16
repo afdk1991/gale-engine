@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { createSettingsService, normalizeSettings, DEFAULT_SETTINGS } from './settings'
+import {
+  createSettingsService,
+  createAppPrefsService,
+  normalizeSettings,
+  normalizeAppPrefs,
+  DEFAULT_SETTINGS,
+  DEFAULT_APP_PREFS
+} from './settings'
 import type { StorageAdapter } from './settings'
 
 function memoryStorage(initial: Record<string, unknown> = {}): StorageAdapter & { data: Record<string, unknown> } {
@@ -55,5 +62,43 @@ describe('createSettingsService', () => {
     const service = createSettingsService(storage)
     const result = service.set({ appearance: 'neon' } as never)
     expect(result.appearance).toBe('system')
+  })
+})
+
+describe('normalizeAppPrefs', () => {
+  it('默认三项全开', () => {
+    expect(normalizeAppPrefs(undefined)).toEqual(DEFAULT_APP_PREFS)
+    expect(DEFAULT_APP_PREFS).toEqual({ autoCheck: true, autoDownload: true, autoInstallOnQuit: true })
+  })
+
+  it('只接受布尔值，非布尔字段回退默认', () => {
+    expect(normalizeAppPrefs({ autoCheck: 'yes', autoDownload: false })).toEqual({
+      autoCheck: true,
+      autoDownload: false,
+      autoInstallOnQuit: true
+    })
+  })
+})
+
+describe('createAppPrefsService', () => {
+  it('空存储返回默认偏好', () => {
+    expect(createAppPrefsService(memoryStorage()).get()).toEqual(DEFAULT_APP_PREFS)
+  })
+
+  it('set 合并补丁并写回 appPrefs 键（与 theme 分离）', () => {
+    const storage = memoryStorage()
+    const service = createAppPrefsService(storage)
+    const next = service.set({ autoDownload: false })
+    expect(next.autoDownload).toBe(false)
+    expect(next.autoCheck).toBe(true)
+    expect(storage.data.appPrefs).toEqual(next)
+    expect(storage.data.theme).toBeUndefined()
+  })
+
+  it('读取已持久化的偏好', () => {
+    const storage = memoryStorage({ appPrefs: { autoCheck: false, autoDownload: false, autoInstallOnQuit: false } })
+    const prefs = createAppPrefsService(storage).get()
+    expect(prefs.autoCheck).toBe(false)
+    expect(prefs.autoInstallOnQuit).toBe(false)
   })
 })
