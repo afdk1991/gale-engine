@@ -8,7 +8,7 @@
 - [ ] `npm run typecheck`（`vue-tsc --noEmit`）零错误
 - [ ] `npm run test`（`vitest run`）全绿（当前 142 项）
 - [ ] `npm run build`（`electron-vite build`）主进程/预加载/渲染产物均生成，无报错
-- [ ] 版本号 `package.json#version` 与计划发版号一致（当前 `0.1.8`）
+- [ ] 版本号 `package.json#version` 与计划发版号一致（当前 `0.1.9`）
 
 ## 二、安装包产出（本机可验 ✅）
 

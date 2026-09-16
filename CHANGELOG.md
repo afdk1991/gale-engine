@@ -1,13 +1,13 @@
 # 疾风引擎 (gale-engine) 更新日志
 
 > 版本格式遵循语义化版本（SemVer）：`主版本.次版本.修订`。
-> 发版流程：在 `package.json` 升级版本后打 Git tag（如 `v0.1.8`），再运行 `scripts/publish-release.ps1` 构建并创建 GitHub Release、上传 NSIS 安装包。CI 矩阵构建（win/macos/linux × x64/arm64）可在此流程之上接入，由 tag 触发。
+> 发版流程：在 `package.json` 升级版本后打 Git tag（如 `v0.1.9`）并推送，`.github/workflows/release.yml` 自动在 win/macos/linux × x64/arm64 六矩阵构建并发布到 GitHub Releases；也可在本机运行 `scripts/publish-release.ps1` 构建上传。历史版本补发走 `release-backfill.yml`（基于 master 构建，仅按 tag 钉定版本号）。
 
 ---
 
-## 开发中（当前 master 工作区，未发布）
+## v0.1.9 — 2026-09-16（首页一键优化 + DLL 能力库 + 运行时提权 + 空间实测释放）
 
-以下四项任务已实现并提交（commit `12a492f`），将随下次 v0.1.x 发布合并进版本说明：
+四项任务正式发布（commit `12a492f`）：
 
 ### 新增功能
 - **首页一键全部优化**：首页 Hero 区新增「⚡ 一键优化」入口，按序执行所有可优化项，实时展示进度、每项结果（成功/失败/跳过）与汇总报告；支持中途取消与失败重试（默认 1 次）。
