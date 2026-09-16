@@ -23,9 +23,16 @@ $version = (node -p "require('./package.json').version")
 if (-not $version) { throw "无法从 package.json 读取 version" }
 $tag = "v$version"
 
-# 若未指定安装包路径，按约定文件名拼出
+# 若未指定安装包路径，按 electron-builder.yml 的 artifactName 约定拼出
+# （gale-engine-${version}-${arch}-setup.exe；arch 由构建目标决定，默认 x64）
 if (-not $Exe) {
-  $Exe = "release/疾风引擎-$version-setup.exe"
+  $arch = if ($env:BUILD_ARCH) { $env:BUILD_ARCH } else { 'x64' }
+  $Exe = "release/gale-engine-$version-$arch-setup.exe"
+  # 兜底：若精确名不存在，按版本号匹配目录内任意 arch 产物
+  if (-not (Test-Path $Exe)) {
+    $candidate = Get-ChildItem -Path "release" -Filter "gale-engine-$version-*-setup.exe" | Select-Object -First 1
+    if ($candidate) { $Exe = $candidate.FullName }
+  }
 }
 
 # 安装包不存在则先构建（使用国内镜像，避免 GitHub 拉取失败）

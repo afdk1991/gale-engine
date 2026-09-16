@@ -203,7 +203,7 @@
   <main>
     <section class="hero" id="download">
       <div class="wrap">
-        <span class="badge">v0.2.0 · 新增一键优化与 DLL 能力库</span>
+        <span class="badge">v0.1.8 · 跨平台系统优化加速</span>
         <h1>让你的电脑 <span class="grad">更快更稳</span></h1>
         <p>硬件监控与型号规格、进程管理、垃圾清理、游戏模式、网络诊断、服务管理、计划任务与防火墙，集成在一个轻量桌面应用里。支持 Windows / macOS / Linux（x64 + arm64）。</p>
 
@@ -333,7 +333,7 @@ sudo dpkg -i gale-engine-*.deb</code></pre>
     <section class="section" id="changelog">
       <div class="wrap">
         <h2>更新日志</h2>
-        <p class="sub">v0.2.0 一键优化与 DLL 能力库发版说明</p>
+        <p class="sub">v0.1.8 跨平台系统优化加速发版说明</p>
         <div class="log reveal in">
           <div class="log-item">
             <div><span class="log-version">v0.1.8</span><span class="log-date">2026-09-15</span></div>
@@ -362,30 +362,6 @@ sudo dpkg -i gale-engine-*.deb</code></pre>
               <li>新增硬件信息模块（systeminformation 采集 7 类硬件型号，第 13 个页面）</li>
               <li>6 矩阵 CI（win/macos/linux × x64/arm64），Linux arm64 用 qemu 交叉编译</li>
               <li>修复 macOS arm64 构建与 CI 产物按 os-arch 隔离</li>
-            </ul>
-          </div>
-          <div class="log-item">
-            <div><span class="log-version">v0.4.0</span><span class="log-date">2026-09-04</span></div>
-            <ul>
-              <li>新增服务管理：服务列表、启动 / 停止、切换启动类型（系统关键服务保护）</li>
-              <li>新增计划任务：任务枚举与启停、立即运行、结束运行中任务</li>
-              <li>新增防火墙：Domain / Private / Public 配置文件开关 + 规则启停</li>
-              <li>12 个页面、41 个 IPC handler，142 项自动化测试全绿</li>
-            </ul>
-          </div>
-          <div class="log-item">
-            <div><span class="log-version">v0.3.0</span><span class="log-date">2026-09-03</span></div>
-            <ul>
-              <li>新增进程管理：CPU / 内存占用排序，结束、挂起 / 恢复进程，调整优先级</li>
-              <li>新增网络诊断：Ping 延迟测试与网卡信息</li>
-              <li>垃圾清理扩展：支持 Chrome / Edge 浏览器缓存清理</li>
-            </ul>
-          </div>
-          <div class="log-item">
-            <div><span class="log-version">v0.2.0</span><span class="log-date">2026-08-30</span></div>
-            <ul>
-              <li>新增硬件监控 / 优化记录 / 优化中心 / 游戏模式 / 系统工具箱五大模块</li>
-              <li>落地页与发布流水线（tag 触发 GitHub Actions 构建发布）</li>
             </ul>
           </div>
           <div class="log-item">
@@ -458,7 +434,7 @@ sudo dpkg -i gale-engine-*.deb</code></pre>
         </div>
       </div>
       <div style="margin-top:24px;padding-top:18px;border-top:1px solid var(--border);text-align:center;">
-        <div>v0.2.0 · MIT License · 309 项自动化测试全绿</div>
+        <div>v0.1.8 · MIT License · 309 项自动化测试全绿</div>
         <div style="margin-top:6px;">© 2026 GaleEngine · 仅供学习与个人优化使用</div>
         <div class="beian" style="margin-top:10px;font-size:12px;color:var(--ink-3);">
           <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">苏ICP备2025161175号-2</a>

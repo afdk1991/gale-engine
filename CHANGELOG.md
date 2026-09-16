@@ -1,13 +1,13 @@
 # 疾风引擎 (gale-engine) 更新日志
 
 > 版本格式遵循语义化版本（SemVer）：`主版本.次版本.修订`。
-> 发版流程：在 `package.json` 升级版本后打 Git tag（如 `v0.2.0`），再运行 `scripts/publish-release.ps1` 构建并创建 GitHub Release、上传 NSIS 安装包。CI 矩阵构建（win/macos/linux × x64/arm64）可在此流程之上接入，由 tag 触发。
+> 发版流程：在 `package.json` 升级版本后打 Git tag（如 `v0.1.8`），再运行 `scripts/publish-release.ps1` 构建并创建 GitHub Release、上传 NSIS 安装包。CI 矩阵构建（win/macos/linux × x64/arm64）可在此流程之上接入，由 tag 触发。
 
 ---
 
-## v0.2.0 — 2026-09-16（一键优化编排 / DLL 能力库 / 提权通道 / 空间实测释放）
+## 开发中（当前 master 工作区，未发布）
 
-在 v0.1.8 磁盘修复基础上，补齐「一键优化」批量入口、可独立调用的单项目优化能力库、运行时提权通道，并修复磁盘空间未实际释放的问题。
+以下四项任务已实现并提交（commit `12a492f`），将随下次 v0.1.x 发布合并进版本说明：
 
 ### 新增功能
 - **首页一键全部优化**：首页 Hero 区新增「⚡ 一键优化」入口，按序执行所有可优化项，实时展示进度、每项结果（成功/失败/跳过）与汇总报告；支持中途取消与失败重试（默认 1 次）。
@@ -19,7 +19,6 @@
 - IPC 新增 optlib / onekey / 提权 等 handler（共 55 个），`window.gale` 契约同步扩展（`onekey:start/cancel/retry/state` + 进度推送）。
 - 新增 `src/composables/useOneKey.ts`（模块级单例状态）、`src/components/OneKeyPanel.vue`（勾选 / 进度 / 结果 / 汇总 / 停止 / 重试）。
 - vitest 265 → 309（新增 space / elevate / optlib / onekey 单测；修正 `disk.test.ts` 过时断言）。
-- 发版机制：打 tag（如 `v0.2.0`）后运行 `scripts/publish-release.ps1` 创建 GitHub Release 并上传安装包；CI 矩阵构建可在该流程上接入。
 
 ---
 
