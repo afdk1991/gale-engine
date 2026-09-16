@@ -87,7 +87,7 @@ describe('parseTaskResult', () => {
 describe('createTasksService', () => {
   it('setEnabled(true) 生成 Enable-ScheduledTask 且注入路径与名称', async () => {
     const { runner, calls } = recordingRunner(() => ok())
-    const res = await createTasksService(runner).setEnabled('\\Test\\', 'T1', true)
+    const res = await createTasksService(runner, 'win32').setEnabled('\\Test\\', 'T1', true)
     expect(res.ok).toBe(true)
     expect(calls[0]).toContain('Enable-ScheduledTask')
     expect(calls[0]).toContain("-TaskPath '\\Test\\'")
@@ -96,32 +96,32 @@ describe('createTasksService', () => {
 
   it('setEnabled(false) 生成 Disable-ScheduledTask', async () => {
     const { runner, calls } = recordingRunner(() => ok())
-    await createTasksService(runner).setEnabled('\\', 'T2', false)
+    await createTasksService(runner, 'win32').setEnabled('\\', 'T2', false)
     expect(calls[0]).toContain('Disable-ScheduledTask')
   })
 
   it('run 生成 Start-ScheduledTask', async () => {
     const { runner, calls } = recordingRunner(() => ok())
-    await createTasksService(runner).run('\\', 'T3')
+    await createTasksService(runner, 'win32').run('\\', 'T3')
     expect(calls[0]).toContain('Start-ScheduledTask')
   })
 
   it('stop 生成 Stop-ScheduledTask', async () => {
     const { runner, calls } = recordingRunner(() => ok())
-    await createTasksService(runner).stop('\\', 'T4')
+    await createTasksService(runner, 'win32').stop('\\', 'T4')
     expect(calls[0]).toContain('Stop-ScheduledTask')
   })
 
   it('非法 token 直接拒绝且不调用执行器', async () => {
     const { runner, calls } = recordingRunner(() => ok())
-    const res = await createTasksService(runner).run("\\x'; harmful", 'T')
+    const res = await createTasksService(runner, 'win32').run("\\x'; harmful", 'T')
     expect(res.ok).toBe(false)
     expect(calls).toHaveLength(0)
   })
 
   it('list 脚本使用 Get-ScheduledTask + Get-ScheduledTaskInfo', async () => {
     const { runner, calls } = recordingRunner(() => ({ ...ok(), stdout: '[]' }))
-    await createTasksService(runner).list()
+    await createTasksService(runner, 'win32').list()
     expect(calls[0]).toContain('Get-ScheduledTask')
     expect(calls[0]).toContain('Get-ScheduledTaskInfo')
   })
@@ -129,7 +129,7 @@ describe('createTasksService', () => {
   it('list 解析真实形态输出', async () => {
     const raw = [{ taskPath: '\\Gale\\', taskName: 'Boost', state: 'Ready', lastRunTime: '2026-09-04 08:00', nextRunTime: '2026-09-05 08:00' }]
     const { runner } = recordingRunner(() => ({ ...ok(), stdout: JSON.stringify(raw) }))
-    const list = await createTasksService(runner).list()
+    const list = await createTasksService(runner, 'win32').list()
     expect(list[0].path).toBe('\\Gale\\')
     expect(list[0].nextRunTime).toBe('2026-09-05 08:00')
   })

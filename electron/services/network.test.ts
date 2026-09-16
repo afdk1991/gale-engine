@@ -117,7 +117,7 @@ describe('parseInterfaces', () => {
 describe('createNetworkService', () => {
   it('ping 脚本注入消毒后的 host 与 count', async () => {
     const { runner, calls } = recordingRunner(() => ok(JSON.stringify({ min: 1, avg: 2, max: 3, loss: 0, ok: true })))
-    const res = await createNetworkService(runner).ping('BaIdU.CoM', 5)
+    const res = await createNetworkService(runner, 'win32').ping('BaIdU.CoM', 5)
     expect(res.ok).toBe(true)
     expect(res.host).toBe('baidu.com')
     expect(calls[0]).toContain("$host_ = 'baidu.com'")
@@ -125,14 +125,14 @@ describe('createNetworkService', () => {
   })
   it('非法 host 直接返回失败且不调用执行器', async () => {
     const { runner, calls } = recordingRunner(() => ok())
-    const res = await createNetworkService(runner).ping('x; whoami')
+    const res = await createNetworkService(runner, 'win32').ping('x; whoami')
     expect(res.ok).toBe(false)
     expect(calls).toHaveLength(0)
   })
   it('interfaces 返回解析结果', async () => {
     const raw = [{ name: '以太网', ip: '192.168.1.5', status: '已连接' }]
     const { runner } = recordingRunner(() => ok(JSON.stringify(raw)))
-    const list = await createNetworkService(runner).interfaces()
+    const list = await createNetworkService(runner, 'win32').interfaces()
     expect(list[0].ip).toBe('192.168.1.5')
   })
 })

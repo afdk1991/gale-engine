@@ -242,8 +242,14 @@ export interface GaleApi {
     volumes(): Promise<DiskVolume[]>
     /** 扫描可深度释放的空间（更新缓存/系统临时/组件存储等，按平台分发） */
     scanDeepCleanup(): Promise<DeepCleanupPlan[]>
-    /** 按选中的 id 执行深度清理，id 由服务端权威清单解析（客户端无法注入路径） */
-    runDeepCleanup(items: { id: string; kind: DeepCleanupKind; path: string }[]): Promise<CleanupResult[]>
+    /**
+     * 按选中的 id 执行深度清理。
+     *
+     * 只接受 id：清理目标路径、类型、是否需要提权全部由服务端**权威清单**解析，
+     * 客户端连「路径」都不需要（也不应该）传 —— 早前契约里带 `path`，但渲染层
+     * 实际塞的是展示文案 `detail`，语义与命名不符，容易误导后续维护者。
+     */
+    runDeepCleanup(ids: string[]): Promise<CleanupResult[]>
     /** 检查/在线修复指定卷的文件系统错误（Win chkdsk / mac diskutil；linux 诚实降级） */
     checkVolume(mount: string, fix: boolean): Promise<DiskRepairResult>
     /** 修复系统文件与 DLL（Win sfc /scannow 或 DISM RestoreHealth；非 Win 诚实降级） */
@@ -271,8 +277,10 @@ export interface GaleApi {
   }
   gameMode: {
     status(): Promise<GameModeStatus>
-    boost(): Promise<GameModeStatus>
-    restore(): Promise<GameModeStatus>
+    /** 进入游戏模式；失败时 ok=false 且不写入优化记录 */
+    boost(): Promise<GameModeActionResult>
+    /** 退出游戏模式并还原；失败时保留还原凭据以便重试 */
+    restore(): Promise<GameModeActionResult>
   }
   toolbox: {
     flushDns(): Promise<ToolResult>
@@ -699,6 +707,22 @@ export interface GameModeStatus {
   boosted: boolean
   /** boost 之前记录的上一计划 GUID，未记录为 null */
   previous: string | null
+}
+
+/**
+ * 游戏模式切换结果。
+ *
+ * `boost` / `restore` 曾经只返回 `GameModeStatus`，界面无从知道是否真的切换成功，
+ * 于是无论成败都提示「已切换到高性能电源计划」并写入优化记录 —— 在 Linux 无 root、
+ * Windows 无管理员权限时属于谎报。现显式回传回执，界面据此决定提示与是否记痕。
+ */
+export interface GameModeActionResult {
+  /** 本次操作是否真的成功 */
+  ok: boolean
+  /** 可直接展示给用户的说明（失败时为原因） */
+  message: string
+  /** 操作后的最新状态 */
+  status: GameModeStatus
 }
 
 // ---- Toolbox（工具箱）----

@@ -93,35 +93,35 @@ describe('parseActionResult', () => {
 describe('createProcessService', () => {
   it('kill 脚本包含 Stop-Process 与目标 pid', async () => {
     const { runner, calls } = recordingRunner(() => ok())
-    const res = await createProcessService(runner).kill(4321)
+    const res = await createProcessService(runner, 'win32').kill(4321)
     expect(res.ok).toBe(true)
     expect(calls[0]).toContain('Stop-Process -Id 4321')
   })
 
   it('kill 脚本包含系统进程保护校验（guard）', async () => {
     const { runner, calls } = recordingRunner(() => ok())
-    await createProcessService(runner).kill(999)
+    await createProcessService(runner, 'win32').kill(999)
     expect(calls[0]).toContain('受保护的系统进程，已拒绝')
     expect(calls[0]).toContain('Get-Process -Id 999')
   })
 
   it('suspend 脚本使用 NtSuspendProcess', async () => {
     const { runner, calls } = recordingRunner(() => ok())
-    const res = await createProcessService(runner).suspend(111)
+    const res = await createProcessService(runner, 'win32').suspend(111)
     expect(res.ok).toBe(true)
     expect(calls[0]).toContain('NtSuspendProcess')
   })
 
   it('resume 脚本使用 NtResumeProcess', async () => {
     const { runner, calls } = recordingRunner(() => ok())
-    const res = await createProcessService(runner).resume(222)
+    const res = await createProcessService(runner, 'win32').resume(222)
     expect(res.ok).toBe(true)
     expect(calls[0]).toContain('NtResumeProcess')
   })
 
   it('priority 合法等级映射为 PriorityClass 且注入 pid', async () => {
     const { runner, calls } = recordingRunner(() => ok())
-    const res = await createProcessService(runner).priority(333, 'high')
+    const res = await createProcessService(runner, 'win32').priority(333, 'high')
     expect(res.ok).toBe(true)
     expect(calls[0]).toContain('PriorityClass = "High"')
     expect(calls[0]).toContain('Get-Process -Id 333')
@@ -129,7 +129,7 @@ describe('createProcessService', () => {
 
   it('priority 非法等级直接拒绝且不调用执行器', async () => {
     const { runner, calls } = recordingRunner(() => ok())
-    const res = await createProcessService(runner).priority(333, 'realtime' as never)
+    const res = await createProcessService(runner, 'win32').priority(333, 'realtime' as never)
     expect(res.ok).toBe(false)
     expect(calls).toHaveLength(0)
   })
@@ -140,7 +140,7 @@ describe('createProcessService', () => {
       { pid: 2, name: 'b', cpu: 80, mem: 8 }
     ]
     const { runner } = recordingRunner(() => ({ ...ok(), stdout: JSON.stringify(raw) }))
-    const list = await createProcessService(runner).list('cpu')
+    const list = await createProcessService(runner, 'win32').list('cpu')
     expect(list[0].pid).toBe(2)
   })
 })

@@ -90,53 +90,53 @@ describe('parseFirewallResult', () => {
 describe('createFirewallService', () => {
   it('setProfileEnabled(true) 生成 Set-NetFirewallProfile -Enabled True', async () => {
     const { runner, calls } = recordingRunner(() => ok())
-    const res = await createFirewallService(runner).setProfileEnabled('Public', true)
+    const res = await createFirewallService(runner, 'win32').setProfileEnabled('Public', true)
     expect(res.ok).toBe(true)
     expect(calls[0]).toContain('Set-NetFirewallProfile -Name Public -Enabled True')
   })
 
   it('setProfileEnabled(false) 关闭配置文件', async () => {
     const { runner, calls } = recordingRunner(() => ok())
-    await createFirewallService(runner).setProfileEnabled('Domain', false)
+    await createFirewallService(runner, 'win32').setProfileEnabled('Domain', false)
     expect(calls[0]).toContain('-Enabled False')
   })
 
   it('setProfileEnabled 非法配置文件直接拒绝且不调用执行器', async () => {
     const { runner, calls } = recordingRunner(() => ok())
-    const res = await createFirewallService(runner).setProfileEnabled('Home', true)
+    const res = await createFirewallService(runner, 'win32').setProfileEnabled('Home', true)
     expect(res.ok).toBe(false)
     expect(calls).toHaveLength(0)
   })
 
   it('toggleRule(true) 生成 Enable-NetFirewallRule 且注入规则名', async () => {
     const { runner, calls } = recordingRunner(() => ok())
-    const res = await createFirewallService(runner).toggleRule('FPS-ICMP4-ERQ-In', true)
+    const res = await createFirewallService(runner, 'win32').toggleRule('FPS-ICMP4-ERQ-In', true)
     expect(res.ok).toBe(true)
     expect(calls[0]).toContain("Enable-NetFirewallRule -Name 'FPS-ICMP4-ERQ-In'")
   })
 
   it('toggleRule(false) 生成 Disable-NetFirewallRule', async () => {
     const { runner, calls } = recordingRunner(() => ok())
-    await createFirewallService(runner).toggleRule('X', false)
+    await createFirewallService(runner, 'win32').toggleRule('X', false)
     expect(calls[0]).toContain('Disable-NetFirewallRule')
   })
 
   it('非法规则名直接拒绝且不调用执行器', async () => {
     const { runner, calls } = recordingRunner(() => ok())
-    const res = await createFirewallService(runner).toggleRule("a';b", true)
+    const res = await createFirewallService(runner, 'win32').toggleRule("a';b", true)
     expect(res.ok).toBe(false)
     expect(calls).toHaveLength(0)
   })
 
   it('profiles 脚本使用 Get-NetFirewallProfile', async () => {
     const { runner, calls } = recordingRunner(() => ({ ...ok(), stdout: '[]' }))
-    await createFirewallService(runner).profiles()
+    await createFirewallService(runner, 'win32').profiles()
     expect(calls[0]).toContain('Get-NetFirewallProfile')
   })
 
   it('listRules 脚本使用 Get-NetFirewallRule 并限 200 条', async () => {
     const { runner, calls } = recordingRunner(() => ({ ...ok(), stdout: '[]' }))
-    await createFirewallService(runner).listRules()
+    await createFirewallService(runner, 'win32').listRules()
     expect(calls[0]).toContain('Get-NetFirewallRule')
     expect(calls[0]).toContain('Select-Object -First 200')
   })

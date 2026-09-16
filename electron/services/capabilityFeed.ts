@@ -286,7 +286,7 @@ export function createRecipeRuntime(deps: RecipeRuntimeDeps = {}): Record<string
         const wanted = pickDeep(plans, ids)
         if (wanted.length === 0) return { status: 'skipped', reason: '当前系统无此清理项' }
         return aggregateResults(
-          await ctx.normal.disk.runDeepCleanup(wanted.map((p) => ({ id: p.id, kind: p.kind, path: '' })))
+          await ctx.normal.disk.runDeepCleanup(wanted.map((p) => p.id))
         )
       }
     },

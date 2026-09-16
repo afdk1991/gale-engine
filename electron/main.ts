@@ -149,7 +149,10 @@ function registerIpc(): void {
   ipcMain.handle('onekey:state', () => oneKeyService.getState())
   ipcMain.handle('disk:volumes', () => diskService.volumes())
   ipcMain.handle('disk:scanDeepCleanup', () => diskService.scanDeepCleanup())
-  ipcMain.handle('disk:runDeepCleanup', (_event, items) => diskService.runDeepCleanup(items ?? []))
+  // 只接受 id 数组：清理目标由服务端权威清单解析（客户端无法注入路径）
+  ipcMain.handle('disk:runDeepCleanup', (_event, ids) =>
+    diskService.runDeepCleanup(Array.isArray(ids) ? ids.map((v) => String(v)) : [])
+  )
   ipcMain.handle('disk:checkVolume', (_event, mount, fix) =>
     diskService.checkVolume(String(mount), Boolean(fix))
   )

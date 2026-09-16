@@ -10,6 +10,7 @@ import * as si from 'systeminformation'
 import type { ExecRunner, Platform } from './shell'
 import { detectPlatform } from './shell'
 import { createSpaceMeter, diffReleasedBytes } from './space'
+import { parseActionOutcome } from './actionResult'
 import { parseCleanupStats } from './optimizer'
 
 // ─────────────────────────────────────────────────────────────
@@ -567,20 +568,19 @@ export function createDiskService(
     return [...pathPlans, ...actionPlans]
   }
 
-  const runDeepCleanup = async (
-    items: { id: string; kind: DeepCleanupKind; path: string }[]
-  ): Promise<CleanupResult[]> => {
+  const runDeepCleanup = async (ids: string[]): Promise<CleanupResult[]> => {
     // 复用已有的卷信息采集器做「清理前/后」空间实测
     const meter = createSpaceMeter({ fsSize: () => f.fsSize() })
     const results: CleanupResult[] = []
-    for (const item of items) {
-      const entry = catalog.find((e) => e.id === item.id)
+    // 只认服务端权威清单里的 id；去重后逐个解析出真实路径与类型
+    for (const id of [...new Set((ids ?? []).map((v) => String(v)))]) {
+      const entry = catalog.find((e) => e.id === id)
       if (!entry) {
-        results.push({ id: item.id, ok: false, error: '未知清理项，已跳过' })
+        results.push({ id, ok: false, error: '未知清理项，已跳过' })
         continue
       }
       if (entry.kind === 'path' && !isSafeRoot(entry.path)) {
-        results.push({ id: item.id, ok: false, error: '路径不在安全白名单内，已跳过' })
+        results.push({ id, ok: false, error: '路径不在安全白名单内，已跳过' })
         continue
       }
       // action 项没有目录，按系统卷测（win → C:，unix → /）
@@ -593,16 +593,27 @@ export function createDiskService(
       let raw: CleanupResult
       if (entry.kind === 'action') {
         // action 项脚本自带 echo OK / 兜底
-        const ok = code === 0
-        raw = { id: item.id, ok, error: ok ? undefined : stderr.trim() || '执行失败（可能需要管理员权限）' }
+        // action 项多为系统工具（DISM 等），输出不一定是 OK 令牌，故以退出码为准；
+        // 但脚本显式回了 ERR: 时必须如实报错（原先只看退出码会漏报）
+        const explicitErr = /^ERR:/m.test(stdout)
+        const ok = code === 0 && !explicitErr
+        raw = {
+          id,
+          ok,
+          error: ok
+            ? undefined
+            : explicitErr
+              ? parseActionOutcome(stdout, code).message
+              : stderr.trim() || '执行失败（可能需要管理员权限）'
+        }
       } else {
         const stats = parseCleanupStats(stdout)
         if (code !== 0 && !stats) {
-          raw = { id: item.id, ok: false, error: stderr.trim() || '清理失败（可能需要管理员权限）' }
+          raw = { id, ok: false, error: stderr.trim() || '清理失败（可能需要管理员权限）' }
         } else if (stats) {
           const ok = stats.failedCount === 0 || stats.deletedCount > 0
           raw = {
-            id: item.id,
+            id,
             ok,
             error:
               stats.failedCount > 0
@@ -615,8 +626,10 @@ export function createDiskService(
             locked: stats.locked.length ? stats.locked : undefined
           }
         } else {
-          const ok = code === 0 && stdout.includes('OK')
-          raw = { id: item.id, ok, error: ok ? undefined : stderr.trim() || '清理失败' }
+          // 兜底：脚本没回传统计 JSON（旧脚本或异常路径）时按统一令牌判定。
+          // 不可用 stdout.includes('OK') —— 错误信息里含 "OK" 字样会被误判为成功。
+          const outcome = parseActionOutcome(stdout, code)
+          raw = { id, ok: outcome.ok, error: outcome.ok ? undefined : outcome.message }
         }
       }
 

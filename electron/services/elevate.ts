@@ -34,7 +34,17 @@ export interface TempIo {
   writeFile(path: string, content: string): Promise<void>
   readFile(path: string): Promise<string>
   unlink(path: string): Promise<void>
+  /** 列出目录下的文件名（用于清理残留）。缺省时跳过清理，不影响主流程。 */
+  list?(dir: string): Promise<string[]>
+  /** 读取文件最后修改时间（毫秒）。与 list 配合，只清理「确实陈旧」的残留。 */
+  mtime?(path: string): Promise<number>
 }
+
+/** 提权临时文件的统一前缀 */
+export const TMP_PREFIX = 'gale-elev-'
+
+/** 超过该时长未改动，视为上一轮异常退出留下的残留（默认 1 小时） */
+export const STALE_TEMP_MS = 60 * 60 * 1000
 
 export function createNodeTempIo(): TempIo {
   return {
@@ -53,6 +63,14 @@ export function createNodeTempIo(): TempIo {
       } catch {
         /* 已被清理或不存在，忽略 */
       }
+    },
+    async list(dir) {
+      const { readdir } = await import('fs/promises')
+      return readdir(dir)
+    },
+    async mtime(path) {
+      const { stat } = await import('fs/promises')
+      return (await stat(path)).mtimeMs
     }
   }
 }
@@ -189,11 +207,64 @@ export function createElevator(deps: ElevatorDeps): Elevator {
     return parseIsElevated(stdout, code)
   }
 
+  /** 逐个删除，互不拖累：任一失败都不影响其余文件的清理 */
+  const safeUnlink = async (paths: string[]): Promise<void> => {
+    for (const p of paths) {
+      try {
+        await io.unlink(p)
+      } catch {
+        /* 清理失败不应影响正常流程 */
+      }
+    }
+  }
+
+  /**
+   * 清理历史残留的临时文件（进程级只做一次，尽力而为）。
+   *
+   * 为什么需要：Windows 上提权靠 `Start-Process -Verb RunAs -Wait`，UAC 弹窗长时间
+   * 无人应答、或用户直接结束进程时，`finally` 根本不会执行，临时脚本与输出文件会
+   * 永久留在 %TEMP%；而临时脚本内容包含本机路径，属于不必要的信息残留。
+   * 这里只清理「确实陈旧」（默认 1 小时未改动）的文件，避免误删并发实例正在用的文件。
+   */
+  const sweepStaleTemp = async (): Promise<number> => {
+    if (!io.list || !io.mtime) return 0
+    let names: string[]
+    try {
+      names = await io.list(tmpDir)
+    } catch {
+      return 0
+    }
+    const now = Date.now()
+    let removed = 0
+    for (const name of names) {
+      if (!name.startsWith(TMP_PREFIX)) continue
+      const full = join(tmpDir, name)
+      try {
+        if (now - (await io.mtime(full)) < STALE_TEMP_MS) continue
+      } catch {
+        continue // 读不到时间就不动它，宁可留着也不误删
+      }
+      try {
+        await io.unlink(full)
+        removed++
+      } catch {
+        /* 单个文件失败继续 */
+      }
+    }
+    return removed
+  }
+
+  let swept = false
+
   const runElevated = async (script: string): Promise<ExecResult> => {
+    if (!swept) {
+      swept = true
+      await sweepStaleTemp()
+    }
     const id = newId()
-    const scriptPath = join(tmpDir, `gale-elev-${id}.${platform === 'win32' ? 'ps1' : 'sh'}`)
-    const outPath = join(tmpDir, `gale-elev-${id}.out`)
-    const errPath = join(tmpDir, `gale-elev-${id}.err`)
+    const scriptPath = join(tmpDir, `${TMP_PREFIX}${id}.${platform === 'win32' ? 'ps1' : 'sh'}`)
+    const outPath = join(tmpDir, `${TMP_PREFIX}${id}.out`)
+    const errPath = join(tmpDir, `${TMP_PREFIX}${id}.err`)
 
     // Windows PowerShell 5.1 读取无 BOM 的 .ps1 会按系统 ANSI(GBK) 解码，
     // 路径含中文时会乱码甚至解析失败，因此显式写入 BOM。
@@ -227,11 +298,11 @@ export function createElevator(deps: ElevatorDeps): Elevator {
       // unix：pkexec/sudo 直接继承标准输出，runner 已回收
       return res
     } finally {
-      await io.unlink(scriptPath)
-      if (platform === 'win32') {
-        await io.unlink(outPath)
-        await io.unlink(errPath)
-      }
+      // 逐项清理：任一失败不阻断其余（UAC 无响应导致进程被杀时，这里不会执行，
+      // 由下一次启动的 sweepStaleTemp 兜底）
+      await safeUnlink(
+        platform === 'win32' ? [scriptPath, outPath, errPath] : [scriptPath]
+      )
     }
   }
 

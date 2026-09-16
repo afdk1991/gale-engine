@@ -174,10 +174,10 @@ describe('buildDllAdvice — 修复建议', () => {
 
 describe('buildVcRedistScript / parseVcRedistResult', () => {
   it('仅 Windows 生成脚本，且用 winget 安装官方运行库', () => {
-    const s = buildVcRedistScript('x64')
+    const s = buildVcRedistScript('x64', 'win32')
     expect(s).toContain('winget install')
     expect(s).toContain('Microsoft.VCRedist.2015+.x64')
-    expect(buildVcRedistScript('x86')).toContain('Microsoft.VCRedist.2015+.x86')
+    expect(buildVcRedistScript('x86', 'win32')).toContain('Microsoft.VCRedist.2015+.x86')
     expect(buildVcRedistScript('x64', 'linux')).toBeNull()
   })
 

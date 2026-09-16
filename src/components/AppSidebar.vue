@@ -24,9 +24,9 @@ const { state, busy, ready, hasUpdate, canCheck, check, install } = useAppUpdate
 </script>
 
 <template>
-  <nav class="sidebar">
+  <nav class="sidebar" aria-label="主导航">
     <div class="brand">
-      <span class="brand-mark"></span>
+      <span class="brand-mark" aria-hidden="true"></span>
       <span class="brand-name">疾风引擎</span>
     </div>
     <div class="nav-scroll">
@@ -36,6 +36,8 @@ const { state, busy, ready, hasUpdate, canCheck, check, install } = useAppUpdate
         :to="item.path"
         class="nav-item"
         exact-active-class="active"
+        :aria-label="item.label"
+        :title="item.label"
       >
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -114,6 +116,7 @@ const { state, busy, ready, hasUpdate, canCheck, check, install } = useAppUpdate
         v-if="ready"
         class="up-btn ready"
         :title="'v' + (state.version ?? '') + ' 已下载，点击立即安装'"
+        :aria-label="'v' + (state.version ?? '') + ' 已下载，点击立即安装'"
         @click="install"
       >
         <span class="up-dot" aria-hidden="true"></span>
@@ -125,6 +128,7 @@ const { state, busy, ready, hasUpdate, canCheck, check, install } = useAppUpdate
         :class="{ hot: hasUpdate, busy }"
         :disabled="busy || !canCheck"
         :title="'当前 v' + (state.currentVersion ?? '—') + ' · 点击检查更新'"
+        :aria-label="'当前 v' + (state.currentVersion ?? '—') + ' · 点击检查更新'"
         @click="check"
       >
         <span class="up-dot" aria-hidden="true"></span>

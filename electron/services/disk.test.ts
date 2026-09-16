@@ -218,18 +218,14 @@ describe('scanDeepCleanup', () => {
 describe('runDeepCleanup', () => {
   it('白名单 path 项执行 Remove-Item（Windows）', async () => {
     const { runner, calls } = recordingRunner(() => ok('OK'))
-    const res = await createDiskService(runner, 'win32').runDeepCleanup([
-      { id: 'win-system-temp', kind: 'path', path: '' }
-    ])
+    const res = await createDiskService(runner, 'win32').runDeepCleanup(['win-system-temp'])
     expect(res[0].ok).toBe(true)
     expect(calls[0].script).toContain('Remove-Item')
   })
 
   it('缩略图项仅删除 thumbcache/iconcache 匹配文件', async () => {
     const { runner, calls } = recordingRunner(() => ok('OK'))
-    await createDiskService(runner, 'win32').runDeepCleanup([
-      { id: 'win-thumbnail', kind: 'path', path: '' }
-    ])
+    await createDiskService(runner, 'win32').runDeepCleanup(['win-thumbnail'])
     const s = calls[0].script
     expect(s).toContain('thumbcache_*.db')
     expect(s).not.toContain('-Recurse') // 不递归清空整个 Explorer 目录
@@ -237,18 +233,15 @@ describe('runDeepCleanup', () => {
 
   it('action 项执行 DISM 维护命令', async () => {
     const { runner, calls } = recordingRunner(() => ok())
-    const res = await createDiskService(runner, 'win32').runDeepCleanup([
-      { id: 'win-dism-cleanup', kind: 'action', path: '' }
-    ])
+    const res = await createDiskService(runner, 'win32').runDeepCleanup(['win-dism-cleanup'])
     expect(res[0].ok).toBe(true)
     expect(calls[0].script).toContain('StartComponentCleanup')
   })
 
   it('未知 id 被拒绝且不调用执行器', async () => {
     const { runner, calls } = recordingRunner(() => fail('should-not-run'))
-    const res = await createDiskService(runner, 'win32').runDeepCleanup([
-      { id: 'not-exist', kind: 'path', path: 'C:\\Whatever' }
-    ])
+    // 只传 id：路径由服务端权威清单解析，客户端无法注入
+    const res = await createDiskService(runner, 'win32').runDeepCleanup(['not-exist'])
     expect(res[0].ok).toBe(false)
     expect(res[0].error).toContain('未知')
     expect(calls).toHaveLength(0)
@@ -256,9 +249,7 @@ describe('runDeepCleanup', () => {
 
   it('Linux path 项使用 find -mindepth 1 -delete', async () => {
     const { runner, calls } = recordingRunner(() => ok('OK'))
-    const res = await createDiskService(runner, 'linux').runDeepCleanup([
-      { id: 'linux-user-cache', kind: 'path', path: '' }
-    ])
+    const res = await createDiskService(runner, 'linux').runDeepCleanup(['linux-user-cache'])
     expect(res[0].ok).toBe(true)
     expect(calls[0].script).toContain('find')
     expect(calls[0].script).toContain('-mindepth 1 -depth -delete')
@@ -266,9 +257,7 @@ describe('runDeepCleanup', () => {
 
   it('执行器非零退出码返回失败回执', async () => {
     const { runner } = recordingRunner(() => fail('access denied'))
-    const res = await createDiskService(runner, 'win32').runDeepCleanup([
-      { id: 'win-delivery', kind: 'path', path: '' }
-    ])
+    const res = await createDiskService(runner, 'win32').runDeepCleanup(['win-delivery'])
     expect(res[0].ok).toBe(false)
     expect(res[0].error).toContain('access denied')
   })

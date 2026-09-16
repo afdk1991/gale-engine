@@ -164,7 +164,7 @@ async function runDeepIds(ctx: OptContext, ids: string[], needsAdmin: boolean): 
   )
   const wanted = pickDeep(plans, ids)
   if (wanted.length === 0) return { status: 'skipped', reason: '当前系统无此清理项' }
-  const results = await set.disk.runDeepCleanup(wanted.map((p) => ({ id: p.id, kind: p.kind, path: '' })))
+  const results = await set.disk.runDeepCleanup(wanted.map((p) => p.id))
   return aggregateResults(results)
 }
 

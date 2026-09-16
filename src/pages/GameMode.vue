@@ -22,11 +22,18 @@ async function refresh(): Promise<void> {
 async function boost(): Promise<void> {
   loading.value = true
   hint.value = null
+  error.value = null
   try {
-    const next = await window.gale.gameMode.boost()
-    status.value = next
-    hint.value = '已切换到高性能电源计划，进入游戏模式'
-    await window.gale.history.add({ type: 'gameMode', label: '进入游戏模式', detail: next.activeName || next.active })
+    const r = await window.gale.gameMode.boost()
+    status.value = r.status
+    // 只按服务端回执提示与留痕：Linux 无 root / Windows 无管理员权限时会真的失败，
+    // 旧实现无论成败都提示「已切换到高性能电源计划」并写入记录，属于谎报。
+    if (r.ok) {
+      hint.value = r.message
+      await record('进入游戏模式', r.status)
+    } else {
+      error.value = r.message
+    }
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e)
   } finally {
@@ -37,15 +44,29 @@ async function boost(): Promise<void> {
 async function restore(): Promise<void> {
   loading.value = true
   hint.value = null
+  error.value = null
   try {
-    const next = await window.gale.gameMode.restore()
-    status.value = next
-    hint.value = '已退出游戏模式，还原上一电源计划'
-    await window.gale.history.add({ type: 'gameMode', label: '退出游戏模式', detail: next.activeName || next.active })
+    const r = await window.gale.gameMode.restore()
+    status.value = r.status
+    if (r.ok) {
+      hint.value = r.message
+      await record('退出游戏模式', r.status)
+    } else {
+      error.value = r.message
+    }
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e)
   } finally {
     loading.value = false
+  }
+}
+
+/** 切换成功才留痕；写历史本身失败不应把已成功的切换反向报成失败 */
+async function record(label: string, s: GameModeStatus): Promise<void> {
+  try {
+    await window.gale.history.add({ type: 'gameMode', label, detail: s.activeName || s.active })
+  } catch {
+    /* 历史写入失败不影响本次切换结果 */
   }
 }
 
@@ -71,7 +92,7 @@ onMounted(() => {
           <div class="state-title">{{ status?.boosted ? '游戏模式已开启' : '当前为普通模式' }}</div>
           <div class="state-sub">
             <template v-if="status">
-              当前计划：{{ status.activeName || status.active || '未知' }}
+              当前模式：{{ status.activeName || status.active || '未知' }}
             </template>
             <template v-else>加载中…</template>
           </div>
@@ -88,8 +109,10 @@ onMounted(() => {
     </div>
 
     <p class="note">
-      游戏模式通过 <code>powercfg /setactive</code> 切换到系统「高性能」电源计划，
-      退出时自动还原进入前的计划；切换仅影响电源策略，不涉及进程终止，安全可逆。
+      游戏模式按平台切换高性能策略：Windows 用 <code>powercfg /setactive</code> 切到「高性能」电源计划、
+      macOS 用 <code>caffeinate</code> 阻止系统与显示器休眠、Linux 把 CPU 调速器切为
+      <code>performance</code>（需 root）。退出时自动还原进入前的状态；
+      切换仅影响电源与频率策略，不涉及进程终止，安全可逆。
     </p>
   </section>
 </template>

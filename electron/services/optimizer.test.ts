@@ -99,7 +99,7 @@ describe('scanCleanup', () => {
       { id: 'temp:abc', kind: 'temp', label: '临时文件：C:\\TESTTEMP', path: 'C:\\TESTTEMP', size: 1234, safe: true }
     ]
     const { runner } = recordingRunner(() => ({ ...ok(), stdout: JSON.stringify(raw) }))
-    const plans = await createOptimizerService(runner).scanCleanup()
+    const plans = await createOptimizerService(runner, 'win32').scanCleanup()
     expect(plans).toHaveLength(1)
     expect(plans[0].sizeBytes).toBe(1234)
     expect(plans[0].kind).toBe('temp')
@@ -107,13 +107,13 @@ describe('scanCleanup', () => {
 
   it('空输出返回空数组', async () => {
     const { runner } = recordingRunner(() => ok(''))
-    const plans = await createOptimizerService(runner).scanCleanup()
+    const plans = await createOptimizerService(runner, 'win32').scanCleanup()
     expect(plans).toEqual([])
   })
 
   it('非法 JSON 容错返回空数组（不抛异常）', async () => {
     const { runner } = recordingRunner(() => ok('not json at all'))
-    const plans = await createOptimizerService(runner).scanCleanup()
+    const plans = await createOptimizerService(runner, 'win32').scanCleanup()
     expect(plans).toEqual([])
   })
 
@@ -122,7 +122,7 @@ describe('scanCleanup', () => {
       { id: 'browser:xyz', kind: 'browser', label: 'Chrome 缓存：Cache', path: 'C:\\TESTLOCAL\\Google\\Chrome\\User Data\\Default\\Cache', size: 2048, safe: true }
     ]
     const { runner } = recordingRunner(() => ({ ...ok(), stdout: JSON.stringify(raw) }))
-    const plans = await createOptimizerService(runner).scanCleanup()
+    const plans = await createOptimizerService(runner, 'win32').scanCleanup()
     expect(plans[0].kind).toBe('browser')
     expect(plans[0].sizeBytes).toBe(2048)
   })
@@ -131,7 +131,7 @@ describe('scanCleanup', () => {
 describe('runCleanup', () => {
   it('未显式注入 meter 时也会实测释放量（回归：此前调用方漏传 meter，releasedBytes 恒缺失，界面显示「释放 0 B」）', async () => {
     const { runner } = recordingRunner(() => ok())
-    const res = await createOptimizerService(runner).runCleanup([
+    const res = await createOptimizerService(runner, 'win32').runCleanup([
       { id: 'temp:1', path: 'C:\\TESTTEMP', kind: 'temp' }
     ])
     // stub meter 交替返回 1MB / 3MB，差值应为 2MB —— 能取到数值即证明默认 meter 真的被接线了
@@ -153,7 +153,7 @@ describe('runCleanup', () => {
 
   it('无法推断卷（如 RecycleBin 这类虚拟路径）时不产出 releasedBytes，而不是报 0', async () => {
     const { runner } = recordingRunner((s) => (s.includes('Clear-RecycleBin') ? ok('OK') : fail()))
-    const res = await createOptimizerService(runner).runCleanup([
+    const res = await createOptimizerService(runner, 'win32').runCleanup([
       { id: 'recycle', path: 'RecycleBin', kind: 'recycle' }
     ])
     expect(res[0].ok).toBe(true)
@@ -165,7 +165,7 @@ describe('runCleanup', () => {
     const { runner } = recordingRunner((s) =>
       s.includes('Clear-RecycleBin') ? ok('OK') : fail()
     )
-    const res = await createOptimizerService(runner).runCleanup([
+    const res = await createOptimizerService(runner, 'win32').runCleanup([
       { id: 'recycle', path: 'RecycleBin', kind: 'recycle' }
     ])
     expect(res).toHaveLength(1)
@@ -175,7 +175,7 @@ describe('runCleanup', () => {
 
   it('白名单内临时路径执行 Remove-Item 并返回成功', async () => {
     const { runner, calls } = recordingRunner(() => ok())
-    const res = await createOptimizerService(runner).runCleanup([
+    const res = await createOptimizerService(runner, 'win32').runCleanup([
       { id: 'temp:1', path: 'C:\\TESTTEMP', kind: 'temp' }
     ])
     expect(res[0].ok).toBe(true)
@@ -184,7 +184,7 @@ describe('runCleanup', () => {
 
   it('不在白名单内的路径被跳过且不调用执行器', async () => {
     const { runner, calls } = recordingRunner(() => fail('should-not-run'))
-    const res = await createOptimizerService(runner).runCleanup([
+    const res = await createOptimizerService(runner, 'win32').runCleanup([
       { id: 'bad', path: 'C:\\Users\\x\\Documents', kind: 'temp' }
     ])
     expect(res[0].ok).toBe(false)
@@ -194,7 +194,7 @@ describe('runCleanup', () => {
 
   it('混合安全/非安全项：分别给出成功与跳过结果', async () => {
     const { runner } = recordingRunner(() => ok())
-    const res = await createOptimizerService(runner).runCleanup([
+    const res = await createOptimizerService(runner, 'win32').runCleanup([
       { id: 't1', path: 'C:\\TESTTEMP', kind: 'temp' },
       { id: 'bad', path: 'C:\\Windows\\System32', kind: 'temp' }
     ])
@@ -205,7 +205,7 @@ describe('runCleanup', () => {
 
   it('浏览器缓存白名单路径放行并执行 Remove-Item', async () => {
     const { runner, calls } = recordingRunner(() => ok())
-    const res = await createOptimizerService(runner).runCleanup([
+    const res = await createOptimizerService(runner, 'win32').runCleanup([
       { id: 'browser:1', path: 'C:\\TESTLOCAL\\Google\\Chrome\\User Data\\Default\\Cache', kind: 'browser' }
     ])
     expect(res[0].ok).toBe(true)
@@ -214,7 +214,7 @@ describe('runCleanup', () => {
 
   it('非白名单浏览器路径（如 Edge 之外目录）被拒绝', async () => {
     const { runner, calls } = recordingRunner(() => fail('should-not-run'))
-    const res = await createOptimizerService(runner).runCleanup([
+    const res = await createOptimizerService(runner, 'win32').runCleanup([
       { id: 'bad', path: 'C:\\TESTLOCAL\\SomeOtherApp\\Cache', kind: 'browser' }
     ])
     expect(res[0].ok).toBe(false)
@@ -230,7 +230,7 @@ describe('listStartup', () => {
       { name: 'Svc', command: 'C:\\svc.exe', location: 'HKLM', enabled: true }
     ]
     const { runner } = recordingRunner(() => ({ ...ok(), stdout: JSON.stringify(raw) }))
-    const items = await createOptimizerService(runner).listStartup()
+    const items = await createOptimizerService(runner, 'win32').listStartup()
     expect(items).toHaveLength(2)
     expect(items[0].id).toBe('HKCU:OneDrive')
     expect(items[1].id).toBe('HKLM:Svc')
@@ -245,7 +245,7 @@ describe('toggleStartup', () => {
         ? ok('OK')
         : { ...ok(), stdout: JSON.stringify(updated) }
     )
-    const res = await createOptimizerService(runner).toggleStartup('HKCU:App', true, 'C:\\app.exe')
+    const res = await createOptimizerService(runner, 'win32').toggleStartup('HKCU:App', true, 'C:\\app.exe')
     expect(calls.some((c) => c.script.includes('Set-ItemProperty'))).toBe(true)
     expect(res).toHaveLength(1)
     expect(res[0].enabled).toBe(true)
@@ -255,7 +255,7 @@ describe('toggleStartup', () => {
     const { runner, calls } = recordingRunner((s) =>
       s.includes('Remove-ItemProperty') ? ok() : fail()
     )
-    await createOptimizerService(runner).toggleStartup('HKCU:App', false)
+    await createOptimizerService(runner, 'win32').toggleStartup('HKCU:App', false)
     expect(calls.some((c) => c.script.includes('Remove-ItemProperty'))).toBe(true)
   })
 })
@@ -298,11 +298,14 @@ describe('optimizer unix 分支', () => {
     expect(s).toContain('com.gale.test')
   })
 
-  it('toggleStartup(autostart) disable 删除 .desktop', async () => {
+  it('toggleStartup(autostart) disable 写 Hidden=true 而非删文件（保证可再启用）', async () => {
     const { runner, calls } = recordingRunner(() => ok('[]'))
     await createOptimizerService(runner, 'linux').toggleStartup('autostart:myapp', false)
-    expect(calls[0].script).toContain('rm -f')
-    expect(calls[0].script).toContain('myapp.desktop')
+    const s = calls[0].script
+    // 回归：旧实现 `rm -f` 删除 .desktop，项随即从列表消失，没有 command 可供再启用
+    expect(s).not.toContain('rm -f')
+    expect(s).toContain('Hidden=true')
+    expect(s).toContain('myapp.desktop')
   })
 
   it('runCleanup 回收站(darwin) 使用 osascript', async () => {

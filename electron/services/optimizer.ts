@@ -8,6 +8,7 @@ import type { ExecRunner, Platform } from './shell'
 import { detectPlatform } from './shell'
 import { createSpaceMeter, createSystemInformationSpaceFetcher, diffReleasedBytes, type SpaceMeter } from './space'
 import { parseActionOutcome } from './actionResult'
+import { escapeDesktopExecArg, escapeDesktopValue } from './desktopEntry'
 
 /**
  * 脚本回传的删除统计。旧脚本只 echo 一个 "OK"，
@@ -123,14 +124,25 @@ $plans | ConvertTo-Json -Compress
 `
 
 const STARTUP_SCRIPT_WIN = `
-$keys = @('HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run', 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run')
+$skip = @('PSPath','PSParentPath','PSChildName','PSDrive','PSProvider')
+$pairs = @(
+  @{ loc='HKCU'; live='HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'; parked='HKCU:\\Software\\GaleEngine\\DisabledStartup' },
+  @{ loc='HKLM'; live='HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'; parked='HKLM:\\Software\\GaleEngine\\DisabledStartup' }
+)
 $items = @()
-foreach ($k in $keys) {
-  if (Test-Path $k) {
-    $loc = if ($k.StartsWith('HKCU')) { 'HKCU' } else { 'HKLM' }
-    $props = Get-ItemProperty $k
-    $props.PSObject.Properties | Where-Object { $_.Name -notin @('PSPath','PSParentPath','PSChildName','PSDrive','PSProvider') } | ForEach-Object {
-      $items += [pscustomobject]@{ name=$_.Name; command=[string]$_.Value; location=$loc; enabled=$true }
+foreach ($p in $pairs) {
+  if (Test-Path $p.live) {
+    $props = Get-ItemProperty $p.live
+    $props.PSObject.Properties | Where-Object { $_.Name -notin $skip } | ForEach-Object {
+      $items += [pscustomobject]@{ name=$_.Name; command=[string]$_.Value; location=$p.loc; enabled=$true }
+    }
+  }
+  # 被禁用的启动项被搬到自有键保存（Windows 不读取该键，故不会自启），
+  # 这里一并列出，用户才能再次启用 —— 原先直接删除会让条目彻底消失。
+  if (Test-Path $p.parked) {
+    $props = Get-ItemProperty $p.parked
+    $props.PSObject.Properties | Where-Object { $_.Name -notin $skip } | ForEach-Object {
+      $items += [pscustomobject]@{ name=$_.Name; command=[string]$_.Value; location=$p.loc; enabled=$false }
     }
   }
 }
@@ -199,13 +211,18 @@ first=1
 emit() { if [ "$first" = "1" ]; then first=0; else printf ','; fi; printf '%s' "$1"; }
 printf '['
 if [ "$(uname)" = "Darwin" ]; then
-  for f in "$home/Library/LaunchAgents/"*.plist; do
+  for f in "$home/Library/LaunchAgents/"*.plist "$home/Library/LaunchAgents/"*.plist.disabled; do
     [ -f "$f" ] || continue
+    # .plist.disabled 是「已禁用」标记（launchd 只加载 .plist），文件保留故可再启用
+    en=true
+    case "$f" in *.plist.disabled) en=false ;; esac
     name=$(/usr/libexec/PlistBuddy -c "Print :Label" "$f" 2>/dev/null)
     [ -n "$name" ] || name=$(basename "$f" .plist)
+    # 注意 \${...} 必须转义：这是 shell 参数展开，不是 JS 模板插值
+    name=\${name%.disabled}
     cmd=$(/usr/libexec/PlistBuddy -c "Print :ProgramArguments" "$f" 2>/dev/null | sed -n '2p' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
     n=$(esc "$name"); c=$(esc "$cmd")
-    emit "{\\"id\\":\\"launchd:$n\\",\\"name\\":\\"$n\\",\\"command\\":\\"$c\\",\\"location\\":\\"launchd\\",\\"enabled\\":true}"
+    emit "{\\"id\\":\\"launchd:$n\\",\\"name\\":\\"$n\\",\\"command\\":\\"$c\\",\\"location\\":\\"launchd\\",\\"enabled\\":$en}"
   done
 else
   for f in "$home/.config/autostart/"*.desktop; do
@@ -213,8 +230,11 @@ else
     id=$(basename "$f" .desktop)
     name=$(sed -n 's/^Name=//p' "$f" | head -1)
     cmd=$(sed -n 's/^Exec=//p' "$f" | head -1)
+    # XDG 标准：Hidden=true 即「已禁用」，文件保留因此仍可再次启用
+    en=true
+    if grep -qi '^[[:space:]]*Hidden=true' "$f" 2>/dev/null; then en=false; fi
     n=$(esc "$name"); c=$(esc "$cmd")
-    emit "{\\"id\\":\\"autostart:$id\\",\\"name\\":\\"$n\\",\\"command\\":\\"$c\\",\\"location\\":\\"autostart\\",\\"enabled\\":true}"
+    emit "{\\"id\\":\\"autostart:$id\\",\\"name\\":\\"$n\\",\\"command\\":\\"$c\\",\\"location\\":\\"autostart\\",\\"enabled\\":$en}"
   done
 fi
 printf ']'
@@ -257,12 +277,12 @@ function buildPlistContent(label: string, cmd: string): string {
 </plist>`
 }
 
-/** Linux XDG autostart .desktop 文件内容 */
+/** Linux XDG autostart .desktop 文件内容（字段按 Desktop Entry 规范转义） */
 function buildDesktopContent(name: string, cmd: string): string {
   return `[Desktop Entry]
 Type=Application
-Name=${name}
-Exec=${cmd}
+Name=${escapeDesktopValue(name)}
+Exec=${escapeDesktopExecArg(cmd)}
 X-GNOME-Autostart-enabled=true`
 }
 
@@ -360,8 +380,28 @@ export function buildStartupListScript(platform: Platform = detectPlatform()): s
 }
 
 /**
- * 切换启动项。返回脚本；无法解析 location 时返回 null（调用方按失败处理）。
+ * 启动项名称白名单。
+ *
+ * 名称来自系统（注册表值名 / launchd Label / .desktop 文件名），可能含中文、
+ * 空格与点号，但绝不该含引号、反引号、`$`、反斜杠或控制字符 —— 这些正是脚本
+ * 注入的载体。渲染进程经 IPC 传入的 id 必须先过这道闸。
+ */
+const STARTUP_NAME_RE = /^[A-Za-z0-9\u4e00-\u9fff][A-Za-z0-9\u4e00-\u9fff .@()_+-]{0,127}$/
+
+/** 允许的 location 前缀白名单：绝不把 id 里的任意前缀拼进路径或命令 */
+const STARTUP_LOCATIONS = ['HKCU', 'HKLM', 'launchd', 'autostart']
+
+/** Windows 上存放「已禁用启动项」的自有键（Windows 不读取，故不会自启） */
+const DISABLED_RUN_KEY = 'Software\\GaleEngine\\DisabledStartup'
+
+/**
+ * 切换启动项。返回脚本；location 或名称非法时返回 null（调用方按失败处理）。
  * id 格式：win `HKCU:Name`/`HKLM:Name`；mac `launchd:Label`；linux `autostart:Name`。
+ *
+ * 「禁用」一律采用**可逆表示**而非删除，否则条目会从列表消失、用户再也无法启用：
+ * - win：把值从 `Run` 搬到自有键 `Software\GaleEngine\DisabledStartup`
+ * - mac：`Label.plist` ↔ `Label.plist.disabled`（launchd 只加载 `.plist`）
+ * - linux：写 `Hidden=true`（XDG 标准的禁用标记），文件保留
  */
 export function buildToggleStartupScript(
   id: string,
@@ -370,31 +410,66 @@ export function buildToggleStartupScript(
   platform: Platform = detectPlatform()
 ): string | null {
   const idx = id.indexOf(':')
-  const location = idx > 0 ? id.slice(0, idx) : 'HKCU'
-  const name = idx > 0 ? id.slice(idx + 1) : id
-  if (!name) return null
+  const rawLoc = idx > 0 ? id.slice(0, idx) : ''
+  const name = (idx > 0 ? id.slice(idx + 1) : id).trim()
+  if (!name || !STARTUP_NAME_RE.test(name)) return null
 
-  if (platform === 'win32' || location === 'HKCU' || location === 'HKLM') {
-    const regKey = `${location}:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run`
-    if (enable) {
-      const cmd = (command ?? '').replace(/"/g, '`"')
-      return `Set-ItemProperty -Path "${regKey}" -Name "${name}" -Value "${cmd}" -ErrorAction Stop; "OK"`
-    }
-    // 属性本就不存在视为已禁用（幂等成功）；存在但删除失败（如权限不足）才如实报错。
-    // 不可用 -ErrorAction SilentlyContinue + 无条件 "OK"：那样无论成功失败都报成功。
-    return `$p = Get-ItemProperty -Path "${regKey}" -Name "${name}" -ErrorAction SilentlyContinue\nif ($null -eq $p) { "OK" } else { try { Remove-ItemProperty -Path "${regKey}" -Name "${name}" -ErrorAction Stop; "OK" } catch { "ERR:$($_.Exception.Message)" } }`
+  const location = STARTUP_LOCATIONS.includes(rawLoc)
+    ? rawLoc
+    : platform === 'win32'
+      ? 'HKCU' // Windows 上无前缀的旧式 id 视作当前用户
+      : null
+  if (!location) return null
+
+  if (location === 'HKCU' || location === 'HKLM') {
+    const live = `${location}:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run`
+    const parked = `${location}:\\${DISABLED_RUN_KEY}`
+    // 一律使用 PowerShell **单引号字面量**：单引号内不解析 `$` 与反引号。
+    // 原先用双引号包裹且只转义 `"`，命令里的 `$(...)` 会被真实执行（注入面）。
+    return [
+      '$ErrorActionPreference = "Stop"',
+      `$live = ${psSingleQuote(live)}`,
+      `$parked = ${psSingleQuote(parked)}`,
+      `$name = ${psSingleQuote(name)}`,
+      'try {',
+      '  $pick = { param($k) if (Test-Path $k) { (Get-ItemProperty -Path $k -Name $name -ErrorAction SilentlyContinue).$name } else { $null } }',
+      enable
+        ? [
+            '  # 启用：优先取回被搬运的原命令，其次用本次传入的命令',
+            '  $v = & $pick $parked',
+            `  if ($null -eq $v) { $v = ${psSingleQuote(command ?? '')} }`,
+            '  if ([string]::IsNullOrWhiteSpace([string]$v)) { throw "缺少可恢复的启动命令" }',
+            '  if (-not (Test-Path $live)) { New-Item -Path $live -Force | Out-Null }',
+            '  Set-ItemProperty -Path $live -Name $name -Value $v',
+            '  if (Test-Path $parked) { Remove-ItemProperty -Path $parked -Name $name -ErrorAction SilentlyContinue }'
+          ].join('\n')
+        : [
+            '  # 禁用：搬到自有键保存（Windows 不读取该键），条目仍在列表中可再启用',
+            '  $v = & $pick $live',
+            '  if ($null -ne $v) {',
+            '    if (-not (Test-Path $parked)) { New-Item -Path $parked -Force | Out-Null }',
+            '    Set-ItemProperty -Path $parked -Name $name -Value $v',
+            '    Remove-ItemProperty -Path $live -Name $name',
+            '  }'
+          ].join('\n'),
+      '  "OK"',
+      '} catch { "ERR:$($_.Exception.Message)" }'
+    ].join('\n')
   }
 
   if (location === 'launchd') {
+    // 名称已过白名单（不含引号/`$`/反引号），可直接嵌入双引号路径
     const plist = `"$HOME/Library/LaunchAgents/${name}.plist"`
     if (enable) {
       const content = buildPlistContent(name, command ?? '')
-      return `cat > ${plist} <<'GALE_PLIST_EOF'
+      return `mkdir -p "$HOME/Library/LaunchAgents"
+mv -f ${plist}.disabled ${plist} 2>/dev/null
+cat > ${plist} <<'GALE_PLIST_EOF'
 ${content}
 GALE_PLIST_EOF
-echo "OK"`
+[ -f ${plist} ] && echo "OK" || echo "ERR:写入启动项失败"`
     }
-    return `rm -f ${plist} 2>/dev/null && echo "OK" || echo "ERR:删除启动项失败"`
+    return `mv -f ${plist} ${plist}.disabled 2>/dev/null && echo "OK" || echo "ERR:禁用启动项失败"`
   }
 
   if (location === 'autostart') {
@@ -405,9 +480,10 @@ echo "OK"`
 cat > ${file} <<'GALE_DESKTOP_EOF'
 ${content}
 GALE_DESKTOP_EOF
-echo "OK"`
+[ -f ${file} ] && echo "OK" || echo "ERR:写入启动项失败"`
     }
-    return `rm -f ${file} 2>/dev/null && echo "OK" || echo "ERR:删除启动项失败"`
+    // Hidden=true 是 XDG 标准的禁用标记：文件保留，用户可再次启用
+    return `if [ ! -f ${file} ]; then echo "OK"; elif grep -qi '^[[:space:]]*Hidden=true' ${file}; then echo "OK"; elif printf 'Hidden=true\\n' >> ${file}; then echo "OK"; else echo "ERR:禁用启动项失败"; fi`
   }
 
   return null

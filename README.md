@@ -2,7 +2,7 @@
 
 跨平台桌面优化加速软件：硬件监控与型号规格、进程管理、垃圾清理、启动项管理、游戏模式、系统服务、计划任务与防火墙管理，集成在一个轻量 Electron 桌面应用里。支持 **Windows 10/11、macOS、Linux**（x64 + arm64）。
 
-当前版本：**v0.1.9**（首页一键优化 + DLL 单项目优化能力库 + 运行时提权通道 + 磁盘空间实测释放修复，417 项测试全绿）
+当前版本：**v0.1.9**（首页一键优化 + DLL 单项目优化能力库 + 运行时提权通道 + 磁盘空间实测释放修复，**498 项测试全绿**；并已完成全量代码审查 H1 / M1–M10 / L1–L12 的全部加固）
 
 - 官网：https://gy.mixm.top
 - 仓库：https://github.com/afdk1991/gale-engine
@@ -108,7 +108,7 @@
 npm install              # 安装依赖
 npm run dev              # 启动开发模式（electron-vite dev）
 npm run typecheck        # vue-tsc 类型检查（发布准入）
-npm test                 # vitest 全量单测（当前 265 项全绿）
+npm test                 # vitest 全量单测（当前 498 项全绿）
 ```
 
 ## 打包与发布
@@ -191,8 +191,8 @@ npm run package
 
 ## 验证与验收
 
-- **单测**：`npm test`（**417** 项，覆盖全部 service 纯逻辑 + 跨平台分支 + 主题系统 + 侧边栏组件 + 更新状态机/能力探测 + 能力库安全边界 + DLL 检测）
-- **类型**：`npm run typecheck`
+- **单测**：`npm test`（**498** 项，覆盖全部 service 纯逻辑 + 跨平台分支 + 主题系统 + 侧边栏组件 + 更新状态机/能力探测 + 能力库安全边界 + DLL 检测 + 回执判定与注入防护）
+- **类型**：`npm run typecheck`（**与单测同列为必过项**——测试不覆盖 `preload.ts`，接口脱节只能靠类型门禁发现）
 - **构建**：`npm run build`
 - **核心命令直测**：服务层脚本可在本机直接验证（Win PowerShell / mac-linux bash）
 - **主题持久化 E2E**（真实 GUI，Windows 实机）：
@@ -200,7 +200,8 @@ npm run package
   node scripts/verify-theme-persistence.mjs
   ```
   通过 CDP 驱动真实应用：点击「深色 + 能量橙」→ 关闭 → 重启验证主题保持。
-- **冒烟清单**：`docs/smoke-test-checklist.html`（交互式，**121** 项，含 84 项可自动/脚本验证项）
+- **冒烟清单**：`docs/smoke-test-checklist.html`（交互式，**154** 项，含 106 项可自动/脚本验证项）
+- **代码审查报告**：`docs/code-review-2026-09-16.md`（含 §〇 修复进度表，H1 / M1–M10 / L1–L12 全部为 ✅）
 
 ## 已知限制
 
@@ -210,8 +211,13 @@ npm run package
 - 防火墙规则仅展示前 200 条（按显示名排序），海量规则场景建议使用筛选
 - macOS 应用未配置 Apple Developer 证书时，Gatekeeper 会提示「未验证开发者」，需右键→打开；配置证书后 CI 自动签名+公证
 - Linux 服务/计划任务/防火墙操作依赖 systemd / cron / ufw / iptables，init 系统与无 ufw 的发行版降级为只读
+- Linux **`deb` 安装的实例无法应用内自更新**（electron-updater 上游仅支持 AppImage），界面会明确提示原因并给出手动升级命令；需自更新请改用 AppImage
 - 代码签名未配置（Win）/ 未公证（mac），首次安装会有系统安全提示，属预期
 - 内存条 / 硬盘型号需管理员/root 权限，无权限时返回空（已在 UI 标注）
+- 启动项「禁用」为**隐藏保留**（`Hidden=true` / plist `Disabled`），项仍出现在列表中——这是为换取「可原地再启用」的设计取舍
+
+> 关于「假成功」：本项目已把操作回执统一到严格判定（`ERR:` 优先、`OK` 须独立成行、空输出即失败），
+> 并在游戏模式等页面按结构化 `ok` 决定提示与是否写入记录。新增功能时请沿用该判定，不要再使用 `includes('OK')`。
 
 ## 更新日志
 

@@ -87,10 +87,9 @@ async function runDeep(): Promise<void> {
   deepRunning.value = true
   deepResult.value = null
   try {
-    const items = deepPlans.value
-      .filter((p) => selectedDeep.value.has(p.id))
-      .map((p) => ({ id: p.id, kind: p.kind, path: p.detail }))
-    const results: CleanupResult[] = await window.gale.disk.runDeepCleanup(items)
+    // 只传 id：路径与类型由服务端权威清单解析（原先传的 p.detail 是展示文案，语义不符）
+    const ids = [...selectedDeep.value]
+    const results: CleanupResult[] = await window.gale.disk.runDeepCleanup(ids)
     const okCount = results.filter((r) => r.ok).length
     const fail = results.filter((r) => !r.ok)
     deepResult.value =
@@ -99,7 +98,7 @@ async function runDeep(): Promise<void> {
     await window.gale.history.add({
       type: 'cleanup',
       label: `磁盘深度释放 ${okCount} 项`,
-      detail: items.map((i) => i.id).join('、')
+      detail: ids.join('、')
     })
     await Promise.all([loadVolumes(), scanDeep()])
   } catch (e) {

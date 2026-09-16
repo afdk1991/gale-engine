@@ -23,20 +23,20 @@ const fail = (stderr = 'boom'): { stdout: string; stderr: string; code: number }
 describe('Toolbox', () => {
   it('flushDns 成功时返回 ok', async () => {
     const runner = recordingRunner(() => ok('Successfully flushed'))
-    const r = await createToolboxService(runner).flushDns()
+    const r = await createToolboxService(runner, 'win32').flushDns()
     expect(r.ok).toBe(true)
     expect(r.message).toContain('已刷新')
   })
 
   it('emptyRecycleBin 成功时返回 ok', async () => {
     const runner = recordingRunner(() => ok())
-    const r = await createToolboxService(runner).emptyRecycleBin()
+    const r = await createToolboxService(runner, 'win32').emptyRecycleBin()
     expect(r.ok).toBe(true)
   })
 
   it('clearClipboard 成功时返回 ok', async () => {
     const runner = recordingRunner(() => ok())
-    const r = await createToolboxService(runner).clearClipboard()
+    const r = await createToolboxService(runner, 'win32').clearClipboard()
     expect(r.ok).toBe(true)
   })
 
@@ -46,7 +46,7 @@ describe('Toolbox', () => {
       calls.push(s)
       return ok()
     })
-    const r = await createToolboxService(runner).toggleDarkMode(true)
+    const r = await createToolboxService(runner, 'win32').toggleDarkMode(true)
     expect(r.ok).toBe(true)
     expect(calls[0]).toContain('AppsUseLightTheme')
     expect(calls[0]).toContain('-Value 0')
@@ -58,14 +58,14 @@ describe('Toolbox', () => {
       calls.push(s)
       return ok()
     })
-    const r = await createToolboxService(runner).toggleDarkMode(false)
+    const r = await createToolboxService(runner, 'win32').toggleDarkMode(false)
     expect(r.ok).toBe(true)
     expect(calls[0]).toContain('-Value 1')
   })
 
   it('命令失败时将 stderr 透传为失败原因', async () => {
     const runner = recordingRunner(() => fail('access denied'))
-    const r = await createToolboxService(runner).flushDns()
+    const r = await createToolboxService(runner, 'win32').flushDns()
     expect(r.ok).toBe(false)
     expect(r.message).toContain('access denied')
   })
