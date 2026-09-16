@@ -5,6 +5,23 @@
 
 ---
 
+## 开发中（当前 master 工作区，未发布）
+
+以下改进已提交，将随下次 **v0.1.10** 发布合并进版本说明：
+
+### 修复
+- **GitHub Release 说明为空**（影响自动更新体验）：`release.yml` 原使用 `generate_release_notes`，仓库无 PR 时只会生成一行 `Full Changelog` 链接，使 10 个 Release 的 body 全部为空。而 `electron-updater` 会把 Release body 当作更新弹窗的 `releaseNotes` 展示——即用户点「检查更新」时看不到任何发版内容。
+  - 新增 `scripts/extract-changelog.py`：从 `CHANGELOG.md` 按 tag 抽取对应版本章节，支持 `v0.1.5 / v0.1.4` 这类合并标题的 **token 级精确匹配**（避免 `v0.1.1` 误命中 `v0.1.10`），并按实际产物生成「平台 / 架构 / 文件」下载表。
+  - `release.yml` 发布 job 改为 `body_path: release-notes.md`。⚠️ checkout 必须置于**下载构建产物之前**：`actions/checkout` 默认 `clean: true` 会执行 `git clean`，放在其后将清空 `dist/`。
+  - `release-backfill.yml` 同步改用该脚本，并强制 `--mode backfill` 附「代码来源说明」。
+
+### 文档
+- **历史 Release 说明回填**：v0.1.0–v0.1.9 共 10 个 Release 的说明由 74–83 字符补全为 978–2513 字符，含真实下载表。
+  - `v0.1.1`–`v0.1.6` 的说明中显式声明：本包由当前 `master` 源码构建、**并非该版本的历史快照**，并给出真实的 tag → commit → `package.json` 版本对照（其中 `v0.1.4` 与 `v0.1.5` 实际指向同一 commit）。
+- 落地页（EdgeOne Makers / `makers-rleonupjhtz0`）重新部署，线上版本更新至 v0.1.9。
+
+---
+
 ## v0.1.9 — 2026-09-16（首页一键优化 + DLL 能力库 + 运行时提权 + 空间实测释放）
 
 四项任务正式发布（commit `12a492f`）：

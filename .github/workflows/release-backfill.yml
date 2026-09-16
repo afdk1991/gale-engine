@@ -109,11 +109,28 @@ jobs:
           echo "--- 产物 ---"
           ls -la release/
 
+      - name: 生成发版说明（CHANGELOG 章节 + 代码来源说明）
+        shell: bash
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          # backfill 模式下必须显式声明「本包由当前 master 构建、非历史快照」，
+          # 否则下载者会误以为拿到的是该版本的历史代码。
+          # 本 job 跑在 Windows runner，python3 未必存在，故做解释器探测。
+          PY=$(command -v python3 || command -v python)
+          "$PY" scripts/extract-changelog.py \
+            --tag "$TAG" \
+            --changelog CHANGELOG.md \
+            --dist release \
+            --mode backfill > release-notes.md
+          echo "=== 发版说明预览（前 40 行）==="
+          head -40 release-notes.md
+
       - name: 发布到 GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.tag }}
-          generate_release_notes: true
+          body_path: release-notes.md
           # latest.yml 必须上传：electron-updater 依赖它检查与下载新版本
           files: |
             release/*.exe
