@@ -58,7 +58,7 @@
 - M3a：Process 模块（list/kill/suspend/resume/priority）
 - M3b：Network 模块（ping/trace/interfaces）
 - M3c：浏览器缓存清理补齐
-- M3d：页面 + 冒烟清单更新 + 发版 v0.3.0
+- M3d：页面 + 冒烟清单更新 + 发版（归入 v0.1.x 补丁阶梯，不再使用 v0.3.0 版本号）
 
 ## 风险
 - 挂起系统关键进程可能影响稳定性：白名单 + 拒绝列表双保险，默认不展示系统进程的激进操作
