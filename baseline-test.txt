@@ -1,0 +1,45 @@
+﻿
+> gale-engine@0.1.10 test
+> vitest run
+
+
+[1m[46m RUN [49m[22m [36mv3.2.7 [39m[90mD:/网站全栈项目/项目002[39m
+
+ [32m✓[39m electron/services/update.capability.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m electron/services/capabilityFeed.test.ts [2m([22m[2m49 tests[22m[2m)[22m[32m 32[2mms[22m[39m
+ [32m✓[39m electron/services/winservices.test.ts [2m([22m[2m31 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m electron/services/autolaunch.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 42[2mms[22m[39m
+ [32m✓[39m electron/services/process.test.ts [2m([22m[2m28 tests[22m[2m)[22m[32m 34[2mms[22m[39m
+ [32m✓[39m src/composables/useFlash.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 36[2mms[22m[39m
+ [32m✓[39m src/composables/usePolling.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 40[2mms[22m[39m
+ [32m✓[39m src/components/AppSidebar.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 154[2mms[22m[39m
+ [32m✓[39m src/pages/GameMode.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 242[2mms[22m[39m
+ [32m✓[39m electron/services/optimizer.test.ts [2m([22m[2m25 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m electron/services/firewall.test.ts [2m([22m[2m24 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m electron/services/update.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m electron/services/history.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m electron/services/onekey.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m electron/services/tasks.test.ts [2m([22m[2m24 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m electron/services/dllrepair.test.ts [2m([22m[2m25 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m electron/services/gamemode.test.ts [2m([22m[2m28 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m electron/services/elevate.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32m✓[39m electron/services/disk.test.ts [2m([22m[2m34 tests[22m[2m)[22m[33m 1886[2mms[22m[39m
+   [33m[2m✓[22m[39m runDeepCleanup[2m > [22m白名单 path 项执行 Remove-Item（Windows） [33m 353[2mms[22m[39m
+   [33m[2m✓[22m[39m runDeepCleanup[2m > [22mLinux path 项使用 find -mindepth 1 -delete [33m 339[2mms[22m[39m
+   [33m[2m✓[22m[39m runDeepCleanup[2m > [22m执行器非零退出码返回失败回执 [33m 638[2mms[22m[39m
+ [32m✓[39m electron/services/optlib.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m electron/services/network.test.ts [2m([22m[2m25 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m electron/services/actionResult.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m electron/services/hardware.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m src/theme/tokens.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m electron/services/toolbox.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m src/theme/useTheme.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m electron/services/settings.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m electron/services/monitor.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m electron/services/space.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m29 passed[39m[22m[90m (29)[39m
+[2m      Tests [22m [1m[32m499 passed[39m[22m[90m (499)[39m
+[2m   Start at [22m 23:57:28
+[2m   Duration [22m 18.52s[2m (transform 4.42s, setup 0ms, collect 12.90s, tests 2.78s, environment 152.89s, prepare 12.49s)[22m
+

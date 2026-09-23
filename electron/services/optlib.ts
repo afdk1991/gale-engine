@@ -141,18 +141,13 @@ export function aggregateResults(results: CleanupResult[]): OptRunResult {
   return out
 }
 
-function pickKind(plans: CleanupPlan[], kind: CleanupPlan['kind']) {
-  return plans
-    .filter((p) => p.kind === kind && p.safe)
-    .map((p) => ({ id: p.id, path: p.path, kind: p.kind }))
-}
-
 /** 执行优化中心（基础清理）里某一类项目 */
 async function runCleanupKind(ctx: OptContext, kind: CleanupPlan['kind']): Promise<OptRunResult> {
   const plans = await cached(ctx, 'cleanup-plans', () => ctx.normal.optimizer.scanCleanup())
-  const items = pickKind(plans, kind)
-  if (items.length === 0) return { status: 'skipped', reason: '未扫描到该类项目' }
-  const results = await ctx.normal.optimizer.runCleanup(items)
+  // H3：runCleanup 现在只收 id，路径由服务端按 id 权威解析（这里的 id 来自本地权威扫描，可信）
+  const ids = plans.filter((p) => p.kind === kind && p.safe).map((p) => p.id)
+  if (ids.length === 0) return { status: 'skipped', reason: '未扫描到该类项目' }
+  const results = await ctx.normal.optimizer.runCleanup(ids)
   return aggregateResults(results)
 }
 

@@ -1,0 +1,135 @@
+<h2>整合方案：A + B + C 如何共存于一款应用</h2>
+<p class="subtitle">B 的侧边栏作为应用骨架，A 的"一键加速"作为默认首页，C 的仪表盘作为独立的"硬件监控"页。左右两个窗口是整合后的核心页面预览。</p>
+
+<style>
+  .wf { width: 100%; height: 300px; display: flex; flex-direction: column; background: #fafbfc; font-size: 10px; color: #444; overflow: hidden; border-radius: 6px; border: 1px solid #e2e5ea; }
+  .wf-bar { flex-shrink: 0; height: 18px; background: #eceef2; display: flex; align-items: center; gap: 3px; padding: 0 8px; border-bottom: 1px solid #e0e2e8; }
+  .wf-dot { width: 6px; height: 6px; border-radius: 50%; background: #c8ccd4; }
+  .wf-name { margin-left: 6px; font-size: 8px; color: #8a8f99; }
+  .wf-flex { flex: 1; display: flex; min-height: 0; }
+  .wf-side { width: 76px; background: #f0f2f6; border-right: 1px solid #e2e5ea; padding: 6px 0; display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
+  .wf-nav { font-size: 8.5px; padding: 5px 8px; color: #6b7280; display: flex; align-items: center; gap: 5px; }
+  .wf-nav-active { background: #fff; color: #2b6fe0; font-weight: 600; border-left: 2px solid #3b7bff; }
+  .wf-nav-ico { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+  .ni-home { background: #4f8cff; } .ni-mon { background: #66d9e8; } .ni-clean { background: #3ecf8e; }
+  .ni-mem { background: #b197fc; } .ni-start { background: #ffa94d; } .ni-tool { background: #ff8fab; } .ni-set { background: #adb5bd; }
+  .wf-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+  .wf-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; }
+  .wf-ring { width: 92px; height: 92px; border-radius: 50%; border: 9px solid #4f8cff; border-top-color: #d7e4ff; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fff; }
+  .wf-ring b { font-size: 24px; color: #2b6fe0; }
+  .wf-ring span { font-size: 8px; color: #8a8f99; }
+  .wf-cta { background: #3b7bff; color: #fff; border-radius: 999px; padding: 6px 24px; font-size: 11px; font-weight: 600; }
+  .wf-row { flex-shrink: 0; display: flex; gap: 6px; padding: 10px; justify-content: center; }
+  .wf-chip { background: #fff; border: 1px solid #e2e5ea; border-radius: 6px; padding: 5px 10px; font-size: 8px; color: #6b7280; text-align: center; }
+  .wf-chip b { display: block; font-size: 11px; color: #2b6fe0; }
+
+  .wf-stats { display: flex; gap: 6px; padding: 10px 10px 0; }
+  .wf-stat { flex: 1; background: #fff; border: 1px solid #e2e5ea; border-radius: 6px; padding: 6px; text-align: center; }
+  .wf-stat i { display: block; font-style: normal; font-size: 7px; color: #8a8f99; }
+  .wf-stat b { font-size: 12px; color: #2b6fe0; }
+  .wf-mid { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; }
+  .wf-score { font-size: 11px; font-weight: 700; color: #2b6fe0; }
+  .wf-score i { font-style: normal; font-size: 7px; color: #8a8f99; font-weight: 400; display: block; }
+  .wf-cta-sm { background: #3b7bff; color: #fff; border-radius: 6px; padding: 4px 12px; font-size: 9px; font-weight: 600; }
+  .wf-charts { flex: 1; display: flex; gap: 6px; padding: 0 10px 10px; min-height: 0; }
+  .wf-chart { flex: 2; background: #fff; border: 1px solid #e2e5ea; border-radius: 6px; padding: 6px; display: flex; flex-direction: column; }
+  .wf-list { flex: 1; background: #fff; border: 1px solid #e2e5ea; border-radius: 6px; padding: 6px; }
+  .wf-cap { font-size: 7.5px; color: #8a8f99; margin-bottom: 3px; }
+  .wf-li { height: 6px; border-radius: 3px; background: #e8ebf0; margin: 4px 0; }
+
+  .ia { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 1rem; }
+  .ia-item { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 999px; padding: 0.3rem 0.9rem; font-size: 0.8rem; color: var(--text-secondary); }
+  .ia-item b { color: var(--accent); }
+</style>
+
+<div class="split">
+  <div class="mockup" style="margin-bottom:0">
+    <div class="mockup-header">页面 1 · 首页（默认页 = A 的核心，嵌入 B 的骨架）</div>
+    <div class="mockup-body" style="padding: 1rem;">
+      <div class="wf">
+        <div class="wf-bar"><span class="wf-dot"></span><span class="wf-dot"></span><span class="wf-dot"></span><span class="wf-name">加速大师</span></div>
+        <div class="wf-flex">
+          <div class="wf-side">
+            <div class="wf-nav wf-nav-active"><span class="wf-nav-ico ni-home"></span>首页</div>
+            <div class="wf-nav"><span class="wf-nav-ico ni-mon"></span>硬件监控</div>
+            <div class="wf-nav"><span class="wf-nav-ico ni-clean"></span>垃圾清理</div>
+            <div class="wf-nav"><span class="wf-nav-ico ni-mem"></span>内存加速</div>
+            <div class="wf-nav"><span class="wf-nav-ico ni-start"></span>启动项</div>
+            <div class="wf-nav"><span class="wf-nav-ico ni-tool"></span>工具箱</div>
+            <div class="wf-nav"><span class="wf-nav-ico ni-set"></span>设置</div>
+          </div>
+          <div class="wf-main">
+            <div class="wf-center">
+              <div class="wf-ring"><b>78</b><span>健康评分</span></div>
+              <div class="wf-cta">立即加速</div>
+            </div>
+            <div class="wf-row">
+              <div class="wf-chip"><b>1.2GB</b>垃圾文件</div>
+              <div class="wf-chip"><b>62%</b>内存占用</div>
+              <div class="wf-chip"><b>15</b>开机启动项</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup" style="margin-bottom:0">
+    <div class="mockup-header">页面 2 · 硬件监控（= C 的核心，嵌入 B 的骨架）</div>
+    <div class="mockup-body" style="padding: 1rem;">
+      <div class="wf">
+        <div class="wf-bar"><span class="wf-dot"></span><span class="wf-dot"></span><span class="wf-dot"></span><span class="wf-name">加速大师</span></div>
+        <div class="wf-flex">
+          <div class="wf-side">
+            <div class="wf-nav"><span class="wf-nav-ico ni-home"></span>首页</div>
+            <div class="wf-nav wf-nav-active"><span class="wf-nav-ico ni-mon"></span>硬件监控</div>
+            <div class="wf-nav"><span class="wf-nav-ico ni-clean"></span>垃圾清理</div>
+            <div class="wf-nav"><span class="wf-nav-ico ni-mem"></span>内存加速</div>
+            <div class="wf-nav"><span class="wf-nav-ico ni-start"></span>启动项</div>
+            <div class="wf-nav"><span class="wf-nav-ico ni-tool"></span>工具箱</div>
+            <div class="wf-nav"><span class="wf-nav-ico ni-set"></span>设置</div>
+          </div>
+          <div class="wf-main">
+            <div class="wf-stats">
+              <div class="wf-stat"><i>CPU</i><b>23%</b></div>
+              <div class="wf-stat"><i>内存</i><b>62%</b></div>
+              <div class="wf-stat"><i>磁盘</i><b>81%</b></div>
+              <div class="wf-stat"><i>温度</i><b>45°</b></div>
+            </div>
+            <div class="wf-mid">
+              <div class="wf-score"><i>系统健康</i>78 分</div>
+              <div class="wf-cta-sm">一键优化</div>
+            </div>
+            <div class="wf-charts">
+              <div class="wf-chart">
+                <div class="wf-cap">实时性能曲线</div>
+                <svg viewBox="0 0 100 30" preserveAspectRatio="none" style="width:100%;flex:1">
+                  <polyline points="0,24 12,20 24,22 36,14 48,17 60,9 72,12 84,6 100,10" fill="none" stroke="#4f8cff" stroke-width="2"/>
+                  <polyline points="0,27 12,26 24,25 36,23 48,24 60,20 72,18 84,16 100,14" fill="none" stroke="#3ecf8e" stroke-width="1.5"/>
+                </svg>
+              </div>
+              <div class="wf-list">
+                <div class="wf-cap">优化建议</div>
+                <div class="wf-li"></div><div class="wf-li"></div><div class="wf-li"></div><div class="wf-li"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 2rem;">
+  <div class="label">应用信息架构（共 7 个页面）</div>
+  <div class="ia">
+    <div class="ia-item"><b>首页</b> · 一键加速 + 健康评分</div>
+    <div class="ia-item"><b>硬件监控</b> · 实时仪表盘</div>
+    <div class="ia-item"><b>垃圾清理</b> · 扫描/清理</div>
+    <div class="ia-item"><b>内存加速</b> · 进程管理</div>
+    <div class="ia-item"><b>启动项</b> · 开机优化</div>
+    <div class="ia-item"><b>工具箱</b> · 附加工具</div>
+    <div class="ia-item"><b>设置</b> · 偏好配置</div>
+  </div>
+</div>

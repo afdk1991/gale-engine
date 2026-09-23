@@ -52,6 +52,15 @@ function n(v: unknown): number | null {
 }
 
 export function createSystemInformationHardwareFetcher(): HardwareFetcher {
+  // graphics() 与 displays() 都来自同一次 si.graphics()（其返回同时含 controllers 与 displays）。
+  // info() 用 Promise.all 并发调用二者；若各自再调一次 si.graphics()，会做两遍同样的
+  // WMI/IOR 枚举。这里用一个惰性共享 Promise：首次访问触发采集，二者并发时只触发一次。
+  let graphicsPromise: ReturnType<typeof si.graphics> | null = null
+  const getGraphics = (): ReturnType<typeof si.graphics> => {
+    if (!graphicsPromise) graphicsPromise = si.graphics()
+    return graphicsPromise
+  }
+
   return {
     async motherboard(): Promise<HardwareMotherboard> {
       try {
@@ -124,7 +133,7 @@ export function createSystemInformationHardwareFetcher(): HardwareFetcher {
 
     async graphics(): Promise<HardwareGraphicsController[]> {
       try {
-        const g = await si.graphics()
+        const g = await getGraphics()
         return (g.controllers ?? []).map((c) => ({
           model: s(c.model),
           vendor: s(c.vendor),
@@ -138,7 +147,7 @@ export function createSystemInformationHardwareFetcher(): HardwareFetcher {
 
     async displays(): Promise<HardwareDisplay[]> {
       try {
-        const g = await si.graphics()
+        const g = await getGraphics()
         return (g.displays ?? []).map((d) => {
           // sizeInch 由物理尺寸 sizeX/sizeY（毫米）对角线换算，无物理尺寸为 null
           let sizeInch: number | null = null

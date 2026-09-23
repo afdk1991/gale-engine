@@ -9,7 +9,7 @@
   - ⚠️ 该项**必须与 test 同列为必过项**：曾出现 preload 漏实现 4 个 IPC 方法导致 typecheck 红，而 413 项测试全绿（测试不覆盖 preload），CI 只跑 test 会漏掉接口脱节
 - [ ] `npm run test`（`vitest run`）全绿（当前 **498 项 / 29 个文件**）
 - [ ] `npm run build`（`electron-vite build`）主进程/预加载/渲染产物均生成，无报错
-- [ ] 版本号 `package.json#version` 与计划发版号一致（当前 `0.1.9`；下次发版应为 **`0.1.10`**）
+- [ ] 版本号 `package.json#version` 与计划发版号一致（当前 `0.1.10`；下次发版应为 **`0.1.11`**）
 - [ ] 全量代码审查遗留项已清零：`docs/code-review-2026-09-16.md` §〇「修复进度」表中 **H1 / M1–M10 / L1–L12 全部为 ✅**
 
 ## 二、安装包产出（本机可验 ✅）

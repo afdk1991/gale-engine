@@ -264,6 +264,20 @@ describe('compileRemoteCapabilities', () => {
     expect(rejected[0].reason).toContain('白名单外')
   })
 
+  it('原型链上的键不算白名单成员（toString/constructor/__proto__ 必须被拒）', () => {
+    const { capabilities, rejected } = compileRemoteCapabilities(
+      [
+        { id: 'meta-proto-1', label: 'P1', description: '', recipe: [{ call: 'toString' }] },
+        { id: 'meta-proto-2', label: 'P2', description: '', recipe: [{ call: 'constructor' }] },
+        { id: 'meta-proto-3', label: 'P3', description: '', recipe: [{ call: '__proto__' }] }
+      ],
+      runtime
+    )
+    expect(capabilities).toHaveLength(0)
+    expect(rejected.map((r) => r.id)).toEqual(['meta-proto-1', 'meta-proto-2', 'meta-proto-3'])
+    expect(rejected[0].reason).toContain('白名单外')
+  })
+
   it('无 recipe 的远端新能力不产出实现（避免凭空造能力）', () => {
     const { capabilities, rejected } = compileRemoteCapabilities(
       [{ id: 'meta-noimpl', label: 'N', description: '' }],
@@ -584,5 +598,77 @@ describe('createCapabilityFeedService', () => {
     expect(st.updateAvailable).toBe(false)
     expect(st.lastError).toContain('没有任何可用条目')
     expect(st.rejected.map((r) => r.id)).toContain('BAD ID')
+  })
+
+  // ── M3：内置 needsAdmin 三处对齐（不收紧也不放宽）────────────────
+  it('M3：远端把内置 clean-temp(needsAdmin:false) 标 needsAdmin:true 不生效（mergedMetas 不收紧）', async () => {
+    const cleanTemp = BUILTIN_METAS.find((m) => m.id === 'clean-temp')
+    expect(cleanTemp?.needsAdmin).toBe(false)
+    const storage = memoryStorage()
+    const s = makeFeed({
+      manifest: manifestJson({
+        capabilities: [{ id: 'clean-temp', label: '改名', description: 'd', needsAdmin: true }]
+      }),
+      storage
+    })
+    await s.check()
+    const st = await s.apply()
+    const merged = st.capabilities.find((c) => c.id === 'clean-temp')
+    // 本地 needsAdmin=false 不被远端收紧为 true（与 metaOverrides 不下发、optlib 不接受一致）
+    expect(merged?.needsAdmin).toBe(false)
+  })
+
+  // ── M4：apply 后 validate 期被拒条目仍保留并展示原因 ────────────
+  it('M4：apply 后 validate 期被拒的条目仍在 rejected 中并带原因（不静默消失）', async () => {
+    const storage = memoryStorage()
+    const s = makeFeed({
+      manifest: manifestJson({
+        capabilities: [
+          { id: 'meta-good', label: '好', description: '好描述', recipe: [{ call: 'toolbox.flushDns' }] },
+          { id: 'BAD ID', label: '坏', description: '坏描述' }
+        ]
+      }),
+      storage
+    })
+    await s.check()
+    const applied = await s.apply()
+    expect(applied.source).toBe('remote')
+    expect(applied.rejected.map((r) => r.id)).toContain('BAD ID')
+    expect(applied.rejected.find((r) => r.id === 'BAD ID')?.reason).toBeTruthy()
+    // 已落盘：新进程同 storage 也读得到
+    const again = makeFeed({ storage }).state()
+    expect(again.rejected.map((r) => r.id)).toContain('BAD ID')
+  })
+
+  // ── M5：disk.deepCleanup 按 id 的 needsAdmin 分别路由 normal/admin ──
+  it('M5：disk.deepCleanup 把 needsAdmin=true 的 id 路由到 ctx.admin，其余走 ctx.normal', async () => {
+    const rt = createRecipeRuntime()
+    const { capabilities } = compileRemoteCapabilities(
+      [{ id: 'meta-dc', label: 'DC', description: '', recipe: [{ call: 'disk.deepCleanup', args: { ids: ['n1', 'a1'] } }] }],
+      rt
+    )
+    const ran: string[] = []
+    const fakeDisk = (tag: string) =>
+      ({
+        scanDeepCleanup: async () => [
+          { id: 'n1', kind: 'system', label: 'n', detail: '', sizeBytes: 1, needsAdmin: false, safe: true, defaultChecked: true },
+          { id: 'a1', kind: 'system', label: 'a', detail: '', sizeBytes: 1, needsAdmin: true, safe: true, defaultChecked: true }
+        ],
+        runDeepCleanup: async (ids: string[]) => {
+          ran.push(`${tag}:${[...ids].sort().join(',')}`)
+          return ids.map((id) => ({ id, ok: true, releasedBytes: 1 }))
+        }
+      }) as never
+    const ctx = {
+      platform: 'win32' as const,
+      normal: { disk: fakeDisk('normal') },
+      admin: { disk: fakeDisk('admin') },
+      isElevated: async () => true,
+      cache: { get: () => undefined, set: () => {} }
+    } as never
+    const r = await capabilities[0].run(ctx)
+    expect(r.status).toBe('success')
+    expect(ran).toContain('normal:n1')
+    expect(ran).toContain('admin:a1')
   })
 })

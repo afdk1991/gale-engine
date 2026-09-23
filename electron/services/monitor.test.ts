@@ -107,4 +107,56 @@ describe('createMonitorService', () => {
     expect(snap.mem).toEqual({ used: 0, total: 0, percent: 0 })
     expect(snap.degraded).toEqual([])
   })
+
+  it('性能回归：七项采集并发（Promise.all），而非串行累加延迟', async () => {
+    const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
+    const startedAt: number[] = []
+    const mark = () => startedAt.push(Date.now())
+    // 每项固定延迟 40ms：串行 ≈ 7×40=280ms，并发 ≈ 单项 40ms
+    const svc = createMonitorService({
+      cpu: async () => {
+        mark()
+        await delay(40)
+        return { load: 1, cores: [] }
+      },
+      mem: async () => {
+        mark()
+        await delay(40)
+        return { used: 0, total: 0, percent: 0 }
+      },
+      disks: async () => {
+        mark()
+        await delay(40)
+        return []
+      },
+      net: async () => {
+        mark()
+        await delay(40)
+        return { rxSec: 0, txSec: 0 }
+      },
+      temp: async () => {
+        mark()
+        await delay(40)
+        return null
+      },
+      battery: async () => {
+        mark()
+        await delay(40)
+        return null
+      },
+      uptime: async () => {
+        mark()
+        await delay(40)
+        return 0
+      }
+    })
+    const t0 = Date.now()
+    const snap = await svc.snapshot()
+    const elapsed = Date.now() - t0
+    expect(snap.uptimeSec).toBe(0)
+    // 七项全部被启动
+    expect(startedAt).toHaveLength(7)
+    // 串行七项会 ≥280ms；并发应远低于此（留足机器抖动余量）
+    expect(elapsed).toBeLessThan(180)
+  })
 })

@@ -296,6 +296,10 @@ export function createWinServicesService(runner: ExecRunner, platform: Platform 
   const setStartupType = async (name: string, startType: ServiceStartupType): Promise<ToolResult> => {
     if (isWin) {
       if (!isSafeServiceName(name)) return { ok: false, message: '服务名包含非法字符' }
+      // M1：与 stop() 的 PROTECTED_SERVICES 保护对齐——关键服务（RpcSs 等）
+      // 不仅不能停，也不能被设为 Disabled（重启后 RPC/COM/WMI 等基础能力全失）。
+      // unix 分支已有 isProtectedUnixUnit 守卫，win32 此处补齐。
+      if (PROTECTED_SERVICES.includes(name)) return { ok: false, message: '系统关键服务，已拒绝修改启动类型' }
       const mapped = STARTUP_TYPE_MAP[startType]
       if (!mapped) return { ok: false, message: '无效的启动类型' }
       const script = `$s = Get-Service -Name '${name}' -ErrorAction SilentlyContinue\nif (-not $s) { "ERR:服务不存在"; exit }\ntry { Set-Service -Name '${name}' -StartupType ${mapped} -ErrorAction Stop; "OK" } catch { "ERR:$($_.Exception.Message)" }`

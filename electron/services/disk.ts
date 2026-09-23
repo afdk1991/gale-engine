@@ -160,13 +160,20 @@ export function buildDeepCatalog(
           '$p = Join-Path $env:LOCALAPPDATA "Microsoft\\Windows\\Explorer"',
           'Get-Process explorer -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue',
           'Start-Sleep -Seconds 1',
+          // 逐个 try/catch 统计删除失败：原先 Remove-Item -ErrorAction SilentlyContinue 吞掉所有错误，
+          // 末尾又无条件 "OK"，于是缓存被占用删不掉也报成功。
+          '$failed = 0',
           'if (Test-Path -LiteralPath $p) {',
-          '  Get-ChildItem -LiteralPath $p -File -Force -ErrorAction SilentlyContinue |',
-          '    Where-Object { $_.Name -like "thumbcache_*.db" -or $_.Name -like "iconcache_*.db" } |',
-          '    Remove-Item -Force -ErrorAction SilentlyContinue',
+          '  $files = Get-ChildItem -LiteralPath $p -File -Force -ErrorAction SilentlyContinue |',
+          '    Where-Object { $_.Name -like "thumbcache_*.db" -or $_.Name -like "iconcache_*.db" }',
+          '  foreach ($f in $files) {',
+          '    try { Remove-Item -LiteralPath $f.FullName -Force -ErrorAction Stop } catch { $failed++ }',
+          '  }',
           '}',
           // 无论前面是否出错都必须把外壳拉回来，避免用户桌面消失
           'if (-not (Get-Process explorer -ErrorAction SilentlyContinue)) { Start-Process explorer.exe }',
+          // 诚实回执：有缓存删不掉（被占用/无权）就回 ERR: 并不以 0 退出，不再无条件 OK
+          'if ($failed -gt 0) { "ERR:部分缩略图缓存被占用或无权删除，未能完全清理"; exit 1 }',
           '"OK"'
         ].join('\n')
       },
@@ -242,7 +249,13 @@ export function buildDeepCatalog(
         patterns: [],
         needsAdmin: false,
         defaultChecked: false,
-        action: 'command -v brew >/dev/null 2>&1 && brew cleanup -s; echo OK'
+        // 未装 brew 视为「可跳过」（exit 0）；但 brew 已装却 cleanup 失败必须如实报错。
+        // 原先 `… && brew cleanup -s; echo OK` 的 `; echo OK` 使退出码恒 0，失败也报成功。
+        action: [
+          'if ! command -v brew >/dev/null 2>&1; then echo OK; exit 0; fi',
+          'brew cleanup -s || { echo "ERR:brew cleanup 失败"; exit 1; }',
+          'echo OK'
+        ].join('\n')
       }
     ]
   }
@@ -269,7 +282,12 @@ export function buildDeepCatalog(
       patterns: [],
       needsAdmin: true,
       defaultChecked: false,
-      action: 'command -v journalctl >/dev/null 2>&1 && journalctl --vacuum-size=100M; echo OK'
+      // 诚实回执：原先 `… && journalctl …; echo OK` 末尾 echo OK 使退出码恒 0，
+      // 非 root 导致 vacuum 失败仍报成功。现按命令真实退出码收尾，失败回 ERR: 并 exit 1。
+      action: [
+        'command -v journalctl >/dev/null 2>&1 && journalctl --vacuum-size=100M || { echo "ERR:journalctl vacuum 失败（需 root 与 systemd）"; exit 1; }',
+        'echo OK'
+      ].join('\n')
     },
     {
       id: 'linux-apt-clean',
@@ -280,7 +298,11 @@ export function buildDeepCatalog(
       patterns: [],
       needsAdmin: true,
       defaultChecked: false,
-      action: 'command -v apt-get >/dev/null 2>&1 && apt-get clean; echo OK'
+      // 诚实回执：非 root 导致 apt-get clean 失败不得再被 `; echo OK` 吞成成功。
+      action: [
+        'command -v apt-get >/dev/null 2>&1 && apt-get clean || { echo "ERR:apt-get clean 失败（需 root）"; exit 1; }',
+        'echo OK'
+      ].join('\n')
     }
   ]
 }

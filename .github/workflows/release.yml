@@ -21,10 +21,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -81,10 +81,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -150,7 +150,7 @@ jobs:
           ls -la "$SUBDIR/"
 
       - name: 上传构建产物
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-${{ matrix.os }}-${{ matrix.arch }}
           path: release/${{ matrix.os }}-${{ matrix.arch }}/*
@@ -167,10 +167,10 @@ jobs:
       # 必须先 checkout：一是取 CHANGELOG 生成发版说明，二是 actions/checkout 默认
       # clean=true 会执行 git clean，若放在下载产物之后会把 dist/ 清空。
       - name: 检出仓库（取 CHANGELOG 生成发版说明）
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: 下载全部构建产物
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: release-artifacts
           # 不用 merge-multiple：每个 artifact 下载到自己的子目录（release-windows-x64/ 等），

@@ -112,18 +112,23 @@ export function createMonitorService(fetcher?: Partial<MonitorFetcher>) {
   const snapshot = async (): Promise<SystemSnapshot> => {
     const degraded: string[] = []
 
-    const cpu = await attempt<CpuSnapshot>('cpu', () => f.cpu(), { load: 0, cores: [] }, degraded)
-    const mem = await attempt<MemSnapshot>(
-      'mem',
-      () => f.mem(),
-      { used: 0, total: 0, percent: 0 },
-      degraded
-    )
-    const disks = await attempt<DiskSnapshot[]>('disks', () => f.disks(), [], degraded)
-    const net = await attempt<NetSnapshot>('net', () => f.net(), { rxSec: 0, txSec: 0 }, degraded)
-    const temp = await attempt<number | null>('temp', () => f.temp(), null, degraded)
-    const battery = await attempt<number | null>('battery', () => f.battery(), null, degraded)
-    const uptime = await attempt<number>('uptime', () => f.uptime(), 0, degraded)
+    // 七项采集并发执行（Promise.all）：原先逐个 await 串行，总延迟是各项之和；
+    // 并发后取 max(各项)。每项内部仍由 attempt 包裹独立 try/catch，单项失败只登记
+    // degraded 并降级，不影响其余项，也不会让整张快照 reject。
+    const [cpu, mem, disks, net, temp, battery, uptime] = await Promise.all([
+      attempt<CpuSnapshot>('cpu', () => f.cpu(), { load: 0, cores: [] }, degraded),
+      attempt<MemSnapshot>(
+        'mem',
+        () => f.mem(),
+        { used: 0, total: 0, percent: 0 },
+        degraded
+      ),
+      attempt<DiskSnapshot[]>('disks', () => f.disks(), [], degraded),
+      attempt<NetSnapshot>('net', () => f.net(), { rxSec: 0, txSec: 0 }, degraded),
+      attempt<number | null>('temp', () => f.temp(), null, degraded),
+      attempt<number | null>('battery', () => f.battery(), null, degraded),
+      attempt<number>('uptime', () => f.uptime(), 0, degraded)
+    ])
 
     // 在快照边界统一钳制百分比字段，保证 API 契约（0-100）不依赖数据源
     return {

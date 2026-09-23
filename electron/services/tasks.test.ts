@@ -5,6 +5,8 @@ import {
   parseTaskResult,
   isSafeTaskToken,
   isSafeUnixUnit,
+  isProtectedTask,
+  PROTECTED_TASKS,
   buildTasksListScript,
   buildTaskOpScript,
   parseUnixTaskList
@@ -132,6 +134,59 @@ describe('createTasksService', () => {
     const list = await createTasksService(runner, 'win32').list()
     expect(list[0].path).toBe('\\Gale\\')
     expect(list[0].nextRunTime).toBe('2026-09-05 08:00')
+  })
+
+  it('关键任务保护名单：禁用 Windows Update 任务被拒绝且不调用执行器', async () => {
+    const { runner, calls } = recordingRunner(() => ok())
+    const res = await createTasksService(runner, 'win32').setEnabled('\\Microsoft\\Windows\\WindowsUpdate\\', 'Scheduled Start', false)
+    expect(res.ok).toBe(false)
+    expect(res.message).toContain('关键任务')
+    expect(calls).toHaveLength(0)
+  })
+
+  it('关键任务保护名单：停止受保护任务被拒绝且不调用执行器', async () => {
+    const { runner, calls } = recordingRunner(() => ok())
+    const res = await createTasksService(runner, 'win32').stop('\\Microsoft\\Windows\\Windows Defender\\', 'Scheduled Scan')
+    expect(res.ok).toBe(false)
+    expect(calls).toHaveLength(0)
+  })
+
+  it('关键任务保护名单：运行受保护任务不拦截（运行无害）', async () => {
+    const { runner, calls } = recordingRunner(() => ok())
+    const res = await createTasksService(runner, 'win32').run('\\Microsoft\\Windows\\WindowsUpdate\\', 'Scheduled Start')
+    expect(res.ok).toBe(true)
+    expect(calls[0]).toContain('Start-ScheduledTask')
+  })
+
+  it('关键任务保护名单：重新启用受保护任务不拦截（利于恢复）', async () => {
+    const { runner, calls } = recordingRunner(() => ok())
+    const res = await createTasksService(runner, 'win32').setEnabled('\\Microsoft\\Windows\\WindowsUpdate\\', 'Scheduled Start', true)
+    expect(res.ok).toBe(true)
+    expect(calls[0]).toContain('Enable-ScheduledTask')
+  })
+
+  it('普通用户任务禁用不受保护名单影响', async () => {
+    const { runner, calls } = recordingRunner(() => ok())
+    const res = await createTasksService(runner, 'win32').setEnabled('\\Gale\\', 'Boost', false)
+    expect(res.ok).toBe(true)
+    expect(calls[0]).toContain('Disable-ScheduledTask')
+  })
+})
+
+describe('PROTECTED_TASKS / isProtectedTask', () => {
+  it('保护名单非空且包含 Windows Update 关键任务', () => {
+    expect(PROTECTED_TASKS.length).toBeGreaterThan(0)
+    expect(PROTECTED_TASKS).toContain('\\Microsoft\\Windows\\WindowsUpdate\\Scheduled Start')
+  })
+
+  it('识别受保护任务，容忍 TaskPath 结尾反斜杠写法差异', () => {
+    expect(isProtectedTask('\\Microsoft\\Windows\\WindowsUpdate\\', 'Scheduled Start')).toBe(true)
+    expect(isProtectedTask('\\Microsoft\\Windows\\WindowsUpdate', 'Scheduled Start')).toBe(true)
+  })
+
+  it('普通任务不被误判为受保护', () => {
+    expect(isProtectedTask('\\Gale\\', 'Boost')).toBe(false)
+    expect(isProtectedTask('\\', 'MyTask')).toBe(false)
   })
 })
 

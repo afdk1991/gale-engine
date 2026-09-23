@@ -105,6 +105,14 @@ describe('createProcessService', () => {
     expect(calls[0]).toContain('Get-Process -Id 999')
   })
 
+  it('保护名单扩充后，kill guard 的 PowerShell 列表含 svchost/explorer/dwm', async () => {
+    const { runner, calls } = recordingRunner(() => ok())
+    await createProcessService(runner, 'win32').kill(1234)
+    expect(calls[0]).toContain("'svchost'")
+    expect(calls[0]).toContain("'explorer'")
+    expect(calls[0]).toContain("'dwm'")
+  })
+
   it('suspend 脚本使用 NtSuspendProcess', async () => {
     const { runner, calls } = recordingRunner(() => ok())
     const res = await createProcessService(runner, 'win32').suspend(111)
@@ -155,6 +163,14 @@ describe('常量', () => {
     expect(PROTECTED_NAMES).toContain('lsass')
     expect(PROTECTED_NAMES).toContain('csrss')
     expect(PROTECTED_NAMES).toContain('System')
+  })
+  it('PROTECTED_NAMES 覆盖桌面/shell 关键进程（svchost/explorer/dwm 等）', () => {
+    expect(PROTECTED_NAMES).toContain('svchost')
+    expect(PROTECTED_NAMES).toContain('explorer')
+    expect(PROTECTED_NAMES).toContain('dwm')
+    expect(PROTECTED_NAMES).toContain('fontdrvhost')
+    expect(PROTECTED_NAMES).toContain('sihost')
+    expect(PROTECTED_NAMES).toContain('taskhostw')
   })
 })
 describe('createProcessService unix 分支', () => {

@@ -78,6 +78,33 @@ export function isSafeUnixUnit(token: string): boolean {
 }
 
 /**
+ * 系统关键计划任务保护名单（win32）：与 winservices 的 PROTECTED_SERVICES 对齐。
+ * 禁用 / 停止这些任务会破坏 Windows Update、Defender 扫描、系统维护与时间同步等基础能力。
+ * 条目为规范化的「TaskPath + TaskName」（TaskPath 以反斜杠结尾）。
+ */
+export const PROTECTED_TASKS: string[] = [
+  '\\Microsoft\\Windows\\WindowsUpdate\\Scheduled Start',
+  '\\Microsoft\\Windows\\UpdateOrchestrator\\Schedule Scan',
+  '\\Microsoft\\Windows\\UpdateOrchestrator\\Reboot',
+  '\\Microsoft\\Windows\\Windows Defender\\Scheduled Scan',
+  '\\Microsoft\\Windows\\Windows Defender\\Cache Maintenance',
+  '\\Microsoft\\Windows\\TaskScheduler\\Regular Maintenance',
+  '\\Microsoft\\Windows\\Time Synchronization\\ForceSynchronizeTime',
+  '\\Microsoft\\Windows\\DiskDiagnostic\\Microsoft-Windows-DiskDiagnosticDataCollector'
+]
+
+/** 规范化任务定位为 path+name（补全 TaskPath 结尾反斜杠，容忍调用方写法差异） */
+function normalizeTaskId(path: string, name: string): string {
+  const p = path.endsWith('\\') ? path : `${path}\\`
+  return `${p}${name}`
+}
+
+/** 判断任务是否在系统关键任务保护名单内（仅阻止禁用/停止，不影响运行/启用） */
+export function isProtectedTask(path: string, name: string): boolean {
+  return PROTECTED_TASKS.includes(normalizeTaskId(path, name))
+}
+
+/**
  * 列表脚本：
  * - Windows：Get-ScheduledTask（JSON）
  * - macOS：列出用户域 launchd 服务（launchctl print gui/$UID 下的服务 best-effort）
@@ -195,6 +222,7 @@ export function createTasksService(runner: ExecRunner, platform: Platform = dete
     if (isWin) {
       const loc = taskLocator(path, name)
       if (!loc) return { ok: false, message: '任务路径或名称包含非法字符' }
+      if (!enable && isProtectedTask(path, name)) return { ok: false, message: '系统关键任务，已拒绝禁用' }
       const verb = enable ? 'Enable-ScheduledTask' : 'Disable-ScheduledTask'
       const { stdout } = await runner.run(
         `try { ${verb} ${loc} -ErrorAction Stop | Out-Null; "OK" } catch { "ERR:$($_.Exception.Message)" }`
@@ -224,6 +252,7 @@ export function createTasksService(runner: ExecRunner, platform: Platform = dete
     if (isWin) {
       const loc = taskLocator(path, name)
       if (!loc) return { ok: false, message: '任务路径或名称包含非法字符' }
+      if (isProtectedTask(path, name)) return { ok: false, message: '系统关键任务，已拒绝停止' }
       const { stdout } = await runner.run(
         `try { Stop-ScheduledTask ${loc} -ErrorAction Stop; "OK" } catch { "ERR:$($_.Exception.Message)" }`
       )

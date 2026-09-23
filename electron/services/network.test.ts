@@ -95,6 +95,25 @@ describe('parsePing', () => {
     const r = parsePing(JSON.stringify({ avg: 0, loss: 100, ok: true }), 'x')
     expect(r.ok).toBe(false)
   })
+
+  it('localhost 0ms 合法：0 丢包即判可达，不把 0ms 当失败', () => {
+    // 回环地址时延可能正好为 0.0ms
+    const r = parsePing(JSON.stringify({ min: 0, avg: 0, max: 0, loss: 0, ok: true }), '127.0.0.1')
+    expect(r.avg).toBe(0)
+    expect(r.loss).toBe(0)
+    expect(r.ok).toBe(true)
+  })
+
+  it('localhost 0ms 且脚本未带 ok 字段：有回包（loss<100）仍判可达（回归 avg>0 误判）', () => {
+    // 旧逻辑 `avg>0` 会在 avg=0 且无 ok 字段时误判为失败
+    const r = parsePing(JSON.stringify({ min: 0, avg: 0, max: 0, loss: 0 }), 'localhost')
+    expect(r.ok).toBe(true)
+  })
+
+  it('localhost 0ms 但全丢包：仍判失败（0ms 不是万能通行证）', () => {
+    const r = parsePing(JSON.stringify({ min: 0, avg: 0, max: 0, loss: 100, ok: false }), 'x')
+    expect(r.ok).toBe(false)
+  })
 })
 
 describe('parseInterfaces', () => {

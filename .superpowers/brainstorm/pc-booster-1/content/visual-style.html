@@ -1,0 +1,168 @@
+<h2>视觉风格：这款软件应该是什么气质？</h2>
+<p class="subtitle">同样的首页布局，三种不同的视觉方向。点击选择你喜欢的（也可以说"A 但换成 B 的配色"这类组合）。</p>
+
+<style>
+  .vw { width: 100%; height: 100%; display: flex; flex-direction: column; overflow: hidden; border-radius: 6px; font-size: 10px; }
+  .vw-bar { flex-shrink: 0; height: 18px; display: flex; align-items: center; gap: 3px; padding: 0 8px; }
+  .vw-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .vw-name { margin-left: 6px; font-size: 8px; }
+  .vw-flex { flex: 1; display: flex; min-height: 0; }
+  .vw-side { width: 70px; padding: 6px 0; display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
+  .vw-nav { font-size: 8.5px; padding: 5px 8px; display: flex; align-items: center; gap: 5px; }
+  .vw-nav-ico { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+  .vw-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .vw-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+  .vw-ring { width: 80px; height: 80px; border-radius: 50%; border: 8px solid; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .vw-ring b { font-size: 22px; }
+  .vw-ring span { font-size: 7.5px; }
+  .vw-cta { border-radius: 999px; padding: 5px 20px; font-size: 10.5px; font-weight: 600; }
+  .vw-row { flex-shrink: 0; display: flex; gap: 5px; padding: 9px; justify-content: center; }
+  .vw-chip { border-radius: 6px; padding: 4px 9px; font-size: 7.5px; text-align: center; }
+  .vw-chip b { display: block; font-size: 10.5px; }
+
+  /* A 浅色清爽 */
+  .st-a { background: #f7f8fa; color: #374151; }
+  .st-a .vw-bar { background: #eceef2; border-bottom: 1px solid #e0e2e8; }
+  .st-a .vw-dot { background: #c8ccd4; }
+  .st-a .vw-name { color: #8a8f99; }
+  .st-a .vw-side { background: #f0f2f6; border-right: 1px solid #e2e5ea; }
+  .st-a .vw-nav { color: #6b7280; }
+  .st-a .vw-nav.on { background: #fff; color: #2563eb; font-weight: 600; border-left: 2px solid #3b82f6; }
+  .st-a .vw-ring { border-color: #3b82f6; border-top-color: #dbeafe; background: #fff; }
+  .st-a .vw-ring b { color: #2563eb; } .st-a .vw-ring span { color: #9ca3af; }
+  .st-a .vw-cta { background: #3b82f6; color: #fff; }
+  .st-a .vw-chip { background: #fff; border: 1px solid #e2e5ea; color: #6b7280; }
+  .st-a .vw-chip b { color: #2563eb; }
+
+  /* B 深色科技 */
+  .st-b { background: #16181f; color: #d1d5db; }
+  .st-b .vw-bar { background: #1d2029; border-bottom: 1px solid #2a2e3a; }
+  .st-b .vw-dot { background: #3f4453; }
+  .st-b .vw-name { color: #6b7280; }
+  .st-b .vw-side { background: #12141a; border-right: 1px solid #262a35; }
+  .st-b .vw-nav { color: #8b90a0; }
+  .st-b .vw-nav.on { background: #1d2029; color: #22d3ee; font-weight: 600; border-left: 2px solid #22d3ee; }
+  .st-b .vw-ring { border-color: #22d3ee; border-top-color: #164e5f; background: #1d2029; box-shadow: 0 0 18px rgba(34,211,238,0.25); }
+  .st-b .vw-ring b { color: #22d3ee; } .st-b .vw-ring span { color: #6b7280; }
+  .st-b .vw-cta { background: linear-gradient(90deg,#06b6d4,#3b82f6); color: #fff; }
+  .st-b .vw-chip { background: #1d2029; border: 1px solid #2a2e3a; color: #8b90a0; }
+  .st-b .vw-chip b { color: #22d3ee; }
+  .st-b .ni1 { background: #22d3ee; } .st-b .ni2 { background: #818cf8; } .st-b .ni3 { background: #34d399; }
+  .st-b .ni4 { background: #f472b6; } .st-b .ni5 { background: #fbbf24; } .st-b .ni6 { background: #475569; }
+
+  /* C 双主题 */
+  .st-c { background: #f7f8fa; color: #374151; }
+  .st-c .vw-bar { background: #eceef2; border-bottom: 1px solid #e0e2e8; }
+  .st-c .vw-dot { background: #c8ccd4; }
+  .st-c .vw-name { color: #8a8f99; }
+  .st-c .vw-side { background: #f0f2f6; border-right: 1px solid #e2e5ea; }
+  .st-c .vw-nav { color: #6b7280; }
+  .st-c .vw-nav.on { background: #fff; color: #7c3aed; font-weight: 600; border-left: 2px solid #8b5cf6; }
+  .st-c .vw-ring { border-color: #8b5cf6; border-top-color: #ede9fe; background: #fff; }
+  .st-c .vw-ring b { color: #7c3aed; } .st-c .vw-ring span { color: #9ca3af; }
+  .st-c .vw-cta { background: #8b5cf6; color: #fff; }
+  .st-c .vw-chip { background: #fff; border: 1px solid #e2e5ea; color: #6b7280; }
+  .st-c .vw-chip b { color: #7c3aed; }
+  .st-c .ni1 { background: #8b5cf6; } .st-c .ni2 { background: #06b6d4; } .st-c .ni3 { background: #10b981; }
+
+  .ni1 { background: #3b82f6; } .ni2 { background: #06b6d4; } .ni3 { background: #10b981; }
+  .ni4 { background: #f59e0b; } .ni5 { background: #ef4444; } .ni6 { background: #64748b; }
+</style>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="vw st-a">
+        <div class="vw-bar"><span class="vw-dot"></span><span class="vw-dot"></span><span class="vw-dot"></span><span class="vw-name">加速大师</span></div>
+        <div class="vw-flex">
+          <div class="vw-side">
+            <div class="vw-nav on"><span class="vw-nav-ico ni1"></span>首页</div>
+            <div class="vw-nav"><span class="vw-nav-ico ni2"></span>硬件监控</div>
+            <div class="vw-nav"><span class="vw-nav-ico ni3"></span>垃圾清理</div>
+            <div class="vw-nav"><span class="vw-nav-ico ni4"></span>启动项</div>
+            <div class="vw-nav"><span class="vw-nav-ico ni6"></span>设置</div>
+          </div>
+          <div class="vw-main">
+            <div class="vw-center">
+              <div class="vw-ring"><b>78</b><span>健康评分</span></div>
+              <div class="vw-cta">立即加速</div>
+            </div>
+            <div class="vw-row">
+              <div class="vw-chip"><b>1.2GB</b>垃圾文件</div>
+              <div class="vw-chip"><b>62%</b>内存占用</div>
+              <div class="vw-chip"><b>15</b>启动项</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A · 浅色清爽风</h3>
+      <p>白底 + 蓝色主色，干净轻盈，商务工具感。适合面向大众用户的日常工具软件，类似电脑管家 / CleanMyMac 浅色模式。</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="vw st-b">
+        <div class="vw-bar"><span class="vw-dot"></span><span class="vw-dot"></span><span class="vw-dot"></span><span class="vw-name">加速大师</span></div>
+        <div class="vw-flex">
+          <div class="vw-side">
+            <div class="vw-nav on"><span class="vw-nav-ico ni1"></span>首页</div>
+            <div class="vw-nav"><span class="vw-nav-ico ni2"></span>硬件监控</div>
+            <div class="vw-nav"><span class="vw-nav-ico ni3"></span>垃圾清理</div>
+            <div class="vw-nav"><span class="vw-nav-ico ni4"></span>启动项</div>
+            <div class="vw-nav"><span class="vw-nav-ico ni6"></span>设置</div>
+          </div>
+          <div class="vw-main">
+            <div class="vw-center">
+              <div class="vw-ring"><b>78</b><span>健康评分</span></div>
+              <div class="vw-cta">立即加速</div>
+            </div>
+            <div class="vw-row">
+              <div class="vw-chip"><b>1.2GB</b>垃圾文件</div>
+              <div class="vw-chip"><b>62%</b>内存占用</div>
+              <div class="vw-chip"><b>15</b>启动项</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B · 深色科技风</h3>
+      <p>深灰底 + 青蓝色霓虹点缀，性能监控氛围拉满。适合偏进阶、硬件向的定位，类似 MSI Center / 任务管理器暗色模式。</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="vw st-c">
+        <div class="vw-bar"><span class="vw-dot"></span><span class="vw-dot"></span><span class="vw-dot"></span><span class="vw-name">加速大师 · 浅色模式</span></div>
+        <div class="vw-flex">
+          <div class="vw-side">
+            <div class="vw-nav on"><span class="vw-nav-ico ni1"></span>首页</div>
+            <div class="vw-nav"><span class="vw-nav-ico ni2"></span>硬件监控</div>
+            <div class="vw-nav"><span class="vw-nav-ico ni3"></span>垃圾清理</div>
+            <div class="vw-nav"><span class="vw-nav-ico ni4"></span>启动项</div>
+            <div class="vw-nav"><span class="vw-nav-ico ni6"></span>设置</div>
+          </div>
+          <div class="vw-main">
+            <div class="vw-center">
+              <div class="vw-ring"><b>78</b><span>健康评分</span></div>
+              <div class="vw-cta">立即加速</div>
+            </div>
+            <div class="vw-row">
+              <div class="vw-chip"><b>1.2GB</b>垃圾文件</div>
+              <div class="vw-chip"><b>62%</b>内存占用</div>
+              <div class="vw-chip"><b>15</b>启动项</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C · 双主题跟随系统</h3>
+      <p>浅色 + 深色两套皮肤自动跟随系统切换（示例为浅色 + 紫色主色，主色可再定）。工程量略增，但覆盖面最全。主色你可以任选。</p>
+    </div>
+  </div>
+</div>

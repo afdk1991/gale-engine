@@ -23,7 +23,8 @@ function makeServices(): { normal: OptServiceSet; admin: OptServiceSet; adminRan
   const adminRan: string[] = []
   const base = {
     scanCleanup: async () => fakeScan,
-    runCleanup: async (items: { id: string }[]) => items.map((i) => ({ id: i.id, ok: true, releasedBytes: 1024 })),
+    // H3：runCleanup 契约改为只收 id 数组，路径由服务端按 id 权威解析
+    runCleanup: async (ids: string[]) => ids.map((id) => ({ id, ok: true, releasedBytes: 1024 })),
     scanDeepCleanup: async () => deepScan,
     // runDeepCleanup 的契约是「只收 id 数组」：路径由服务端权威清单解析
     runDeepCleanup: async (ids: string[]) =>

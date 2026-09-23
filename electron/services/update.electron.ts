@@ -78,6 +78,9 @@ export function createElectronUpdaterApi(): UpdaterApi {
     quitAndInstall(isSilent?: boolean, isForceRunAfter?: boolean): void {
       autoUpdater.quitAndInstall(Boolean(isSilent), Boolean(isForceRunAfter))
     },
+    async downloadUpdate(): Promise<void> {
+      await autoUpdater.downloadUpdate()
+    },
     onEvent(cb) {
       listeners.add(cb)
       return () => listeners.delete(cb)

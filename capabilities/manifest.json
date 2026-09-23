@@ -2,7 +2,7 @@
   "schema": 1,
   "libraryVersion": "0.1.0",
   "generatedAt": "2026-09-16T00:00:00Z",
-  "appVersion": "0.1.9",
+  "appVersion": "0.1.10",
   "capabilities": [
     {
       "id": "meta-daily-cleanup",

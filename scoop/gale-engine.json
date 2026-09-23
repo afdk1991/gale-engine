@@ -1,16 +1,16 @@
 {
   "$schema": "https://raw.githubusercontent.com/ScoopInstaller/Scoop/master/schema.json",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "疾风引擎 - 跨平台系统优化加速软件（硬件监控 / 进程管理 / 垃圾清理 / 游戏模式 / 服务管理 / 防火墙）",
   "homepage": "https://gy.mixm.top",
   "license": "MIT",
   "architecture": {
     "64bit": {
-      "url": "https://github.com/afdk1991/gale-engine/releases/download/v0.1.9/gale-engine-0.1.9-x64-setup.exe",
+      "url": "https://github.com/afdk1991/gale-engine/releases/download/v0.1.10/gale-engine-0.1.10-x64-setup.exe",
       "hash": "sha256:1e5a4a631eaf2e23ff1b07fdd97d0a5f08e3737299ffcbe738b85f04e10bb570"
     },
     "arm64": {
-      "url": "https://github.com/afdk1991/gale-engine/releases/download/v0.1.9/gale-engine-0.1.9-arm64-setup.exe",
+      "url": "https://github.com/afdk1991/gale-engine/releases/download/v0.1.10/gale-engine-0.1.10-arm64-setup.exe",
       "hash": "sha256:d0b0aaadf131e3c7264ff7ce80a263aeb27e05aa29bfc5f0958535834dfd1558"
     }
   },

@@ -52,10 +52,10 @@ async function runCleanup(): Promise<void> {
   runLoading.value = true
   lastResult.value = null
   try {
-    const items = plans.value
-      .filter((p) => selected.value.has(p.id))
-      .map((p) => ({ id: p.id, path: p.path, kind: p.kind }))
-    const results: CleanupResult[] = await window.gale.optimizer.runCleanup(items)
+    // H3：契约改为只传 id，清理目标路径由服务端按 id 权威解析，渲染层不再提供 path
+    const picked = plans.value.filter((p) => selected.value.has(p.id))
+    const ids = picked.map((p) => p.id)
+    const results: CleanupResult[] = await window.gale.optimizer.runCleanup(ids)
     const okCount = results.filter((r) => r.ok).length
     const failNames = results
       .filter((r) => !r.ok)
@@ -66,7 +66,7 @@ async function runCleanup(): Promise<void> {
     await window.gale.history.add({
       type: 'cleanup',
       label: `清理 ${okCount} 项垃圾`,
-      detail: items.map((i) => i.kind).join('、')
+      detail: picked.map((p) => p.kind).join('、')
     })
     await scan()
   } catch (e) {

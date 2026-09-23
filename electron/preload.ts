@@ -19,7 +19,7 @@ const api: GaleApi = {
   },
   optimizer: {
     scanCleanup: () => ipcRenderer.invoke('optimizer:scanCleanup'),
-    runCleanup: (items) => ipcRenderer.invoke('optimizer:runCleanup', items),
+    runCleanup: (ids) => ipcRenderer.invoke('optimizer:runCleanup', ids),
     listStartup: () => ipcRenderer.invoke('optimizer:listStartup'),
     toggleStartup: (id, enable, command) => ipcRenderer.invoke('optimizer:toggleStartup', id, enable, command)
   },
@@ -82,7 +82,7 @@ const api: GaleApi = {
   firewall: {
     profiles: () => ipcRenderer.invoke('firewall:profiles'),
     listRules: () => ipcRenderer.invoke('firewall:listRules'),
-    setProfileEnabled: (profile, enable) => ipcRenderer.invoke('firewall:setProfileEnabled', profile, enable),
+    setProfileEnabled: (profile, enable, options) => ipcRenderer.invoke('firewall:setProfileEnabled', profile, enable, options),
     toggleRule: (name, enable) => ipcRenderer.invoke('firewall:toggleRule', name, enable)
   },
   tasks: {
@@ -110,6 +110,7 @@ const api: GaleApi = {
       return () => ipcRenderer.removeListener('app:update', listener)
     },
     installUpdate: () => ipcRenderer.invoke('app:installUpdate'),
+    downloadUpdate: () => ipcRenderer.invoke('app:downloadUpdate'),
     getAutoLaunch: () => ipcRenderer.invoke('app:getAutoLaunch'),
     setAutoLaunch: (enable) => ipcRenderer.invoke('app:setAutoLaunch', enable),
     isElevated: () => ipcRenderer.invoke('app:isElevated'),

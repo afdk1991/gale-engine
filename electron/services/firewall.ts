@@ -16,6 +16,16 @@ export function isSafeFirewallToken(token: string): boolean {
   return true
 }
 
+/**
+ * M8：setProfileEnabled 额外选项。
+ * 禁用 Public（公用网络）防火墙风险高——在咖啡厅/酒店等不可信网络下会暴露全部入站端口。
+ * 服务端不弹窗，仅要求调用方（前端二次确认后）显式传 confirmDisablePublic=true 才放行，
+ * 否则拒绝执行。前端确认对话框与 IPC 透传由 UI/契约层配合完成。
+ */
+export interface SetFirewallProfileOptions {
+  confirmDisablePublic?: boolean
+}
+
 /** 解析 Get-NetFirewallProfile 输出 */
 export function parseProfiles(stdout: string): FirewallProfile[] {
   const trimmed = stdout.trim()
@@ -201,10 +211,19 @@ export function createFirewallService(runner: ExecRunner, platform: Platform = d
     return isWin ? parseRules(stdout) : parseUnixRules(stdout)
   }
 
-  const setProfileEnabled = async (profile: string, enable: boolean): Promise<ToolResult> => {
+  const setProfileEnabled = async (
+    profile: string,
+    enable: boolean,
+    options?: SetFirewallProfileOptions
+  ): Promise<ToolResult> => {
     if (isWin) {
       const valid = (FIREWALL_PROFILES as readonly string[]).includes(profile)
       if (!valid) return { ok: false, message: '无效的配置文件（须为 Domain/Private/Public）' }
+      // M8：禁用 Public（公用网络）配置文件需显式二次确认标记，否则拒绝，
+      // 防止 UI 一点即关导致公用网络下入站端口暴露。
+      if (!enable && profile === 'Public' && options?.confirmDisablePublic !== true) {
+        return { ok: false, message: '禁用 Public（公用网络）防火墙风险较高，请确认后重试' }
+      }
       const state = enable ? 'True' : 'False'
       const { stdout } = await runner.run(
         `try { Set-NetFirewallProfile -Name ${profile} -Enabled ${state} -ErrorAction Stop; "OK" } catch { "ERR:$($_.Exception.Message)" }`

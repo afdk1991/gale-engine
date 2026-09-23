@@ -1,0 +1,50 @@
+﻿
+> gale-engine@0.1.10 test
+> vitest run
+
+
+[1m[46m RUN [49m[22m [36mv3.2.7 [39m[90mD:/网站全栈项目/项目002[39m
+
+ [32m✓[39m electron/services/process.test.ts [2m([22m[2m30 tests[22m[2m)[22m[32m 31[2mms[22m[39m
+ [32m✓[39m electron/services/dllrepair.test.ts [2m([22m[2m25 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m electron/services/autolaunch.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 39[2mms[22m[39m
+ [32m✓[39m electron/services/elevate.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m src/composables/useFlash.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m src/composables/usePolling.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m electron/services/monitor.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 60[2mms[22m[39m
+ [32m✓[39m src/components/AppSidebar.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 144[2mms[22m[39m
+ [32m✓[39m src/pages/GameMode.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 262[2mms[22m[39m
+ [32m✓[39m electron/services/shell.test.ts [2m([22m[2m8 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m[33m 1413[2mms[22m[39m
+   [33m[2m✓[22m[39m createPowershellRunner[2m > [22m快速脚本正常退出且 code=0 [33m 506[2mms[22m[39m
+   [33m[2m✓[22m[39m createPowershellRunner[2m > [22mM7 回归：卡死脚本在超时后按失败返回，永不挂起 [33m 901[2mms[22m[39m
+ [32m✓[39m electron/services/gamemode.test.ts [2m([22m[2m28 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m electron/services/toolbox.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m electron/services/disk.test.ts [2m([22m[2m39 tests[22m[2m)[22m[33m 2123[2mms[22m[39m
+   [33m[2m✓[22m[39m runDeepCleanup[2m > [22m白名单 path 项执行 Remove-Item（Windows） [33m 383[2mms[22m[39m
+   [33m[2m✓[22m[39m runDeepCleanup[2m > [22maction 项执行 DISM 维护命令 [33m 312[2mms[22m[39m
+   [33m[2m✓[22m[39m runDeepCleanup[2m > [22mLinux path 项使用 find -mindepth 1 -delete [33m 360[2mms[22m[39m
+   [33m[2m✓[22m[39m 诚实回执残留修复（不再无条件 OK / ; echo OK 吞失败）[2m > [22maction 项失败（退出码非 0）如实报失败，不再被末尾 OK 掩盖 [33m 371[2mms[22m[39m
+ [32m✓[39m electron/services/optimizer.test.ts [2m([22m[2m27 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m electron/services/winservices.test.ts [2m([22m[2m33 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m electron/services/tasks.test.ts [2m([22m[2m32 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m electron/services/capabilityFeed.test.ts [2m([22m[2m52 tests[22m[2m)[22m[32m 27[2mms[22m[39m
+ [32m✓[39m electron/services/network.test.ts [2m([22m[2m28 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m electron/services/history.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m electron/services/hardware.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m src/theme/useTheme.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m electron/services/update.capability.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m electron/services/firewall.test.ts [2m([22m[2m28 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m electron/services/settings.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m electron/services/actionResult.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m src/theme/tokens.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m electron/services/optlib.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m electron/services/update.test.ts [2m([22m[2m21 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m electron/services/space.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m electron/services/onekey.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m electron/services/desktopEntry.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m31 passed[39m[22m[90m (31)[39m
+[2m      Tests [22m [1m[32m555 passed[39m[22m[2m | [22m[33m2 skipped[39m[90m (557)[39m
+[2m   Start at [22m 00:22:22
+[2m   Duration [22m 7.53s[2m (transform 2.52s, setup 0ms, collect 7.18s, tests 4.41s, environment 42.48s, prepare 8.72s)[22m
+

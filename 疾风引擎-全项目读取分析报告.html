@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>疾风引擎（gale-engine）全项目读取分析报告</title>
+<style>
+  :root {
+    --bg: #f7f8fa; --card: #ffffff; --border: #e2e5ea;
+    --text: #1f2329; --sub: #6b7280; --dim: #9ca3af;
+    --accent: #3b82f6; --green: #059669; --amber: #d97706; --red: #dc2626;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', 'Microsoft YaHei', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; padding: 32px 20px; }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  h1 { font-size: 26px; margin-bottom: 6px; }
+  .meta { color: var(--sub); font-size: 13px; margin-bottom: 24px; }
+  h2 { font-size: 18px; margin: 34px 0 12px; padding-left: 10px; border-left: 4px solid var(--accent); }
+  h3 { font-size: 15px; margin: 18px 0 8px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; margin-bottom: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 10px 0; }
+  th { text-align: left; background: #f0f2f6; font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  code { background: #f0f2f6; border-radius: 4px; padding: 1px 6px; font-size: 0.9em; font-family: 'Cascadia Code','Consolas',monospace; }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px; margin-right: 6px; }
+  .t-green { color: var(--green); background: rgba(5,150,105,.12); }
+  .t-amber { color: var(--amber); background: rgba(217,119,6,.12); }
+  .t-red { color: var(--red); background: rgba(220,38,38,.12); }
+  .t-blue { color: var(--accent); background: rgba(59,130,246,.12); }
+  ul { padding-left: 20px; }
+  li { margin-bottom: 4px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } body { padding: 16px 10px; } }
+  .footer { color: var(--dim); font-size: 12px; margin-top: 30px; text-align: center; }
+  .fig { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 10px; overflow-x: auto; }
+  .fig svg { display: block; margin: 0 auto; min-width: 900px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>疾风引擎（gale-engine）全项目读取分析报告</h1>
+<p class="meta">读取时间：2026-09-17 ｜ 目录：<code>D:\网站全栈项目\项目002</code> ｜ 版本：v0.1.10 ｜ 方式：全量源码读取（electron / src / shared / capabilities / docs / scripts / 构建与 CI 配置 / IDE 扩展配置）</p>
+
+<div class="card">
+<h3>一、项目身份</h3>
+<table>
+  <tr><th style="width:160px">项</th><th>值</th></tr>
+  <tr><td>名称 / 产品</td><td>gale-engine · <strong>疾风引擎</strong> —— 跨平台系统优化加速软件（Windows / macOS / Linux × x64 / arm64）</td></tr>
+  <tr><td>技术栈</td><td>Electron 33 + Vue 3.5 + TypeScript（strict）+ electron-vite 3 + electron-builder 25 + vitest 3 + Vue Router 4；运行时依赖仅 5 个：<code>electron-store / electron-updater / systeminformation / vue / vue-router</code></td></tr>
+  <tr><td>代码规模</td><td>主进程 <code>electron/</code> 52 文件（含 27 个服务/工具模块与测试）· 渲染层 <code>src/</code> 40 文件（15 页面 + 4 组件 + 4 组合式函数 + 主题系统）· 类型契约 <code>shared/types.ts</code> 单源</td></tr>
+  <tr><td>质量门禁</td><td><span class="tag t-green">vue-tsc 0 错误</span><span class="tag t-green">vitest 498/498（29 文件）</span><span class="tag t-green">electron-vite build 通过</span><span class="tag t-green">CI 常驻</span></td></tr>
+  <tr><td>发布形态</td><td>GitHub Releases（6 矩阵 CI）+ Homebrew Cask + Scoop + EdgeOne Makers 落地页（<code>gy.mixm.top</code>）</td></tr>
+</table>
+</div>
+
+<div class="card">
+<h3>二、总体架构</h3>
+<div class="fig" id="arch"></div>
+<p style="font-size:12px;color:var(--dim);margin-top:6px">分层说明：渲染进程只经 preload 暴露的 <code>window.gale</code> 契约调用主进程；主进程 27 个服务模块统一经 PAL（平台抽象层）把平台原生命令分发到 PowerShell / bash，解析器保持平台无关；提权采用 <code>asInvoker</code> 启动 + 按需 <code>ShellExecute(runas)</code>。</p>
+</div>
+
+<div class="card">
+<h3>三、主进程服务模块清单（27 个模块文件）</h3>
+<table>
+  <tr><th>分组</th><th>模块</th><th>职责</th></tr>
+  <tr><td rowspan="2">基础设施</td><td><code>shell.ts</code>（PAL）</td><td><code>ExecRunner</code> 接口 + PowerShell/bash/平台工厂 + 平台检测；脚本输出统一 UTF-8</td></tr>
+  <tr><td><code>actionResult.ts</code> / <code>desktopEntry.ts</code></td><td>成败回执解析（<code>ERR:</code> 优先、OK 独立成行）；.desktop 转义工具</td></tr>
+  <tr><td rowspan="4">监控/信息</td><td><code>monitor.ts</code></td><td>systeminformation 快照（CPU/内存/磁盘/网络/温度/电量），按字段降级 <code>degraded[]</code></td></tr>
+  <tr><td><code>hardware.ts</code></td><td>主板/CPU/内存/显卡/显示器/硬盘/电源 7 类静态采集（电池容量 mWh→Wh）</td></tr>
+  <tr><td><code>process.ts</code></td><td>进程列表/结束/挂起/恢复/优先级；系统关键进程保护 + 二次确认</td></tr>
+  <tr><td><code>network.ts</code></td><td>ping（延迟/丢包 clamp 0-100）/ 网卡列表；win/unix 脚本分发</td></tr>
+  <tr><td rowspan="6">优化/清理</td><td><code>optimizer.ts</code></td><td>垃圾扫描/清理（temp/browser/recycle）、启动项管理（禁用=置 Hidden 可逆）</td></tr>
+  <tr><td><code>disk.ts</code> / <code>space.ts</code></td><td>卷空间/深度释放（服务端权威 id 清单）/chkdsk/SFC/DISM；清理前后实测释放量</td></tr>
+  <tr><td><code>dllrepair.ts</code></td><td>关键 DLL 三态检测（存在/位数不全/缺失）+ VC++ 运行库；sfc/dism/winget 修复建议</td></tr>
+  <tr><td><code>gamemode.ts</code></td><td>powercfg / caffeinate / CPU governor；还原凭据白名单校验 + 诚实回执</td></tr>
+  <tr><td><code>toolbox.ts</code></td><td>刷新 DNS / 清回收站 / 清剪贴板 / 深浅色；全部显式成败判定</td></tr>
+  <tr><td><code>optlib.ts</code> / <code>onekey.ts</code></td><td>优化能力库（list/runSingle）；一键优化编排（进度推送/取消/失败重试/占位锁）</td></tr>
+  <tr><td rowspan="5">系统管理</td><td><code>winservices.ts</code></td><td>服务启停/启动类型；<code>PROTECTED_SERVICES</code> 名单 + AcceptStop 双保险</td></tr>
+  <tr><td><code>tasks.ts</code></td><td>计划任务枚举/启停/立即运行/结束</td></tr>
+  <tr><td><code>firewall.ts</code></td><td>三配置文件开关 + 规则启停（仅 Domain/Private/Public 枚举）</td></tr>
+  <tr><td><code>autolaunch.ts</code></td><td>开机自启：注册表 Run / launchd / XDG autostart</td></tr>
+  <tr><td><code>settings.ts</code> / <code>history.ts</code></td><td>electron-store 偏好持久化；优化记录留痕</td></tr>
+  <tr><td rowspan="3">更新/提权/热更</td><td><code>update*.ts</code>（3 个）</td><td>electron-updater 封装：状态机、平台能力探测、底层错误翻译成可行动中文</td></tr>
+  <tr><td><code>elevate*.ts</code>（2 个）</td><td>isElevated / runElevated（UAC）/ restartElevated；临时脚本清理 + 陈旧残留清扫</td></tr>
+  <tr><td><code>capabilityFeed.ts</code></td><td>远端能力清单校验（schema/体积/防降级）+ 配方白名单运行时</td></tr>
+</table>
+</div>
+
+<div class="card">
+<h3>四、渲染层（Vue 3 + Vite）</h3>
+<table>
+  <tr><th>类别</th><th>内容</th></tr>
+  <tr><td>15 个页面</td><td>Home（健康评分+一键优化）、Monitor、Hardware、Process、Network、Optimizer、GameMode、DllRepair、DiskRepair、Services、Tasks、Firewall、Toolbox、History、Settings</td></tr>
+  <tr><td>组件 / 组合式函数</td><td>AppSidebar（15 项导航）、OneKeyPanel、UpdateCard（三端入口）、CapabilityLibraryPanel；<code>useOneKey</code>（单例状态）、<code>useAppUpdate</code>（单例更新状态）、<code>usePolling</code>（丢帧不排队）、<code>useFlash</code>（结构化 tone + 卸载清理）</td></tr>
+  <tr><td>主题系统</td><td>CSS 变量令牌（浅色/深色/跟随系统 × 6 主题色），经 electron-store 持久化</td></tr>
+  <tr><td>交互范式</td><td>所有操作结果统一走 <code>useFlash</code> 反馈；运行类页面接入 <code>usePolling</code> 并发守卫；写历史仅发生在主进程确认成功之后</td></tr>
+</table>
+</div>
+
+<div class="card">
+<h3>五、安全模型（设计红线）</h3>
+<ul>
+  <li><strong>提权边界只收不松</strong>：<code>needsAdmin</code> 不允许远端修改；清单打包清单 <code>asInvoker</code> + 按需 UAC，保证开机自启与自动更新不被权限破坏。</li>
+  <li><strong>远端不能下发可执行代码</strong>：能力库仅允许覆盖内置元信息（label/description/defaultEnabled）+ 白名单配方编排；schema 版本、256KB 体积、200 条上限、<code>libraryVersion</code> 只增不减（防降级）、被拒条目界面如实列出。</li>
+  <li><strong>注入防护纵深</strong>：路径白名单（<code>isSafeRoot</code>）、深度清理只传 id、服务/规则/任务名正则白名单、.desktop 转义、还原凭据（GUID/governor/PID）校验、<code>openExternal</code> HTTPS + 主机白名单。</li>
+  <li><strong>诚实回执</strong>：统一 <code>parseActionOutcome</code>（<code>ERR:</code> 优先、OK 独立成行、空输出算失败），禁止 <code>includes('OK')</code> 与静默失败；游戏模式/回收站等曾“假成功”的路径全部改为结构化 <code>ok</code>。</li>
+</ul>
+</div>
+
+<div class="card">
+<h3>六、构建与发布流水线</h3>
+<div class="grid2">
+  <div>
+    <h3>CI（.github/workflows）</h3>
+    <ul>
+      <li><code>ci.yml</code>：push/PR → typecheck + vitest（master/main）</li>
+      <li><code>release.yml</code>：打 <code>v*</code> tag → quality 门禁 → <strong>6 矩阵</strong>（Win/macOS/Linux × x64/arm64，arm64 交叉编译）→ 单 job 统一发布</li>
+      <li><code>release-backfill.yml</code>：历史 tag 补发（master 构建 + 注入版本号）</li>
+    </ul>
+  </div>
+  <div>
+    <h3>打包配置（electron-builder.yml）</h3>
+    <ul>
+      <li>Win NSIS：<code>asInvoker</code> + <code>perMachine:false</code> + <code>allowElevation:true</code>，ASCII 产物名</li>
+      <li>mac：dmg + zip（electron-updater 只认 zip）</li>
+      <li>Linux：AppImage + deb（arm64 仅 AppImage）</li>
+      <li>签名：CSC_LINK 驱动，未配置自动跳过（SmartScreen 提示属预期）</li>
+    </ul>
+  </div>
+</div>
+</div>
+
+<div class="card">
+<h3>七、里程碑与演进</h3>
+<table>
+  <tr><th>版本</th><th>内容</th></tr>
+  <tr><td>v0.1.0–0.1.2（M1–M2）</td><td>工程骨架 + 主题系统 + 五大模块（监控/历史/优化/游戏模式/工具箱）</td></tr>
+  <tr><td>v0.1.3–0.1.5（M3–M4）</td><td>进程管理 + 网络诊断 + 浏览器缓存；计划任务/服务管理/防火墙；自动更新 + 开机自启</td></tr>
+  <tr><td>v0.1.6–0.1.7</td><td>跨平台迁移 100%：13 个 service 三平台 + 6 矩阵 CI 打通 + 落地页多平台适配</td></tr>
+  <tr><td>v0.1.8–0.1.9</td><td>磁盘修复模块（深度释放/SFC/DISM）；一键优化 + DLL 能力库 + 运行时提权 + 空间实测释放</td></tr>
+  <tr><td>v0.1.10（当前）</td><td>三端自动更新真正打通（mac 补 zip / Linux AppImage 自更新、deb 诚实降级）；DLL 修复页 + 可独立更新的能力库；23 项代码审查缺陷全数修复（H1/M1–M10/L1–L12）</td></tr>
+</table>
+</div>
+
+<div class="card">
+<h3>八、已知限制与风险</h3>
+<table>
+  <tr><th>项</th><th>状态</th><th>说明</th></tr>
+  <tr><td>ARM64 实机验证</td><td><span class="tag t-amber">待用户侧</span></td><td>三平台 arm64 产物已就绪，需 Apple Silicon / Win ARM / 树莓派实机点检</td></tr>
+  <tr><td>代码签名 / macOS 公证</td><td><span class="tag t-amber">休眠态</span></td><td>未配置证书：Win SmartScreen 提示“未知发布者”；mac 需右键打开；配置 Secrets 后 CI 自动签名/公证</td></tr>
+  <tr><td>Linux deb 自更新</td><td><span class="tag t-amber">上游边界</span></td><td>electron-updater 仅支持 AppImage；deb 安装诚实降级并给出可执行命令</td></tr>
+  <tr><td>Windows 旧版 / 鸿蒙</td><td><span class="tag t-red">不支持</span></td><td>Electron 33 仅 Win 10+；鸿蒙需 ArkTS 从零重写（调研已出，暂不立项）</td></tr>
+  <tr><td>依赖升级（PR#1）</td><td><span class="tag t-amber">待迁移</span></td><td>dependabot：electron ^33→^39 + electron-builder ^25→^26 + vitest ^3→^5，独立迁移工程，另有 46 个告警</td></tr>
+</table>
+</div>
+
+<div class="card">
+<h3>九、IDE 扩展与协作配置（TRAE 生态）</h3>
+<ul>
+  <li><code>.trae/skills/crossplatform-service-migration</code>：把本仓库“平台脚本生成器 + 白名单 + 诚实降级 + 统一回执”的迁移范式固化为可复用 Skill（含三平台命令对照表与迁移清单）。</li>
+  <li><code>.workbuddy/memory/</code>：项目记忆库（MEMORY.md + 按日记录），沉淀版本规则、质量门禁现状、工具环境坑与实现约定。</li>
+  <li><code>.superpowers/brainstorm/</code>：早期 UI 头脑风暴产物（布局/主题/风格 HTML 原型）。</li>
+</ul>
+</div>
+
+<div class="footer">本报告由对项目全部源码与配置的实读生成，非搜索摘要。所有数字均来自仓库内文件（package.json / CHANGELOG.md / 审查报告 / 冒烟清单 / CI 配置）。</div>
+
+</div>
+
+<script>
+/* 架构图：静态 SVG，初始即可完整阅读 */
+(function () {
+  var host = document.getElementById('arch');
+  if (!host) return;
+  var NS = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs, parent) {
+    var n = document.createElementNS(NS, tag);
+    for (var k in attrs) n.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(n);
+    return n;
+  }
+  var W = 980, H = 640;
+  var svg = el('svg', { viewBox: '0 0 ' + W + ' ' + H, width: '100%', xmlns: NS });
+  host.appendChild(svg);
+
+  var yTop = 6;
+  // 标题
+  el('text', { x: W/2, y: yTop+16, 'text-anchor': 'middle', 'font-size': '15', 'font-weight': '700', fill: '#1f2329' }, svg).textContent = '疾风引擎（gale-engine）分层架构与数据流';
+
+  function layer(y, h, label, fill) {
+    el('rect', { x: 8, y: y, width: W-16, height: h, rx: 10, fill: fill, stroke: '#c7d4e8' });
+    el('text', { x: 22, y: y+20, 'font-size': '12.5', 'font-weight': '700', fill: '#3b82f6' }, svg).textContent = label;
+  }
+  function box(x, y, w, h, cls, title, lines) {
+    var g = el('g', {}, svg);
+    el('rect', { x: x, y: y, width: w, height: h, rx: 8, fill: cls === 'ext' ? '#eef4ff' : (cls === 'main' ? '#e8f6ef' : '#fff'), stroke: cls === 'ext' ? '#93b4f0' : (cls === 'main' ? '#7bc9a8' : '#d5dbe6') }, g);
+    if (title) { el('text', { x: x+10, y: y+17, 'font-size': '12', 'font-weight': '600', fill: '#1f2329' }, g).textContent = title; }
+    var arr = Array.isArray(lines) ? lines : (lines ? [lines] : []);
+    arr.forEach(function (ln, i) {
+      el('text', { x: x+10, y: y+33 + i*14, 'font-size': '10.5', fill: '#6b7280' }, g).textContent = ln;
+    });
+    return g;
+  }
+  function arrow(x1, y1, x2, y2) {
+    el('line', { x1: x1, y1: y1, x2: x2, y2: y2, stroke: '#94a3b8', 'stroke-width': '1.4', 'marker-end': 'url(#arr)' }, svg);
+  }
+  el('defs', {}, svg).innerHTML = '<marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#94a3b8"/></marker>';
+
+  // ── 外部生态层 ──
+  layer(32, 96, '外部生态：更新源 / 能力清单 / 系统平台');
+  box(20, 58, 300, 58, 'ext', 'GitHub Releases', 'latest*.yml · 安装包 · blockmap');
+  box(340, 58, 290, 58, 'ext', 'capabilities/manifest.json', '远端能力清单（schema 1 · 防降级）');
+  box(650, 58, 320, 58, 'ext', '三平台系统', 'PowerShell 5.1 / bash · UAC · system 命令');
+
+  // ── 渲染进程层 ──
+  layer(152, 138, '渲染进程（Vue 3 + Vite · 15 页面）');
+  box(20, 178, 440, 96, '', '页面与组件', ['Home·Monitor·Hardware·Process·Network·Optimizer', 'GameMode·DllRepair·DiskRepair·Services·Tasks·Firewall', 'Toolbox·History·Settings ｜ Sidebar·OneKey·UpdateCard·CapLib']);
+  box(480, 178, 250, 96, '', '组合式函数', ['useOneKey ｜ useAppUpdate', 'usePolling ｜ useFlash']);
+  box(750, 178, 220, 96, '', '主题系统', ['3 外观模式 × 6 主题色', 'CSS 令牌 + electron-store']);
+
+  // ── preload 桥 ──
+  layer(310, 62, 'preload · contextBridge');
+  box(20, 330, 950, 30, '', 'window.gale（GaleApi 契约 · 60+ API · 单源 shared/types.ts）');
+
+  // ── 主进程层 ──
+  layer(388, 166, '主进程（Node · main.ts · IPC 55+ · 27 个服务模块）');
+  box(20, 414, 220, 60, '', 'main.ts', '窗口 · 托盘 · IPC 注册 · 生命周期');
+  box(256, 414, 240, 60, 'main', '监控 / 信息', ['monitor · hardware', 'process · network']);
+  box(512, 414, 220, 60, 'main', '优化 / 清理', ['optimizer · disk · space · dllrepair', 'gamemode · toolbox · optlib · onekey']);
+  box(748, 414, 222, 60, 'main', '系统管理', ['winservices · tasks · firewall', 'autolaunch · desktopEntry']);
+  box(20, 482, 220, 58, 'main', '更新 / 提权 / 热更', ['update* · elevate* · capabilityFeed']);
+  box(256, 482, 240, 58, 'main', '基础 / 存储', ['settings · history · actionResult']);
+  box(512, 482, 458, 58, 'main', 'PAL 平台抽象层（shell.ts）', ['createPowershellRunner / createBashRunner', '/ createPlatformRunner · 平台分发 + 平台无关解析']);
+
+  // ── 系统边界层 ──
+  layer(578, 52, '系统边界：命令执行 / 原生库 / 提权');
+  box(20, 604, 310, 20, 'ext', 'PowerShell / bash 三平台脚本', '');
+  box(350, 604, 250, 20, 'ext', 'systeminformation · electron-store · electron-updater', '');
+  box(620, 604, 350, 20, 'ext', 'ShellExecute(runas) 按需提权 · UAC（asInvoker 启动）', '');
+
+  // ── 数据流箭头 ──
+  arrow(485, 150, 485, 178);                 // 外部 → 渲染（更新/能力）
+  arrow(160, 308, 160, 330);                 // 渲染 → preload
+  arrow(485, 308, 485, 330);                 // 渲染 → preload
+  arrow(800, 308, 800, 330);                 // 主题 → preload
+  arrow(160, 360, 160, 414);                 // preload → 主进程
+  arrow(485, 360, 485, 414);
+  arrow(800, 360, 800, 414);
+  arrow(800, 540, 800, 578);                 // PAL → 系统边界
+  arrow(170, 414, 170, 382);                 // 主进程 → 外部（GitHub Releases）
+  arrow(120, 116, 120, 152);                 // 远端清单 → 渲染（能力库）
+</script>
+
+</body>
+</html>

@@ -101,6 +101,35 @@ describe('createFirewallService', () => {
     expect(calls[0]).toContain('-Enabled False')
   })
 
+  it('M8：禁用 Public 但未传确认标记时拒绝且不调用执行器', async () => {
+    const { runner, calls } = recordingRunner(() => ok())
+    const res = await createFirewallService(runner, 'win32').setProfileEnabled('Public', false)
+    expect(res.ok).toBe(false)
+    expect(res.message).toContain('Public')
+    expect(calls).toHaveLength(0)
+  })
+
+  it('M8：禁用 Public 带显式确认标记后放行', async () => {
+    const { runner, calls } = recordingRunner(() => ok())
+    const res = await createFirewallService(runner, 'win32').setProfileEnabled('Public', false, { confirmDisablePublic: true })
+    expect(res.ok).toBe(true)
+    expect(calls[0]).toContain('Set-NetFirewallProfile -Name Public -Enabled False')
+  })
+
+  it('M8：启用 Public 无需确认标记即可执行', async () => {
+    const { runner, calls } = recordingRunner(() => ok())
+    const res = await createFirewallService(runner, 'win32').setProfileEnabled('Public', true)
+    expect(res.ok).toBe(true)
+    expect(calls[0]).toContain('-Enabled True')
+  })
+
+  it('M8：禁用 Private 配置文件不受 Public 确认门影响', async () => {
+    const { runner, calls } = recordingRunner(() => ok())
+    const res = await createFirewallService(runner, 'win32').setProfileEnabled('Private', false)
+    expect(res.ok).toBe(true)
+    expect(calls[0]).toContain('-Enabled False')
+  })
+
   it('setProfileEnabled 非法配置文件直接拒绝且不调用执行器', async () => {
     const { runner, calls } = recordingRunner(() => ok())
     const res = await createFirewallService(runner, 'win32').setProfileEnabled('Home', true)

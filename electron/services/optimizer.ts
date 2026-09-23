@@ -43,44 +43,10 @@ export function parseCleanupStats(stdout: string): CleanupStats | null {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-// 安全白名单（按平台）
-// ─────────────────────────────────────────────────────────────
-
-/** 允许的临时目录白名单（仅这些路径下的清理被视为 safe） */
-function allowedTempRoots(platform: Platform): string[] {
-  if (platform === 'win32') {
-    const temp = process.env.TEMP || process.env.TMP || ''
-    const sysroot = process.env.SystemRoot || 'C:\\Windows'
-    return [temp, `${sysroot}\\Temp`].filter(Boolean)
-  }
-  const tmp = process.env.TMPDIR || '/tmp'
-  return [tmp, '/var/tmp'].filter(Boolean)
-}
-
-/** 允许的浏览器缓存根目录（仅白名单内指定浏览器的缓存） */
-function allowedBrowserRoots(platform: Platform): string[] {
-  if (platform === 'win32') {
-    const local = process.env.LOCALAPPDATA || ''
-    if (!local) return []
-    return [
-      `${local}\\Google\\Chrome\\User Data`,
-      `${local}\\Microsoft\\Edge\\User Data`
-    ].filter(Boolean)
-  }
-  const home = process.env.HOME || ''
-  if (!home) return []
-  if (platform === 'darwin') {
-    return [
-      `${home}/Library/Caches/Google/Chrome`,
-      `${home}/Library/Caches/Microsoft Edge`
-    ].filter(Boolean)
-  }
-  return [
-    `${home}/.cache/google-chrome`,
-    `${home}/.cache/microsoft-edge`
-  ].filter(Boolean)
-}
+/**
+ * 安全白名单说明：清理目标路径由 scanCleanup() 权威清单给出（plan.safe 标记），
+ * runCleanup 只按 id 取权威清单里的 path，渲染层无法注入任意路径（见 H3）。
+ */
 
 // ─────────────────────────────────────────────────────────────
 // Windows：PowerShell 脚本
@@ -554,40 +520,57 @@ export function createOptimizerService(
     return parseJsonArray(stdout).map((r) => toPlan(r as Record<string, unknown>))
   }
 
-  const runCleanup = async (
-    items: { id: string; path: string; kind: OptimizerTargetKind }[]
-  ): Promise<CleanupResult[]> => {
-    const roots = [...allowedTempRoots(platform), ...allowedBrowserRoots(platform)]
-    const isSafePath = (p: string): boolean =>
-      roots.some((r) => p === r || p.startsWith(r + '\\') || p.startsWith(r + '/'))
+  /**
+   * 只接受清理项 id。
+   *
+   * H3（路径穿越修复）：路径/类型**一律由服务端重新扫描权威清单按 id 解析**，
+   * 绝不信任渲染层传入的 path。旧契约收 `{id,path,kind}`，`isSafePath` 仅做字符串
+   * 前缀比对，渲染层传 `C:\TESTTEMP\..\..\Windows` 这类「根\..\..\」既以前缀命中白名单、
+   * 又能穿越到任意目录。现在：
+   *   - 先跑一次 scanCleanup() 得到服务端权威清单，建 id → plan 映射；
+   *   - 渲染层传的 id 若不在权威清单里（含任何伪造/穿越 id）→ 判「未知清理项」并拒绝；
+   *   - plan.safe=false 的项同样拒绝。
+   */
+  const runCleanup = async (ids: string[]): Promise<CleanupResult[]> => {
+    // 权威扫描：路径、类型、safe 标记全部以此为准
+    const plans = await scanCleanup()
+    const byId = new Map<string, CleanupPlan>(plans.map((p) => [p.id, p]))
     const results: CleanupResult[] = []
-    for (const item of items) {
+    for (const id of [...new Set((ids ?? []).map((v) => String(v)))]) {
+      const plan = byId.get(id)
+      if (!plan) {
+        results.push({ id, ok: false, error: '未知清理项，已跳过' })
+        continue
+      }
+      if (!plan.safe) {
+        results.push({ id, ok: false, error: '路径不在安全白名单内，已跳过' })
+        continue
+      }
+
       // 实测：清理前后各量一次该卷的可用空间，差值才是真实释放量
-      const before = await meter.freeBytesForPath(item.path, platform)
+      const before = await meter.freeBytesForPath(plan.path, platform)
 
       let raw: CleanupResult
-      if (item.kind === 'recycle') {
+      if (plan.kind === 'recycle') {
         const { code, stdout, stderr } = await runner.run(buildRecycleCleanupScript(platform))
         // 严格判定：脚本按约定回传 OK / ERR:原因。
         // 旧写法 `code === 0 || stdout.includes('OK')` 会因脚本本身无条件输出 OK 而永远成功。
         const outcome = parseActionOutcome(stdout, code)
         raw = {
-          id: item.id,
+          id,
           ok: outcome.ok,
           error: outcome.ok ? undefined : outcome.message || stderr.trim() || '清理回收站失败（可能需要管理员权限）'
         }
-      } else if (!isSafePath(item.path)) {
-        raw = { id: item.id, ok: false, error: '路径不在安全白名单内，已跳过' }
       } else {
-        const { code, stdout, stderr } = await runner.run(buildPathCleanupScript(item.path, platform))
+        const { code, stdout, stderr } = await runner.run(buildPathCleanupScript(plan.path, platform))
         const stats = parseCleanupStats(stdout)
         if (code !== 0 && !stats) {
-          raw = { id: item.id, ok: false, error: stderr.trim() || '清理失败（可能需要管理员权限）' }
+          raw = { id, ok: false, error: stderr.trim() || '清理失败（可能需要管理员权限）' }
         } else if (stats) {
           // 只要删掉了东西就算成功；全部被占用（一个都没删掉）则如实报失败
           const ok = stats.failedCount === 0 || stats.deletedCount > 0
           raw = {
-            id: item.id,
+            id,
             ok,
             error:
               stats.failedCount > 0
@@ -600,12 +583,18 @@ export function createOptimizerService(
             locked: stats.locked.length ? stats.locked : undefined
           }
         } else {
-          const ok = code === 0 && stdout.includes('OK')
-          raw = { id: item.id, ok, error: ok ? undefined : stderr.trim() || '清理失败' }
+          // 低危修复：else 兜底不再用 stdout.includes('OK')（错误信息里含 "OK" 字样会被误判成功），
+          // 统一走 parseActionOutcome（ERR: 优先、OK 独立成行、空输出算失败）。
+          const outcome = parseActionOutcome(stdout, code)
+          raw = {
+            id,
+            ok: outcome.ok,
+            error: outcome.ok ? undefined : outcome.message || stderr.trim() || '清理失败'
+          }
         }
       }
 
-      const after = await meter.freeBytesForPath(item.path, platform)
+      const after = await meter.freeBytesForPath(plan.path, platform)
       const released = diffReleasedBytes(before, after)
       results.push(released === undefined ? raw : { ...raw, releasedBytes: released })
     }
@@ -623,7 +612,15 @@ export function createOptimizerService(
     command?: string
   ): Promise<StartupItem[]> => {
     const script = buildToggleStartupScript(id, enable, command, platform)
-    if (script) await runner.run(script)
+    if (!script) throw new Error('非法的启动项 id')
+    // 低危修复：脚本成败必须如实上抛。旧实现无论脚本成败都 `return listStartup()`，
+    // 脚本失败时界面仍显示「已切换」，用户看不到任何错误。这里走 parseActionOutcome，
+    // 失败即抛错 → IPC reject → 渲染层 catch 后展示原因、且不更新列表（保持与真实状态一致）。
+    const { code, stdout, stderr } = await runner.run(script)
+    const outcome = parseActionOutcome(stdout, code)
+    if (!outcome.ok) {
+      throw new Error(outcome.message || stderr.trim() || '切换启动项失败')
+    }
     return listStartup()
   }
 

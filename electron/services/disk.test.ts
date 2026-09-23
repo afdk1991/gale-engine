@@ -263,6 +263,60 @@ describe('runDeepCleanup', () => {
   })
 })
 
+describe('诚实回执残留修复（不再无条件 OK / ; echo OK 吞失败）', () => {
+  it('win-explorer-thumb 脚本统计删除失败并回 ERR:/exit 1，不再无条件 OK', () => {
+    const cat = buildDeepCatalog('win32')
+    const act = cat.find((c) => c.id === 'win-explorer-thumb')!.action
+    // 仍会在成功时输出 OK，但必须有失败分支
+    expect(act).toContain('"OK"')
+    expect(act).toContain('ERR:')
+    expect(act).toContain('exit 1')
+    // 逐个 try/catch 计数失败，而不是 SilentlyContinue 一把吞掉
+    expect(act).toContain('$failed')
+    expect(act).toContain('ErrorAction Stop')
+    // 无论成败都必须把资源管理器拉回来（安全底线）
+    expect(act).toContain('Start-Process explorer.exe')
+  })
+
+  it('macOS brew 清理：未装 brew 跳过，但 cleanup 失败必须回 ERR:', () => {
+    const act = buildDeepCatalog('darwin').find((c) => c.id === 'mac-brew-cleanup')!.action
+    expect(act).toContain('brew cleanup -s')
+    expect(act).toContain('ERR:')
+    expect(act).toContain('exit 1')
+    // 禁止旧的 `; echo OK` 吞失败模式
+    expect(act).not.toContain('; echo OK')
+  })
+
+  it('Linux journal/apt 清理：按真实退出码收尾，失败回 ERR: 并不再恒 0', () => {
+    const cat = buildDeepCatalog('linux')
+    for (const id of ['linux-journal-vacuum', 'linux-apt-clean']) {
+      const act = cat.find((c) => c.id === id)!.action
+      expect(act).toContain('ERR:')
+      expect(act).toContain('exit 1')
+      expect(act).not.toContain('; echo OK')
+    }
+  })
+
+  it('action 项即使退出码为 0，stdout 出现 ERR: 也必须判失败（explicitErr 机制）', async () => {
+    // 模拟脚本：资源管理器拉回来了，但有缩略图删不掉，输出 ERR: 且退出码 0
+    const { runner } = recordingRunner(() => ({
+      stdout: 'ERR:部分缩略图缓存被占用或无权删除，未能完全清理',
+      stderr: '',
+      code: 0
+    }))
+    const res = await createDiskService(runner, 'win32').runDeepCleanup(['win-explorer-thumb'])
+    expect(res[0].ok).toBe(false)
+    // parseActionOutcome 会剥掉 "ERR:" 前缀，回传其后可读原因
+    expect(res[0].error).toContain('缩略图缓存被占用')
+  })
+
+  it('action 项失败（退出码非 0）如实报失败，不再被末尾 OK 掩盖', async () => {
+    const { runner } = recordingRunner(() => ({ stdout: 'OK', stderr: '', code: 1 }))
+    const res = await createDiskService(runner, 'win32').runDeepCleanup(['win-dism-cleanup'])
+    expect(res[0].ok).toBe(false)
+  })
+})
+
 describe('checkVolume 磁盘检查/修复', () => {
   it('toWinDrive 仅接受盘符', () => {
     expect(toWinDrive('c:')).toBe('C:')

@@ -18,6 +18,7 @@ function makeUpdater(
 ) {
   let quitCalls = 0
   let checkCalls = 0
+  let downloadCalls = 0
   let failRemaining = opts.failTimes ?? 0
   const events = new Set<(e: UpdaterEvent) => void>()
 
@@ -38,6 +39,11 @@ function makeUpdater(
     quitAndInstall: () => {
       quitCalls++
     },
+    async downloadUpdate() {
+      downloadCalls++
+      // 模拟真实 electron-updater：downloadUpdate() resolve 时已派发过 update-downloaded 事件
+      for (const cb of events) cb({ type: 'downloaded', version: '0.1.10' })
+    },
     onEvent: (cb) => {
       events.add(cb)
       return () => events.delete(cb)
@@ -47,6 +53,7 @@ function makeUpdater(
     api,
     getQuitCalls: () => quitCalls,
     getCheckCalls: () => checkCalls,
+    getDownloadCalls: () => downloadCalls,
     fire: (e: UpdaterEvent) => {
       for (const cb of events) cb(e)
     }
@@ -232,5 +239,42 @@ describe('createUpdateService — 订阅', () => {
     fire({ type: 'downloaded', version: '1.0.0' })
     expect(svc.state().status).toBe('downloaded')
     expect(good).toHaveBeenCalled()
+  })
+})
+
+describe('createUpdateService — M6 手动下载出口', () => {
+  it('available 态调用 downloadUpdate 触发底层下载并推进到 downloaded', async () => {
+    const { api, getDownloadCalls } = makeUpdater({
+      results: [{ isUpdateAvailable: true, updateInfo: { version: '0.1.10' } }]
+    })
+    const svc = createUpdateService(api, noWait)
+    await svc.checkUpdate()
+    expect(svc.state().status).toBe('available')
+
+    const res = await svc.downloadUpdate()
+    expect(getDownloadCalls()).toBe(1)
+    expect(res.status).toBe('downloaded')
+    expect(svc.state().status).toBe('downloaded')
+  })
+
+  it('非 available 态（如 idle）调用 downloadUpdate 为空操作，不触发底层下载', async () => {
+    const { api, getDownloadCalls } = makeUpdater()
+    const svc = createUpdateService(api, noWait)
+    expect(svc.state().status).toBe('idle')
+    await svc.downloadUpdate()
+    expect(getDownloadCalls()).toBe(0)
+    expect(svc.state().status).toBe('idle')
+  })
+
+  it('底层下载失败时进入 error 态并保留原因', async () => {
+    const { api } = makeUpdater({
+      results: [{ isUpdateAvailable: true, updateInfo: { version: '0.1.10' } }]
+    })
+    const svc = createUpdateService(api, noWait)
+    await svc.checkUpdate()
+    vi.spyOn(api, 'downloadUpdate').mockRejectedValueOnce(new Error('network down'))
+    const res = await svc.downloadUpdate()
+    expect(res.status).toBe('error')
+    expect(res.error).toContain('network down')
   })
 })

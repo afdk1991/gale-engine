@@ -20,6 +20,7 @@ const {
   canCheck,
   check,
   install,
+  downloadUpdate,
   setPrefs
 } = useAppUpdate()
 
@@ -80,6 +81,10 @@ async function toggle(key: 'autoCheck' | 'autoDownload' | 'autoInstallOnQuit', e
     <div class="row">
       <button class="btn primary" :disabled="!canCheck" @click="check">
         {{ busy ? '处理中…' : state.status === 'error' ? '重试' : '检查更新' }}
+      </button>
+      <!-- M6：autoDownload=false 时 available 态不会自动下载，给一个手动下载出口 -->
+      <button v-if="state.status === 'available'" class="btn primary" :disabled="busy" @click="downloadUpdate">
+        下载更新
       </button>
       <button v-if="ready" class="btn primary" @click="install">立即安装并重启</button>
       <button class="btn" @click="openReleases">手动下载</button>

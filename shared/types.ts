@@ -209,7 +209,12 @@ export interface GaleApi {
   }
   optimizer: {
     scanCleanup(): Promise<CleanupPlan[]>
-    runCleanup(items: { id: string; path: string; kind: OptimizerTargetKind }[]): Promise<CleanupResult[]>
+    /**
+     * 只接受清理项 id：清理目标路径/类型全部由服务端按 id 重新扫描权威清单解析，
+     * 渲染层连路径都不需要（也不应该）传 —— 早前契约带 path，渲染层可塞
+     * `根\..\..\` 穿越路径绕过白名单。未知/越界 id 一律拒绝，不执行任何删除。
+     */
+    runCleanup(ids: string[]): Promise<CleanupResult[]>
     listStartup(): Promise<StartupItem[]>
     toggleStartup(id: string, enable: boolean, command?: string): Promise<StartupItem[]>
   }
@@ -291,7 +296,12 @@ export interface GaleApi {
   firewall: {
     profiles(): Promise<FirewallProfile[]>
     listRules(): Promise<FirewallRule[]>
-    setProfileEnabled(profile: string, enable: boolean): Promise<ToolResult>
+    /**
+     * M8：禁用 Public（公用网络）防火墙风险高，服务端要求前端二次确认后
+     * 显式传 { confirmDisablePublic: true } 才放行；未确认时服务端拒绝执行。
+     * 其他 profile 的启用/禁用不受影响。
+     */
+    setProfileEnabled(profile: string, enable: boolean, options?: { confirmDisablePublic?: boolean }): Promise<ToolResult>
     toggleRule(name: string, enable: boolean): Promise<ToolResult>
   }
   tasks: {
@@ -323,6 +333,11 @@ export interface GaleApi {
     setUpdatePrefs(patch: Partial<AppUpdatePrefs>): Promise<AppUpdatePrefs>
     /** 退出并安装已下载的更新 */
     installUpdate(): Promise<void>
+    /**
+     * 在 autoDownload=false 且已处于 available 态时，手动触发下载。
+     * 底层进度经 onUpdateEvent 推送到 downloading/downloaded；非 available 态调用为空操作。
+     */
+    downloadUpdate(): Promise<AppUpdateResult>
     /** 读取开机自启状态 */
     getAutoLaunch(): Promise<boolean>
     /** 设置开机自启，返回设置后的状态 */
@@ -595,7 +610,8 @@ export interface DllRepairResult {
 
 // ---- 一键优化（首页）----
 
-export type OneKeyPhase = 'idle' | 'running' | 'cancelling' | 'done' | 'cancelled'
+// state=null 时 snapshot() 返回 null，从不 emit 'idle'，故该状态不列入联合类型
+export type OneKeyPhase = 'running' | 'cancelling' | 'done' | 'cancelled'
 
 /** 一键优化实时进度（主进程 → 渲染进程推送） */
 export interface OneKeyProgress {

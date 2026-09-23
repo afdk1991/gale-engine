@@ -182,8 +182,10 @@ export function parsePing(stdout: string, host: string): PingResult {
     const nonNeg = (x: number): number => (x > 0 ? x : 0)
     const loss = pct(n(raw.loss, 100))
     const avg = nonNeg(n(raw.avg, 0))
-    // ok 必须与 loss 自洽：丢包 100% 就是不通，不能因为脚本自称 ok 而翻转
-    const ok = loss < 100 && (raw.ok === true || raw.ok === 'True' || avg > 0)
+    // ok 与 loss 自洽：丢包 100% 就是不通，即使脚本自称 ok 也要翻为 false。
+    // 只要有回包（loss<100）即视为可达；时延合法地可为 0ms（回环/localhost），
+    // 因此成功判定不以 avg>0 为前提——否则 localhost 0ms 会被误判为不通。
+    const ok = loss < 100
     return {
       host,
       min: nonNeg(n(raw.min, 0)),

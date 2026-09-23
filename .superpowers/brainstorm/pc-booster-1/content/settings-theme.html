@@ -1,0 +1,78 @@
+<h2>设置页 · 主题定制</h2>
+<p class="subtitle">6 种主色全部内置为可切换主题色，外加浅色/深色/跟随系统三种模式。这就是设置页"主题定制"区块的预览。</p>
+
+<style>
+  .st { width: 100%; display: flex; flex-direction: column; background: #f7f8fa; border-radius: 6px; border: 1px solid #e2e5ea; overflow: hidden; font-size: 10px; color: #374151; }
+  .st-bar { height: 18px; background: #eceef2; border-bottom: 1px solid #e0e2e8; display: flex; align-items: center; gap: 3px; padding: 0 8px; }
+  .st-dot { width: 6px; height: 6px; border-radius: 50%; background: #c8ccd4; }
+  .st-name { margin-left: 6px; font-size: 8px; color: #8a8f99; }
+  .st-flex { display: flex; }
+  .st-side { width: 80px; background: #f0f2f6; border-right: 1px solid #e2e5ea; padding: 6px 0; display: flex; flex-direction: column; gap: 1px; }
+  .st-nav { font-size: 8.5px; padding: 5px 8px; color: #6b7280; }
+  .st-nav.on { background: #fff; color: #2563eb; font-weight: 600; border-left: 2px solid #3b82f6; }
+  .st-main { flex: 1; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+  .st-sec { background: #fff; border: 1px solid #e2e5ea; border-radius: 8px; padding: 10px; }
+  .st-sec-title { font-size: 9px; font-weight: 600; color: #374151; margin-bottom: 8px; }
+  .st-modes { display: flex; gap: 6px; }
+  .st-mode { flex: 1; border: 1px solid #e2e5ea; border-radius: 6px; padding: 6px 4px; text-align: center; font-size: 8px; color: #6b7280; }
+  .st-mode.on { border-color: #3b82f6; color: #2563eb; background: #eff6ff; font-weight: 600; }
+  .st-mode i { display: block; font-style: normal; font-size: 12px; margin-bottom: 2px; }
+  .st-colors { display: flex; gap: 8px; flex-wrap: wrap; }
+  .st-color { display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; }
+  .st-swatch { width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; display: flex; align-items: center; justify-content: center; }
+  .st-color.on .st-swatch { border-color: #374151; box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px #374151; }
+  .st-color.on .st-cname { color: #2563eb; font-weight: 600; }
+  .st-cname { font-size: 7.5px; color: #8a8f99; }
+  .st-check { color: #fff; font-size: 11px; font-weight: 700; }
+  .st-note { font-size: 7.5px; color: #9ca3af; margin-top: 6px; }
+</style>
+
+<div class="mockup">
+  <div class="mockup-header">设置 → 主题定制（默认：科技蓝 + 跟随系统）</div>
+  <div class="mockup-body" style="padding: 1rem;">
+    <div class="st">
+      <div class="st-bar"><span class="st-dot"></span><span class="st-dot"></span><span class="st-dot"></span><span class="st-name">加速大师 · 设置</span></div>
+      <div class="st-flex">
+        <div class="st-side">
+          <div class="st-nav">常规</div>
+          <div class="st-nav on">主题定制</div>
+          <div class="st-nav">清理规则</div>
+          <div class="st-nav">开机与托盘</div>
+          <div class="st-nav">关于</div>
+        </div>
+        <div class="st-main">
+          <div class="st-sec">
+            <div class="st-sec-title">外观模式</div>
+            <div class="st-modes">
+              <div class="st-mode on"><i>◐</i>跟随系统</div>
+              <div class="st-mode"><i>☀</i>浅色</div>
+              <div class="st-mode"><i>☾</i>深色</div>
+            </div>
+          </div>
+          <div class="st-sec">
+            <div class="st-sec-title">主题色</div>
+            <div class="st-colors">
+              <div class="st-color on"><div class="st-swatch" style="background:#3b82f6"><span class="st-check">✓</span></div><span class="st-cname">科技蓝</span></div>
+              <div class="st-color"><div class="st-swatch" style="background:#06b6d4"></div><span class="st-cname">极客青</span></div>
+              <div class="st-color"><div class="st-swatch" style="background:#8b5cf6"></div><span class="st-cname">活力紫</span></div>
+              <div class="st-color"><div class="st-swatch" style="background:#10b981"></div><span class="st-cname">健康绿</span></div>
+              <div class="st-color"><div class="st-swatch" style="background:#f97316"></div><span class="st-cname">能量橙</span></div>
+              <div class="st-color"><div class="st-swatch" style="background:linear-gradient(135deg,#2563eb,#7c3aed)"></div><span class="st-cname">渐变蓝紫</span></div>
+            </div>
+            <div class="st-note">切换即时生效，自动保存；渐变主题应用于按钮、评分环等强调元素</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 1.5rem;">
+  <div class="label">当前确定的设计决策</div>
+  <div class="ia" style="display:flex;flex-wrap:wrap;gap:6px">
+    <span style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:999px;padding:0.3rem 0.9rem;font-size:0.8rem;color:var(--text-secondary)">布局：侧边栏 + 一键加速首页 + 硬件监控仪表盘</span>
+    <span style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:999px;padding:0.3rem 0.9rem;font-size:0.8rem;color:var(--text-secondary)">技术：Electron 桌面应用</span>
+    <span style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:999px;padding:0.3rem 0.9rem;font-size:0.8rem;color:var(--text-secondary)">主题：浅色/深色/跟随系统</span>
+    <span style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:999px;padding:0.3rem 0.9rem;font-size:0.8rem;color:var(--text-secondary)">主色：6 色可切换，默认科技蓝</span>
+  </div>
+</div>

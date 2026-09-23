@@ -269,11 +269,10 @@ export function createRecipeRuntime(deps: RecipeRuntimeDeps = {}): Record<string
         const kind = String(args.kind ?? '')
         if (!CLEANUP_KINDS.includes(kind)) return badArgs(`kind 必须是 ${CLEANUP_KINDS.join('/')}`)
         const plans = await ctx.normal.optimizer.scanCleanup()
-        const items = plans
-          .filter((p) => p.kind === kind && p.safe)
-          .map((p) => ({ id: p.id, path: p.path, kind: p.kind }))
-        if (items.length === 0) return { status: 'skipped', reason: '未扫描到该类项目' }
-        return aggregateResults(await ctx.normal.optimizer.runCleanup(items))
+        // H3：runCleanup 只收 id（路径由服务端按 id 权威解析）
+        const ids = plans.filter((p) => p.kind === kind && p.safe).map((p) => p.id)
+        if (ids.length === 0) return { status: 'skipped', reason: '未扫描到该类项目' }
+        return aggregateResults(await ctx.normal.optimizer.runCleanup(ids))
       }
     },
     'disk.deepCleanup': {
@@ -285,9 +284,18 @@ export function createRecipeRuntime(deps: RecipeRuntimeDeps = {}): Record<string
         // id 由服务端权威清单解析，远端给不出任意路径，因此这里安全
         const wanted = pickDeep(plans, ids)
         if (wanted.length === 0) return { status: 'skipped', reason: '当前系统无此清理项' }
-        return aggregateResults(
-          await ctx.normal.disk.runDeepCleanup(wanted.map((p) => p.id))
-        )
+        // M5：按 id 的 needsAdmin 分别路由。admin-only 项（如 DISM/关闭休眠）必须走提权执行器，
+        // 否则未提权环境下恒失败；对齐内置 deep-update-cache 经 ctx.admin 路由的正确做法。
+        const adminIds = wanted.filter((p) => p.needsAdmin).map((p) => p.id)
+        const normalIds = wanted.filter((p) => !p.needsAdmin).map((p) => p.id)
+        const results: { id: string; ok: boolean; error?: string; releasedBytes?: number }[] = []
+        if (normalIds.length > 0) {
+          results.push(...(await ctx.normal.disk.runDeepCleanup(normalIds)))
+        }
+        if (adminIds.length > 0) {
+          results.push(...(await ctx.admin.disk.runDeepCleanup(adminIds)))
+        }
+        return aggregateResults(results)
       }
     },
     'toolbox.flushDns': {
@@ -387,7 +395,13 @@ export function compileRemoteCapabilities(
     const steps: { call: string; impl: RecipeCall; args: Record<string, unknown> }[] = []
     let invalid = ''
     for (const s of def.recipe) {
-      const impl = runtime[s.call]
+      // 必须是**自有属性**才算命中白名单。
+      // 若直接 `runtime[s.call]` 取值，原型链上的 toString / constructor / __proto__
+      // 都会truthy 命中 → 能力通过校验注册成功，却在调用时抛 "impl.run is not a function"。
+      // 这等于让远端清单绕过了唯一的调用边界，必须用 hasOwnProperty 挡住。
+      const impl = Object.prototype.hasOwnProperty.call(runtime, s.call)
+        ? runtime[s.call]
+        : undefined
       if (!impl) {
         invalid = `引用了白名单外的调用：${s.call}`
         break
@@ -470,6 +484,12 @@ interface CachedManifest {
   libraryVersion: string
   manifest: CapabilityManifest
   appliedAt: number
+  /**
+   * M4：apply 时一并记录的、validateManifest 阶段被拒的条目及原因。
+   * 这些条目不在 manifest 里（已被过滤），若不持久化，apply 后 state() 只看
+   * active.rejected（编译期拒绝），校验期被拒的条目会静默消失，用户看不到原因。
+   */
+  rejectedAtApply?: { id: string; reason: string }[]
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -548,10 +568,12 @@ export function createCapabilityFeedService(deps: CapabilityFeedDeps): Capabilit
         label: o.label || m.label,
         description: o.description || m.description,
         defaultEnabled: typeof o.defaultEnabled === 'boolean' ? o.defaultEnabled : m.defaultEnabled,
-        // needsAdmin **只许收紧、不许放宽**：内置能力已声明需要管理员时，
-        // 远端不得把它改成 false —— 否则未提权环境下会照样执行高危步骤（失败或弹 UAC），
-        // 绕开了 optlib 刻意守住的提权边界。
-        needsAdmin: m.needsAdmin || o.needsAdmin === true,
+        // M3：内置能力的 needsAdmin 是本地代码定义的提权边界，远端既不能放宽（false）、
+        // 也不能收紧（true）。旧实现 `m.needsAdmin || o.needsAdmin === true` 会在远端把
+        // clean-temp 这类内置项标成 needsAdmin:true，但 metaOverrides 不下发该字段、
+        // optlib.resolveRegistry 也不接受覆盖 —— 于是 CapabilityLibraryPanel 显示「需管理员」
+        // 而 OneKeyPanel/预检按 false 放行，三处显示分裂。现在三处统一：内置 needsAdmin 恒为本地值。
+        needsAdmin: m.needsAdmin,
         source: 'builtin'
       }
     })
@@ -572,14 +594,19 @@ export function createCapabilityFeedService(deps: CapabilityFeedDeps): Capabilit
 
   const state = (): CapabilityLibraryState => {
     const active = loadCached()
-    const { metas, remoteIds, rejected } = mergedMetas(active)
+    const { metas, remoteIds, rejected: compileRejected } = mergedMetas(active)
+    // M4：active 态下，rejected = apply 时落盘的「校验期被拒」+ 本次「编译期被拒」，
+    // 两类被拒条目都如实展示原因，不再让校验期被拒项在 apply 后静默消失。
+    const rejected = active
+      ? [...(active.rejectedAtApply ?? []), ...compileRejected]
+      : pendingRejected
     return {
       source: active ? 'remote' : 'builtin',
       libraryVersion: active?.libraryVersion ?? BUILTIN_LIBRARY_VERSION,
       feedUrl,
       capabilities: metas,
       remoteIds,
-      rejected: active ? rejected : pendingRejected,
+      rejected,
       checkedAt,
       lastError,
       updateAvailable: availableVersion !== undefined,
@@ -644,7 +671,9 @@ export function createCapabilityFeedService(deps: CapabilityFeedDeps): Capabilit
     const record: CachedManifest = {
       libraryVersion: pending.libraryVersion,
       manifest: pending,
-      appliedAt: now()
+      appliedAt: now(),
+      // M4：把本次校验期被拒的条目连同原因一并落盘，apply 后仍可在界面展示
+      rejectedAtApply: pendingRejected
     }
     deps.storage.set(STORAGE_KEY, record)
     pending = null
