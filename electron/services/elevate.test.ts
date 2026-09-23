@@ -157,3 +157,99 @@ describe('createElevator', () => {
     expect(calls[1]).toContain('-Verb RunAs')
   })
 })
+
+/**
+ * L7 回归：UAC 无响应 / 进程被杀时 finally 不会执行，
+ * 临时脚本与输出会永久留在 %TEMP%（其中含本机路径）。这里验证启动时的兜底清理。
+ */
+describe('提权临时文件残留清理', () => {
+  /** 带 list/mtime 的内存 IO，可预置残留文件 */
+  function sweepIo(entries: { name: string; ageMs: number }[]) {
+    const store = new Map<string, string>()
+    const alive = new Set<string>()
+    const now = Date.now()
+    const mtimes = new Map<string, number>()
+    for (const e of entries) {
+      alive.add(e.name)
+      mtimes.set(e.name, now - e.ageMs)
+    }
+    const io: TempIo = {
+      writeFile: async (p, c) => {
+        store.set(p, c)
+      },
+      readFile: async (p) => {
+        const v = store.get(p)
+        if (v === undefined) throw new Error('missing')
+        return v
+      },
+      unlink: async (p) => {
+        const name = p.split(/[\\/]/).pop() ?? ''
+        store.delete(p)
+        alive.delete(name)
+      },
+      list: async () => [...alive],
+      mtime: async (p) => {
+        const name = p.split(/[\\/]/).pop() ?? ''
+        const t = mtimes.get(name)
+        if (t === undefined) throw new Error('missing')
+        return t
+      }
+    }
+    return { io, store, alive }
+  }
+
+  it('清理陈旧残留，保留新文件与无关文件', async () => {
+    const { io, alive } = sweepIo([
+      { name: 'gale-elev-old.ps1', ageMs: 3 * 60 * 60 * 1000 }, // 陈旧 → 删
+      { name: 'gale-elev-old.out', ageMs: 3 * 60 * 60 * 1000 }, // 陈旧 → 删
+      { name: 'gale-elev-fresh.err', ageMs: 5 * 1000 }, // 新（可能正被并发实例使用）→ 留
+      { name: 'unrelated.txt', ageMs: 9 * 60 * 60 * 1000 } // 非本项目前缀 → 留
+    ])
+    const { runner } = recordingRunner(() => ok('', 0))
+    const e = createElevator({ runner, platform: 'win32', io, tmpDir: '/tmp', newId: () => 'new1' })
+    await e.runElevated('echo hi')
+
+    expect(alive.has('gale-elev-old.ps1')).toBe(false)
+    expect(alive.has('gale-elev-old.out')).toBe(false)
+    expect(alive.has('gale-elev-fresh.err')).toBe(true)
+    expect(alive.has('unrelated.txt')).toBe(true)
+  })
+
+  it('读不到修改时间时宁可不删，避免误删并发实例的文件', async () => {
+    const { io, alive } = sweepIo([{ name: 'gale-elev-x.ps1', ageMs: 9 * 60 * 60 * 1000 }])
+    const brokenIo: TempIo = {
+      ...io,
+      mtime: async () => {
+        throw new Error('stat failed')
+      }
+    }
+    const { runner } = recordingRunner(() => ok('', 0))
+    const e = createElevator({ runner, platform: 'win32', io: brokenIo, tmpDir: '/tmp', newId: () => 'n2' })
+    await e.runElevated('echo hi')
+    expect(alive.has('gale-elev-x.ps1')).toBe(true)
+  })
+
+  it('IO 不支持列目录时不报错，主流程照常', async () => {
+    const { io } = memoryIo() // 既无 list 也无 mtime
+    const { runner } = recordingRunner(() => ok('', 0))
+    const e = createElevator({ runner, platform: 'linux', io, tmpDir: '/tmp', newId: () => 'n3' })
+    await expect(e.runElevated('echo hi')).resolves.toBeDefined()
+  })
+
+  it('清理只做一次（进程级），不重复扫描', async () => {
+    let listCalls = 0
+    const { io, alive } = sweepIo([{ name: 'gale-elev-a.ps1', ageMs: 3 * 60 * 60 * 1000 }])
+    const countingIo: TempIo = {
+      ...io,
+      list: async () => {
+        listCalls++
+        return [...alive]
+      }
+    }
+    const { runner } = recordingRunner(() => ok('', 0))
+    const e = createElevator({ runner, platform: 'win32', io: countingIo, tmpDir: '/tmp', newId: () => 'n4' })
+    await e.runElevated('echo 1')
+    await e.runElevated('echo 2')
+    expect(listCalls).toBe(1)
+  })
+})

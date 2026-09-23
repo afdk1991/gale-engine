@@ -93,6 +93,16 @@ async function install(): Promise<void> {
   }
 }
 
+/** M6：手动下载已发现的更新（autoDownload=false 时 available 态的下载出口） */
+async function downloadUpdate(): Promise<void> {
+  try {
+    const res = await app()?.downloadUpdate()
+    if (res) state.value = res
+  } catch (e) {
+    state.value = { status: 'error', error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
 /** 更新偏好（自动检查 / 自动下载 / 退出自动安装）。写入失败时保留原值并记录原因。 */
 async function setPrefs(patch: Partial<AppUpdatePrefs>): Promise<void> {
   const a = app()
@@ -129,6 +139,8 @@ export interface UseAppUpdate {
   canCheck: ComputedRef<boolean>
   check: () => Promise<AppUpdateResult>
   install: () => Promise<void>
+  /** 手动下载已发现的更新（available 态） */
+  downloadUpdate: () => Promise<void>
   setPrefs: (patch: Partial<AppUpdatePrefs>) => Promise<void>
   init: () => Promise<void>
 }
@@ -187,6 +199,7 @@ export function useAppUpdate(): UseAppUpdate {
     canCheck,
     check,
     install,
+    downloadUpdate,
     setPrefs,
     init
   }

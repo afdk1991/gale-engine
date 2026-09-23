@@ -95,6 +95,25 @@ describe('parsePing', () => {
     const r = parsePing(JSON.stringify({ avg: 0, loss: 100, ok: true }), 'x')
     expect(r.ok).toBe(false)
   })
+
+  it('localhost 0ms 合法：0 丢包即判可达，不把 0ms 当失败', () => {
+    // 回环地址时延可能正好为 0.0ms
+    const r = parsePing(JSON.stringify({ min: 0, avg: 0, max: 0, loss: 0, ok: true }), '127.0.0.1')
+    expect(r.avg).toBe(0)
+    expect(r.loss).toBe(0)
+    expect(r.ok).toBe(true)
+  })
+
+  it('localhost 0ms 且脚本未带 ok 字段：有回包（loss<100）仍判可达（回归 avg>0 误判）', () => {
+    // 旧逻辑 `avg>0` 会在 avg=0 且无 ok 字段时误判为失败
+    const r = parsePing(JSON.stringify({ min: 0, avg: 0, max: 0, loss: 0 }), 'localhost')
+    expect(r.ok).toBe(true)
+  })
+
+  it('localhost 0ms 但全丢包：仍判失败（0ms 不是万能通行证）', () => {
+    const r = parsePing(JSON.stringify({ min: 0, avg: 0, max: 0, loss: 100, ok: false }), 'x')
+    expect(r.ok).toBe(false)
+  })
 })
 
 describe('parseInterfaces', () => {
@@ -117,7 +136,7 @@ describe('parseInterfaces', () => {
 describe('createNetworkService', () => {
   it('ping 脚本注入消毒后的 host 与 count', async () => {
     const { runner, calls } = recordingRunner(() => ok(JSON.stringify({ min: 1, avg: 2, max: 3, loss: 0, ok: true })))
-    const res = await createNetworkService(runner).ping('BaIdU.CoM', 5)
+    const res = await createNetworkService(runner, 'win32').ping('BaIdU.CoM', 5)
     expect(res.ok).toBe(true)
     expect(res.host).toBe('baidu.com')
     expect(calls[0]).toContain("$host_ = 'baidu.com'")
@@ -125,14 +144,14 @@ describe('createNetworkService', () => {
   })
   it('非法 host 直接返回失败且不调用执行器', async () => {
     const { runner, calls } = recordingRunner(() => ok())
-    const res = await createNetworkService(runner).ping('x; whoami')
+    const res = await createNetworkService(runner, 'win32').ping('x; whoami')
     expect(res.ok).toBe(false)
     expect(calls).toHaveLength(0)
   })
   it('interfaces 返回解析结果', async () => {
     const raw = [{ name: '以太网', ip: '192.168.1.5', status: '已连接' }]
     const { runner } = recordingRunner(() => ok(JSON.stringify(raw)))
-    const list = await createNetworkService(runner).interfaces()
+    const list = await createNetworkService(runner, 'win32').interfaces()
     expect(list[0].ip).toBe('192.168.1.5')
   })
 })

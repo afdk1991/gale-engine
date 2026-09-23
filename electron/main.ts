@@ -127,7 +127,10 @@ function registerIpc(): void {
   ipcMain.handle('history:add', (_event, entry) => historyService.add(entry ?? {}))
   ipcMain.handle('history:clear', () => historyService.clear())
   ipcMain.handle('optimizer:scanCleanup', () => optimizerService.scanCleanup())
-  ipcMain.handle('optimizer:runCleanup', (_event, items) => optimizerService.runCleanup(items ?? []))
+  // 只接受 id：清理目标路径由服务端按 id 重新扫描权威清单解析（H3：杜绝渲染层注入路径）
+  ipcMain.handle('optimizer:runCleanup', (_event, ids) =>
+    optimizerService.runCleanup(Array.isArray(ids) ? ids.map((v) => String(v)) : [])
+  )
   ipcMain.handle('optimizer:listStartup', () => optimizerService.listStartup())
   ipcMain.handle('optimizer:toggleStartup', (_event, id, enable, command) =>
     optimizerService.toggleStartup(id, Boolean(enable), command)
@@ -149,14 +152,19 @@ function registerIpc(): void {
   ipcMain.handle('onekey:state', () => oneKeyService.getState())
   ipcMain.handle('disk:volumes', () => diskService.volumes())
   ipcMain.handle('disk:scanDeepCleanup', () => diskService.scanDeepCleanup())
-  ipcMain.handle('disk:runDeepCleanup', (_event, items) => diskService.runDeepCleanup(items ?? []))
+  // 只接受 id 数组：清理目标由服务端权威清单解析（客户端无法注入路径）
+  ipcMain.handle('disk:runDeepCleanup', (_event, ids) =>
+    diskService.runDeepCleanup(Array.isArray(ids) ? ids.map((v) => String(v)) : [])
+  )
   ipcMain.handle('disk:checkVolume', (_event, mount, fix) =>
     diskService.checkVolume(String(mount), Boolean(fix))
   )
   ipcMain.handle('disk:repairSystemFiles', (_event, kind) => {
-    // 仅允许两个合法工具，其余一律收敛为 sfc，避免任意字符串透传
+    // 仅允许两个合法工具，其余一律收敛为 sfc，避免任意字符串透传。
+    // H4：SFC/DISM 必须走提权版磁盘服务（弹 UAC），与 dll 通道、optlib 内置项一致；
+    // 未提权/取消 UAC 时 repairSystemFiles 自身会诚实降级（ok=false + 指引文案）。
     const k = String(kind) === 'dism-restore' ? 'dism-restore' : 'sfc'
-    return diskService.repairSystemFiles(k)
+    return adminDiskService.repairSystemFiles(k)
   })
   // DLL 缺失检测与修复（渲染进程传什么都先过白名单）
   ipcMain.handle('dll:scan', () => dllService.scan())
@@ -182,8 +190,12 @@ function registerIpc(): void {
   ipcMain.handle('network:interfaces', () => networkService.interfaces())
   ipcMain.handle('firewall:profiles', () => firewallService.profiles())
   ipcMain.handle('firewall:listRules', () => firewallService.listRules())
-  ipcMain.handle('firewall:setProfileEnabled', (_event, profile, enable) =>
-    firewallService.setProfileEnabled(String(profile), Boolean(enable))
+  // M8：第三参 options 透传——禁用 Public 必须由前端二次确认后带 confirmDisablePublic=true，
+  // 否则服务端拒绝（不在这里替前端放宽）。仅剥出该布尔位，其余字段一律忽略。
+  ipcMain.handle('firewall:setProfileEnabled', (_event, profile, enable, options) =>
+    firewallService.setProfileEnabled(String(profile), Boolean(enable), {
+      confirmDisablePublic: Boolean(options?.confirmDisablePublic)
+    })
   )
   ipcMain.handle('firewall:toggleRule', (_event, name, enable) =>
     firewallService.toggleRule(String(name), Boolean(enable))
@@ -214,6 +226,8 @@ function registerIpc(): void {
   ipcMain.handle('app:installUpdate', () => {
     updateService.installUpdate()
   })
+  // M6：autoDownload=false 时 available 态的手动下载出口
+  ipcMain.handle('app:downloadUpdate', () => updateService.downloadUpdate())
   ipcMain.handle('app:getAutoLaunch', () => autoLaunchService.get())
   ipcMain.handle('app:setAutoLaunch', (_event, enable) => autoLaunchService.set(Boolean(enable)))
   ipcMain.handle('app:isElevated', () => elevator.isElevated())
@@ -305,6 +319,9 @@ function createWindow(): void {
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
+      // 显式关闭 nodeIntegration（Electron 33 默认即 false，这里补纵深防御，
+      // 防止未来某默认值变更或复制粘贴打开它后渲染层直接拿到 Node 能力）
+      nodeIntegration: false,
       // sandbox 保持关闭：preload 仅使用 contextBridge/ipcRenderer（沙箱可用），
       // 但后续里程碑可能需要在 preload 引入 Node 能力；M6 加固时统一复查
       sandbox: false
@@ -312,6 +329,31 @@ function createWindow(): void {
   })
 
   win.on('ready-to-show', () => win.show())
+
+  // H2：导航纵深防御。应用是单页应用，正常情况下不会发生整页导航；
+  // 一旦渲染层被 XSS 注入，攻击者会借 location.href / <a target=_blank> 把整个界面
+  // 跳到钓鱼站或 file: 协议。这里：
+  //   - will-navigate：生产环境一律拦截任何应用内整页导航；仅 dev server 同源放行（HMR）。
+  //   - setWindowOpenHandler：拒绝开新窗；白名单外的链接绝不在应用内打开，
+  //     白名单内的（GitHub/微软文档等）交系统浏览器并走主进程 host 白名单。
+  win.webContents.on('will-navigate', (event, url) => {
+    const devUrl = process.env.ELECTRON_RENDERER_URL
+    if (devUrl && url.startsWith(devUrl)) return
+    event.preventDefault()
+  })
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (isAllowedExternal(url)) {
+      electronShell.openExternal(url).catch((error) => {
+        console.error('打开外部链接失败', error)
+      })
+    }
+    return { action: 'deny' }
+  })
+  // 渲染进程崩溃/OOM 退出时记录日志并重载窗口，避免白屏死态需手动重启应用
+  win.webContents.on('render-process-gone', (_event, details) => {
+    console.error('渲染进程异常退出，正在重载窗口', details)
+    if (!win.isDestroyed()) win.reload()
+  })
 
   if (process.env.ELECTRON_RENDERER_URL) {
     win.loadURL(process.env.ELECTRON_RENDERER_URL).catch((error) => {
@@ -326,14 +368,30 @@ function createWindow(): void {
   }
 }
 
-app.whenReady().then(() => {
-  registerIpc()
-  createWindow()
-  scheduleStartupUpdateCheck()
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+// H1：单实例锁。多实例并发启动会同时读写 electron-store、竞争 onekey 状态机
+// （两个主进程各自跑一轮一键优化，争抢同一批文件句柄）。拿不到锁的第二个实例
+// 直接退出；第二个实例被唤起时，把已有窗口拉到前台并聚焦。
+const gotTheLock = app.requestSingleInstanceLock()
+if (!gotTheLock) {
+  app.quit()
+} else {
+  app.on('second-instance', () => {
+    const [win] = BrowserWindow.getAllWindows()
+    if (win) {
+      if (win.isMinimized()) win.restore()
+      win.focus()
+    }
   })
-})
+
+  app.whenReady().then(() => {
+    registerIpc()
+    createWindow()
+    scheduleStartupUpdateCheck()
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    })
+  })
+}
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()

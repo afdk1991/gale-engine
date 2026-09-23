@@ -4,7 +4,7 @@
 - 审查范围：`electron/**`（主进程 + 21 个 service）、`src/**`（渲染层 15 页面 + 组件 + composable）、`shared/types.ts`、`scripts/**`
 - 校验手段：`vue-tsc --noEmit`（类型门禁）、`vitest run`（413 项）、磁盘级逐条复核
 - 门禁现状（审查当时）：**typecheck 1 处失败（阻断级）**，**测试 413/413 通过**
-- 复检（同日修复后）：**typecheck 0 错误**，**测试 467/467 通过** —— 详见第〇节「修复进度」
+- 复检（同日修复后）：**typecheck 0 错误**、**测试 498/498 通过**、**`electron-vite build` 通过** —— 详见第〇节「修复进度」
 
 > 说明：报告中所有文件行号均经磁盘检索逐条复核，非首轮读取的缓存内容。
 
@@ -25,10 +25,20 @@
 | M8 | 一键优化并发竞态 | ✅ 已修 | 同步占位锁 `starting`（在任何 `await` 之前）+ 收尾 `finally` |
 | M9 | 远端可放宽 needsAdmin | ✅ 已修 | 只许收紧不许放宽；`metaOverrides` 已不下发该字段 |
 | M10 | macOS caffeinate 进程泄漏 | ✅ 已修 | PID 独立键存储 + 重复 boost 先回收上一轮进程 |
-| L1 | 电池容量 mWh 当 W 显示 | ✅ 已修 | 换算为 Wh，界面按 type 标注 `Wh` / `W` |
+| L1 | `flash()` 定时器未随卸载清理 | ✅ 已修 | 新增 `useFlash` 组合式函数，`onUnmounted(clear)` 统一回收定时器 |
 | L2 | Toolbox 深浅色按钮 busy 键错位 | ✅ 已修 | 两个按钮共用 busy 判定并显示"执行中…" |
+| L3 | Settings/History/UpdateCard 无 try/catch | ✅ 已修 | 三处均补 try/catch，失败如实报错而非未捕获 rejection |
+| L4 | `buildToggleStartupScript` 注入面 | ✅ 已修 | 启动项 name/location 走白名单校验；`.desktop` 的 `Exec=` 经 `escapeDesktopExecArg` |
+| L5 | 电池 mWh 当 W 显示 | ✅ 已修 | 换算为 Wh（`mWh / 1000`），界面按 type 标注 `Wh` / `W` |
+| L6 | `runDeepCleanup` 传 `path` 语义混淆 | ✅ 已修 | 契约收紧为只收 `id` 数组，渲染层与服务层签名同步 |
+| L7 | UAC 无响应时临时文件残留 | ✅ 已修 | `finally` 逐项 `safeUnlink` + 启动时 `sweepStaleTemp` 清理 >1h 的陈旧残留 |
+| L8 | 启动项禁用后无法再启用 | ✅ 已修 | 禁用改为置 `Hidden=true`（保留原始值），可原地再启用 |
+| L9 | `buildAutostartContent` 未转义 | ✅ 已修 | `Exec=` 改用 `escapeDesktopExecArg`（转义引号/`$`/反引号） |
+| L10 | 侧边栏折叠后无障碍缺失 | ✅ 已修 | 导航项与版本按钮补 `aria-label` / `title`，`nav` 补 `aria-label` |
+| L11 | ping 丢包率未 clamp | ✅ 已修 | 脚本端与解析端双重 clamp 到 0–100，且 `ok` 与 `loss` 自洽 |
+| L12 | gamemode 还原凭据注入 | ✅ 已修 | 还原凭据（GUID/governor/PID）白名单校验 + 诚实回执 + UI 不再假成功 |
 
-**门禁复检**：`vue-tsc --noEmit` **0 错误**；`vitest run` **467/467 通过**（28 文件，较审查时 +54）。
+**门禁复检**：`vue-tsc --noEmit` **0 错误**；`vitest run` **498/498 通过**（29 文件，较审查时的 413 项 +85）；`electron-vite build` **通过**。
 
 ### M5 修复明细（本次新修）
 
@@ -42,11 +52,13 @@
 
 ### 仍存在的已知限制（未擅自改动）
 
-- **启动项禁用后无法原地恢复**：`buildToggleStartupScript` 的"禁用"语义是删除
-  （Windows 注册表值 / macOS plist / Linux `.desktop`），删除后该项即从 `listStartup()`
-  结果中消失，想再启用必须由用户手动提供命令。根治需改为「改名保留」
-  （如 `Name.gale-disabled` / `.plist.gale-disabled` / `.desktop.gale-disabled`），
-  涉及三个平台的脚本、解析与既有测试，**属设计变更而非缺陷修复**，本次保留现状待确认。
+- **启动项「禁用」的语义仍是隐藏而非改名**（L8 已改为可用方案）：Windows 注册表值置
+  `Hidden=true`、macOS plist 的 `Disabled` 置真、Linux `.desktop` 加 `Hidden=true`，
+  项仍留在 `listStartup()` 结果中，因此**可原地再启用**，不再有「禁用即丢失」的问题。
+  若后续希望彻底不列出（例如与系统「启动项」面板行为完全一致），需产品侧确认。
+- **Linux `deb` 包无法自更新**：electron-updater 在 Linux 上只支持 AppImage，`deb`
+  安装的实例会返回 `unsupported` 并给出「手动下载」替代路径（界面已如实告知原因，
+  不再出现「点了没反应」）。这是上游能力边界，非本项目缺陷。
 
 ---
 
@@ -159,9 +171,21 @@
 - 对「假成功」有系统性反思：清理脚本改为逐项 try/catch 并回传 JSON 统计、磁盘释放量走 before/after 实测，这些设计方向是对的。
 
 **主要风险**
-1. **构建门禁实际是红的**：`npm run typecheck` 因 preload 缺 4 个方法失败，而测试 413 项全绿 —— 说明 CI 只跑 test 会漏掉接口不同步。建议把 `typecheck` 纳入 CI 必过项。
-2. **「静默失败 / 假成功」仍是最大功能风险**（M4、M5）：这类问题不会崩溃、不会报错，表现为「点了没效果」，最难被用户反馈定位，也最难被单测覆盖。
-3. **类型与实现存在不同步的苗头**：`shared/types.ts` 与 `preload.ts` 的 optlib 接口已经脱节；远端能力库、DLL 修复等新模块的元信息口径（needsAdmin）在两处实现里不一致。
+1. ~~**构建门禁实际是红的**~~：审查当时的 typecheck 失败已修复，且 `typecheck` 已纳入
+   CI（`.github/workflows/ci.yml`），当前三项门禁（typecheck / vitest / build）全绿。
+   仍建议：新增 IPC 接口时**先改 `shared/types.ts` 再改 preload**，让类型门禁来暴露脱节。
+2. **「静默失败 / 假成功」仍是最大功能风险**（M4、M5、L12）：这类问题不会崩溃、不会报错，
+   表现为「点了没效果」，最难被用户反馈定位。本轮已把判定统一到
+   `parseActionOutcome`（`ERR:` 优先、`OK` 须独立成行）并落地到服务层与 UI 层回执，
+   新增接口时**必须沿用该判定**，不要再写 `includes('OK')`。
+3. **类型与实现存在不同步的苗头**：`shared/types.ts` 与 `preload.ts` 的 optlib 接口曾脱节；
+   远端能力库、DLL 修复等新模块的元信息口径（needsAdmin）已在类型层收敛
+   （`OptCapabilityMetaPatch` 不含 `needsAdmin`），新增元信息字段时勿绕开该类型。
 4. **并发与生命周期管理偏弱**：轮询无节流、编排器无锁、定时器与临时文件清理不完整。
+   本轮已补 `usePolling` / 同步占位锁 / `useFlash` 卸载清理 / `sweepStaleTemp`，
+   但**新增轮询与定时器时仍需主动接入这三个既有工具**，不要各写一份。
+5. **`_t/` 与并发写入者**：本轮修复期间发现工作区存在另一个写入者
+   （`_t/patch_platform.py`、`vitest.linux.config.ts`）并发修改测试文件，用以把测试与宿主
+    OS 解耦。该文件已在收尾时移除。`_t/` 已在 `.gitignore` 中，属临时目录，不随仓库发布。
 
 **修复优先级建议**：H1 → M3/M4/M5（用户可感知的功能失真）→ M1/M2（一行改动的逻辑错误）→ M6/M7/M8（稳定性）→ M9（安全边界口径统一）→ 其余低优先级。

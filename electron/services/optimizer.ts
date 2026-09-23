@@ -8,6 +8,7 @@ import type { ExecRunner, Platform } from './shell'
 import { detectPlatform } from './shell'
 import { createSpaceMeter, createSystemInformationSpaceFetcher, diffReleasedBytes, type SpaceMeter } from './space'
 import { parseActionOutcome } from './actionResult'
+import { escapeDesktopExecArg, escapeDesktopValue } from './desktopEntry'
 
 /**
  * 脚本回传的删除统计。旧脚本只 echo 一个 "OK"，
@@ -42,44 +43,10 @@ export function parseCleanupStats(stdout: string): CleanupStats | null {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-// 安全白名单（按平台）
-// ─────────────────────────────────────────────────────────────
-
-/** 允许的临时目录白名单（仅这些路径下的清理被视为 safe） */
-function allowedTempRoots(platform: Platform): string[] {
-  if (platform === 'win32') {
-    const temp = process.env.TEMP || process.env.TMP || ''
-    const sysroot = process.env.SystemRoot || 'C:\\Windows'
-    return [temp, `${sysroot}\\Temp`].filter(Boolean)
-  }
-  const tmp = process.env.TMPDIR || '/tmp'
-  return [tmp, '/var/tmp'].filter(Boolean)
-}
-
-/** 允许的浏览器缓存根目录（仅白名单内指定浏览器的缓存） */
-function allowedBrowserRoots(platform: Platform): string[] {
-  if (platform === 'win32') {
-    const local = process.env.LOCALAPPDATA || ''
-    if (!local) return []
-    return [
-      `${local}\\Google\\Chrome\\User Data`,
-      `${local}\\Microsoft\\Edge\\User Data`
-    ].filter(Boolean)
-  }
-  const home = process.env.HOME || ''
-  if (!home) return []
-  if (platform === 'darwin') {
-    return [
-      `${home}/Library/Caches/Google/Chrome`,
-      `${home}/Library/Caches/Microsoft Edge`
-    ].filter(Boolean)
-  }
-  return [
-    `${home}/.cache/google-chrome`,
-    `${home}/.cache/microsoft-edge`
-  ].filter(Boolean)
-}
+/**
+ * 安全白名单说明：清理目标路径由 scanCleanup() 权威清单给出（plan.safe 标记），
+ * runCleanup 只按 id 取权威清单里的 path，渲染层无法注入任意路径（见 H3）。
+ */
 
 // ─────────────────────────────────────────────────────────────
 // Windows：PowerShell 脚本
@@ -123,14 +90,25 @@ $plans | ConvertTo-Json -Compress
 `
 
 const STARTUP_SCRIPT_WIN = `
-$keys = @('HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run', 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run')
+$skip = @('PSPath','PSParentPath','PSChildName','PSDrive','PSProvider')
+$pairs = @(
+  @{ loc='HKCU'; live='HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'; parked='HKCU:\\Software\\GaleEngine\\DisabledStartup' },
+  @{ loc='HKLM'; live='HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'; parked='HKLM:\\Software\\GaleEngine\\DisabledStartup' }
+)
 $items = @()
-foreach ($k in $keys) {
-  if (Test-Path $k) {
-    $loc = if ($k.StartsWith('HKCU')) { 'HKCU' } else { 'HKLM' }
-    $props = Get-ItemProperty $k
-    $props.PSObject.Properties | Where-Object { $_.Name -notin @('PSPath','PSParentPath','PSChildName','PSDrive','PSProvider') } | ForEach-Object {
-      $items += [pscustomobject]@{ name=$_.Name; command=[string]$_.Value; location=$loc; enabled=$true }
+foreach ($p in $pairs) {
+  if (Test-Path $p.live) {
+    $props = Get-ItemProperty $p.live
+    $props.PSObject.Properties | Where-Object { $_.Name -notin $skip } | ForEach-Object {
+      $items += [pscustomobject]@{ name=$_.Name; command=[string]$_.Value; location=$p.loc; enabled=$true }
+    }
+  }
+  # 被禁用的启动项被搬到自有键保存（Windows 不读取该键，故不会自启），
+  # 这里一并列出，用户才能再次启用 —— 原先直接删除会让条目彻底消失。
+  if (Test-Path $p.parked) {
+    $props = Get-ItemProperty $p.parked
+    $props.PSObject.Properties | Where-Object { $_.Name -notin $skip } | ForEach-Object {
+      $items += [pscustomobject]@{ name=$_.Name; command=[string]$_.Value; location=$p.loc; enabled=$false }
     }
   }
 }
@@ -199,13 +177,18 @@ first=1
 emit() { if [ "$first" = "1" ]; then first=0; else printf ','; fi; printf '%s' "$1"; }
 printf '['
 if [ "$(uname)" = "Darwin" ]; then
-  for f in "$home/Library/LaunchAgents/"*.plist; do
+  for f in "$home/Library/LaunchAgents/"*.plist "$home/Library/LaunchAgents/"*.plist.disabled; do
     [ -f "$f" ] || continue
+    # .plist.disabled 是「已禁用」标记（launchd 只加载 .plist），文件保留故可再启用
+    en=true
+    case "$f" in *.plist.disabled) en=false ;; esac
     name=$(/usr/libexec/PlistBuddy -c "Print :Label" "$f" 2>/dev/null)
     [ -n "$name" ] || name=$(basename "$f" .plist)
+    # 注意 \${...} 必须转义：这是 shell 参数展开，不是 JS 模板插值
+    name=\${name%.disabled}
     cmd=$(/usr/libexec/PlistBuddy -c "Print :ProgramArguments" "$f" 2>/dev/null | sed -n '2p' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
     n=$(esc "$name"); c=$(esc "$cmd")
-    emit "{\\"id\\":\\"launchd:$n\\",\\"name\\":\\"$n\\",\\"command\\":\\"$c\\",\\"location\\":\\"launchd\\",\\"enabled\\":true}"
+    emit "{\\"id\\":\\"launchd:$n\\",\\"name\\":\\"$n\\",\\"command\\":\\"$c\\",\\"location\\":\\"launchd\\",\\"enabled\\":$en}"
   done
 else
   for f in "$home/.config/autostart/"*.desktop; do
@@ -213,8 +196,11 @@ else
     id=$(basename "$f" .desktop)
     name=$(sed -n 's/^Name=//p' "$f" | head -1)
     cmd=$(sed -n 's/^Exec=//p' "$f" | head -1)
+    # XDG 标准：Hidden=true 即「已禁用」，文件保留因此仍可再次启用
+    en=true
+    if grep -qi '^[[:space:]]*Hidden=true' "$f" 2>/dev/null; then en=false; fi
     n=$(esc "$name"); c=$(esc "$cmd")
-    emit "{\\"id\\":\\"autostart:$id\\",\\"name\\":\\"$n\\",\\"command\\":\\"$c\\",\\"location\\":\\"autostart\\",\\"enabled\\":true}"
+    emit "{\\"id\\":\\"autostart:$id\\",\\"name\\":\\"$n\\",\\"command\\":\\"$c\\",\\"location\\":\\"autostart\\",\\"enabled\\":$en}"
   done
 fi
 printf ']'
@@ -257,12 +243,12 @@ function buildPlistContent(label: string, cmd: string): string {
 </plist>`
 }
 
-/** Linux XDG autostart .desktop 文件内容 */
+/** Linux XDG autostart .desktop 文件内容（字段按 Desktop Entry 规范转义） */
 function buildDesktopContent(name: string, cmd: string): string {
   return `[Desktop Entry]
 Type=Application
-Name=${name}
-Exec=${cmd}
+Name=${escapeDesktopValue(name)}
+Exec=${escapeDesktopExecArg(cmd)}
 X-GNOME-Autostart-enabled=true`
 }
 
@@ -360,8 +346,28 @@ export function buildStartupListScript(platform: Platform = detectPlatform()): s
 }
 
 /**
- * 切换启动项。返回脚本；无法解析 location 时返回 null（调用方按失败处理）。
+ * 启动项名称白名单。
+ *
+ * 名称来自系统（注册表值名 / launchd Label / .desktop 文件名），可能含中文、
+ * 空格与点号，但绝不该含引号、反引号、`$`、反斜杠或控制字符 —— 这些正是脚本
+ * 注入的载体。渲染进程经 IPC 传入的 id 必须先过这道闸。
+ */
+const STARTUP_NAME_RE = /^[A-Za-z0-9\u4e00-\u9fff][A-Za-z0-9\u4e00-\u9fff .@()_+-]{0,127}$/
+
+/** 允许的 location 前缀白名单：绝不把 id 里的任意前缀拼进路径或命令 */
+const STARTUP_LOCATIONS = ['HKCU', 'HKLM', 'launchd', 'autostart']
+
+/** Windows 上存放「已禁用启动项」的自有键（Windows 不读取，故不会自启） */
+const DISABLED_RUN_KEY = 'Software\\GaleEngine\\DisabledStartup'
+
+/**
+ * 切换启动项。返回脚本；location 或名称非法时返回 null（调用方按失败处理）。
  * id 格式：win `HKCU:Name`/`HKLM:Name`；mac `launchd:Label`；linux `autostart:Name`。
+ *
+ * 「禁用」一律采用**可逆表示**而非删除，否则条目会从列表消失、用户再也无法启用：
+ * - win：把值从 `Run` 搬到自有键 `Software\GaleEngine\DisabledStartup`
+ * - mac：`Label.plist` ↔ `Label.plist.disabled`（launchd 只加载 `.plist`）
+ * - linux：写 `Hidden=true`（XDG 标准的禁用标记），文件保留
  */
 export function buildToggleStartupScript(
   id: string,
@@ -370,31 +376,66 @@ export function buildToggleStartupScript(
   platform: Platform = detectPlatform()
 ): string | null {
   const idx = id.indexOf(':')
-  const location = idx > 0 ? id.slice(0, idx) : 'HKCU'
-  const name = idx > 0 ? id.slice(idx + 1) : id
-  if (!name) return null
+  const rawLoc = idx > 0 ? id.slice(0, idx) : ''
+  const name = (idx > 0 ? id.slice(idx + 1) : id).trim()
+  if (!name || !STARTUP_NAME_RE.test(name)) return null
 
-  if (platform === 'win32' || location === 'HKCU' || location === 'HKLM') {
-    const regKey = `${location}:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run`
-    if (enable) {
-      const cmd = (command ?? '').replace(/"/g, '`"')
-      return `Set-ItemProperty -Path "${regKey}" -Name "${name}" -Value "${cmd}" -ErrorAction Stop; "OK"`
-    }
-    // 属性本就不存在视为已禁用（幂等成功）；存在但删除失败（如权限不足）才如实报错。
-    // 不可用 -ErrorAction SilentlyContinue + 无条件 "OK"：那样无论成功失败都报成功。
-    return `$p = Get-ItemProperty -Path "${regKey}" -Name "${name}" -ErrorAction SilentlyContinue\nif ($null -eq $p) { "OK" } else { try { Remove-ItemProperty -Path "${regKey}" -Name "${name}" -ErrorAction Stop; "OK" } catch { "ERR:$($_.Exception.Message)" } }`
+  const location = STARTUP_LOCATIONS.includes(rawLoc)
+    ? rawLoc
+    : platform === 'win32'
+      ? 'HKCU' // Windows 上无前缀的旧式 id 视作当前用户
+      : null
+  if (!location) return null
+
+  if (location === 'HKCU' || location === 'HKLM') {
+    const live = `${location}:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run`
+    const parked = `${location}:\\${DISABLED_RUN_KEY}`
+    // 一律使用 PowerShell **单引号字面量**：单引号内不解析 `$` 与反引号。
+    // 原先用双引号包裹且只转义 `"`，命令里的 `$(...)` 会被真实执行（注入面）。
+    return [
+      '$ErrorActionPreference = "Stop"',
+      `$live = ${psSingleQuote(live)}`,
+      `$parked = ${psSingleQuote(parked)}`,
+      `$name = ${psSingleQuote(name)}`,
+      'try {',
+      '  $pick = { param($k) if (Test-Path $k) { (Get-ItemProperty -Path $k -Name $name -ErrorAction SilentlyContinue).$name } else { $null } }',
+      enable
+        ? [
+            '  # 启用：优先取回被搬运的原命令，其次用本次传入的命令',
+            '  $v = & $pick $parked',
+            `  if ($null -eq $v) { $v = ${psSingleQuote(command ?? '')} }`,
+            '  if ([string]::IsNullOrWhiteSpace([string]$v)) { throw "缺少可恢复的启动命令" }',
+            '  if (-not (Test-Path $live)) { New-Item -Path $live -Force | Out-Null }',
+            '  Set-ItemProperty -Path $live -Name $name -Value $v',
+            '  if (Test-Path $parked) { Remove-ItemProperty -Path $parked -Name $name -ErrorAction SilentlyContinue }'
+          ].join('\n')
+        : [
+            '  # 禁用：搬到自有键保存（Windows 不读取该键），条目仍在列表中可再启用',
+            '  $v = & $pick $live',
+            '  if ($null -ne $v) {',
+            '    if (-not (Test-Path $parked)) { New-Item -Path $parked -Force | Out-Null }',
+            '    Set-ItemProperty -Path $parked -Name $name -Value $v',
+            '    Remove-ItemProperty -Path $live -Name $name',
+            '  }'
+          ].join('\n'),
+      '  "OK"',
+      '} catch { "ERR:$($_.Exception.Message)" }'
+    ].join('\n')
   }
 
   if (location === 'launchd') {
+    // 名称已过白名单（不含引号/`$`/反引号），可直接嵌入双引号路径
     const plist = `"$HOME/Library/LaunchAgents/${name}.plist"`
     if (enable) {
       const content = buildPlistContent(name, command ?? '')
-      return `cat > ${plist} <<'GALE_PLIST_EOF'
+      return `mkdir -p "$HOME/Library/LaunchAgents"
+mv -f ${plist}.disabled ${plist} 2>/dev/null
+cat > ${plist} <<'GALE_PLIST_EOF'
 ${content}
 GALE_PLIST_EOF
-echo "OK"`
+[ -f ${plist} ] && echo "OK" || echo "ERR:写入启动项失败"`
     }
-    return `rm -f ${plist} 2>/dev/null && echo "OK" || echo "ERR:删除启动项失败"`
+    return `mv -f ${plist} ${plist}.disabled 2>/dev/null && echo "OK" || echo "ERR:禁用启动项失败"`
   }
 
   if (location === 'autostart') {
@@ -405,9 +446,10 @@ echo "OK"`
 cat > ${file} <<'GALE_DESKTOP_EOF'
 ${content}
 GALE_DESKTOP_EOF
-echo "OK"`
+[ -f ${file} ] && echo "OK" || echo "ERR:写入启动项失败"`
     }
-    return `rm -f ${file} 2>/dev/null && echo "OK" || echo "ERR:删除启动项失败"`
+    // Hidden=true 是 XDG 标准的禁用标记：文件保留，用户可再次启用
+    return `if [ ! -f ${file} ]; then echo "OK"; elif grep -qi '^[[:space:]]*Hidden=true' ${file}; then echo "OK"; elif printf 'Hidden=true\\n' >> ${file}; then echo "OK"; else echo "ERR:禁用启动项失败"; fi`
   }
 
   return null
@@ -478,40 +520,57 @@ export function createOptimizerService(
     return parseJsonArray(stdout).map((r) => toPlan(r as Record<string, unknown>))
   }
 
-  const runCleanup = async (
-    items: { id: string; path: string; kind: OptimizerTargetKind }[]
-  ): Promise<CleanupResult[]> => {
-    const roots = [...allowedTempRoots(platform), ...allowedBrowserRoots(platform)]
-    const isSafePath = (p: string): boolean =>
-      roots.some((r) => p === r || p.startsWith(r + '\\') || p.startsWith(r + '/'))
+  /**
+   * 只接受清理项 id。
+   *
+   * H3（路径穿越修复）：路径/类型**一律由服务端重新扫描权威清单按 id 解析**，
+   * 绝不信任渲染层传入的 path。旧契约收 `{id,path,kind}`，`isSafePath` 仅做字符串
+   * 前缀比对，渲染层传 `C:\TESTTEMP\..\..\Windows` 这类「根\..\..\」既以前缀命中白名单、
+   * 又能穿越到任意目录。现在：
+   *   - 先跑一次 scanCleanup() 得到服务端权威清单，建 id → plan 映射；
+   *   - 渲染层传的 id 若不在权威清单里（含任何伪造/穿越 id）→ 判「未知清理项」并拒绝；
+   *   - plan.safe=false 的项同样拒绝。
+   */
+  const runCleanup = async (ids: string[]): Promise<CleanupResult[]> => {
+    // 权威扫描：路径、类型、safe 标记全部以此为准
+    const plans = await scanCleanup()
+    const byId = new Map<string, CleanupPlan>(plans.map((p) => [p.id, p]))
     const results: CleanupResult[] = []
-    for (const item of items) {
+    for (const id of [...new Set((ids ?? []).map((v) => String(v)))]) {
+      const plan = byId.get(id)
+      if (!plan) {
+        results.push({ id, ok: false, error: '未知清理项，已跳过' })
+        continue
+      }
+      if (!plan.safe) {
+        results.push({ id, ok: false, error: '路径不在安全白名单内，已跳过' })
+        continue
+      }
+
       // 实测：清理前后各量一次该卷的可用空间，差值才是真实释放量
-      const before = await meter.freeBytesForPath(item.path, platform)
+      const before = await meter.freeBytesForPath(plan.path, platform)
 
       let raw: CleanupResult
-      if (item.kind === 'recycle') {
+      if (plan.kind === 'recycle') {
         const { code, stdout, stderr } = await runner.run(buildRecycleCleanupScript(platform))
         // 严格判定：脚本按约定回传 OK / ERR:原因。
         // 旧写法 `code === 0 || stdout.includes('OK')` 会因脚本本身无条件输出 OK 而永远成功。
         const outcome = parseActionOutcome(stdout, code)
         raw = {
-          id: item.id,
+          id,
           ok: outcome.ok,
           error: outcome.ok ? undefined : outcome.message || stderr.trim() || '清理回收站失败（可能需要管理员权限）'
         }
-      } else if (!isSafePath(item.path)) {
-        raw = { id: item.id, ok: false, error: '路径不在安全白名单内，已跳过' }
       } else {
-        const { code, stdout, stderr } = await runner.run(buildPathCleanupScript(item.path, platform))
+        const { code, stdout, stderr } = await runner.run(buildPathCleanupScript(plan.path, platform))
         const stats = parseCleanupStats(stdout)
         if (code !== 0 && !stats) {
-          raw = { id: item.id, ok: false, error: stderr.trim() || '清理失败（可能需要管理员权限）' }
+          raw = { id, ok: false, error: stderr.trim() || '清理失败（可能需要管理员权限）' }
         } else if (stats) {
           // 只要删掉了东西就算成功；全部被占用（一个都没删掉）则如实报失败
           const ok = stats.failedCount === 0 || stats.deletedCount > 0
           raw = {
-            id: item.id,
+            id,
             ok,
             error:
               stats.failedCount > 0
@@ -524,12 +583,18 @@ export function createOptimizerService(
             locked: stats.locked.length ? stats.locked : undefined
           }
         } else {
-          const ok = code === 0 && stdout.includes('OK')
-          raw = { id: item.id, ok, error: ok ? undefined : stderr.trim() || '清理失败' }
+          // 低危修复：else 兜底不再用 stdout.includes('OK')（错误信息里含 "OK" 字样会被误判成功），
+          // 统一走 parseActionOutcome（ERR: 优先、OK 独立成行、空输出算失败）。
+          const outcome = parseActionOutcome(stdout, code)
+          raw = {
+            id,
+            ok: outcome.ok,
+            error: outcome.ok ? undefined : outcome.message || stderr.trim() || '清理失败'
+          }
         }
       }
 
-      const after = await meter.freeBytesForPath(item.path, platform)
+      const after = await meter.freeBytesForPath(plan.path, platform)
       const released = diffReleasedBytes(before, after)
       results.push(released === undefined ? raw : { ...raw, releasedBytes: released })
     }
@@ -547,7 +612,15 @@ export function createOptimizerService(
     command?: string
   ): Promise<StartupItem[]> => {
     const script = buildToggleStartupScript(id, enable, command, platform)
-    if (script) await runner.run(script)
+    if (!script) throw new Error('非法的启动项 id')
+    // 低危修复：脚本成败必须如实上抛。旧实现无论脚本成败都 `return listStartup()`，
+    // 脚本失败时界面仍显示「已切换」，用户看不到任何错误。这里走 parseActionOutcome，
+    // 失败即抛错 → IPC reject → 渲染层 catch 后展示原因、且不更新列表（保持与真实状态一致）。
+    const { code, stdout, stderr } = await runner.run(script)
+    const outcome = parseActionOutcome(stdout, code)
+    if (!outcome.ok) {
+      throw new Error(outcome.message || stderr.trim() || '切换启动项失败')
+    }
     return listStartup()
   }
 

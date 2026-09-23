@@ -5,9 +5,9 @@
 
 ---
 
-## 开发中（当前 master 工作区，未发布）
+## v0.1.10 — 2026-09-17
 
-以下改进已提交，将随下次 **v0.1.10** 发布合并进版本说明：
+本版以「自动更新真正可用」与「全量代码审查质量加固」为主线：修复 macOS / Linux 此前「提示有新版本却永远装不上」的问题，新增 DLL 缺失检测修复与可独立更新的能力库，并依 `docs/code-review-2026-09-16.md` 修复 H1 / M1–M10 / L1–L12 共 23 项缺陷（重点是「假成功 / 静默失败」的系统性根治）。
 
 ### 新增功能
 
@@ -32,6 +32,32 @@
     - 内置能力的**实现不可被替换**（命中内置 id 且带 `recipe` 直接拒绝），重名远端能力被忽略；`needsAdmin` 不允许被远端修改——**提权边界只能由本地代码定义**；远端新能力**默认不纳入一键优化**，须显式 `defaultEnabled: true`。
   - 防护：清单 `schema` 版本校验、体积上限 256 KB、条目上限 200、单配方步数上限 8、`libraryVersion` **只增不减**（防降级攻击）、`minAppVersion` 过滤；任何整体性问题一律**整份作废并回落内置**，被拒条目及原因在界面**如实列出**（不静默吞掉）。
   - 界面：优化中心新增「能力库（可独立更新）」面板，展示来源（内置/远端）、版本、可用能力数、远端能力清单、被拒条目；支持检查更新 / 应用 / **回退内置**。
+
+### 质量加固（全量代码审查 H1 / M1–M10 / L1–L12 全数修复）
+
+依据 `docs/code-review-2026-09-16.md` 的逐条复核结果修复，**三个门禁同时达标**：`vue-tsc --noEmit` 0 错误、`vitest run` **498/498 通过**、`electron-vite build` 通过。
+
+- **H1｜preload 接口脱节（曾阻断 typecheck）**：`electron/preload.ts` 补齐 `optlib:libraryState / checkLibrary / applyLibrary / resetLibrary` 四个映射，与 `shared/types.ts` 契约对齐。根因是「改了类型与主进程、漏了 preload」，测试不覆盖 preload 所以 413 项全绿也发现不了——现已把 `typecheck` 纳入 CI 必过项。
+- **M5 / L12｜「假成功」系统性根治（本轮最大风险项）**：
+  - 新增严格回执解析 `parseActionOutcome`（**`ERR:` 优先、`OK` 必须独立成行**、空输出如实报失败），替换 `process.ts` / `firewall.ts` / `tasks.ts` / `winservices.ts` / `toolbox.ts` / `optimizer.ts` 中所有 `text.includes('OK')` 松散判定——此前错误信息里只要含 "OK" 字样就会被误判为成功。
+  - 回收站清空（win/mac/linux 三处）由 `SilentlyContinue; "OK"` 改为 `try { … "OK" } catch { "ERR:…" }`；此前 `-ErrorAction SilentlyContinue` 下 `$?` 恒为真，清空失败也报成功。
+  - **游戏模式不再假成功**：`boost()` / `restore()` 返回值由裸状态改为 `GameModeActionResult`（含 `ok` / `message` / `status`），UI 按 `r.ok` 决定提示与是否写历史；失败显示 `error` 而非 `hint`。重复进入游戏模式时若上一轮 caffeinate 残留回收失败，会在提示里**如实说明**而不静默吞掉。
+- **L4 / L9｜脚本注入面收口**：新增共享模块 `electron/services/desktopEntry.ts`（`escapeDesktopExecArg` / `escapeDesktopValue`），`.desktop` 的 `Exec=` 统一走转义（引号、`$`、反引号、反斜杠）；启动项 `name` / `location` 走白名单校验；`buildToggleStartupScript` 修正 `$` 展开漏转义（曾导致编译报 TS1109）。
+- **L12｜还原凭据注入面**：`buildRestoreScript` 对 Windows 电源计划 GUID、Linux governor、macOS caffeinate PID 分别做白名单 `test()` 校验，非法值一律回 `ERR:还原凭据非法` 且**不泄露原输入**；macOS 另加 `kill -0` 先探活，避免把「进程已退出」当成失败。
+- **L8｜启动项可逆**：禁用不再删除注册表值 / plist / `.desktop`，改为置 `Hidden=true`（macOS 置 `Disabled`），项保留在列表中，**可原地重新启用**，消除「禁用即丢失、只能手动补命令」的死角。
+- **L7｜提权临时文件残留**：`elevate.ts` 的 `finally` 改为逐项 `safeUnlink`；并新增进程级一次性的 `sweepStaleTemp`，清理 `%TEMP%` 中**超过 1 小时未改动**的历史残留（UAC 长时间无响应、进程被强杀时 `finally` 不会执行，此前含本机路径的临时脚本会永久残留）。
+- **L6｜接口语义收紧**：`runDeepCleanup` 契约由「对象数组（含 kind/path）」收紧为**只收 `id` 数组**，渲染层与服务层签名同步，消除「把展示文案当路径传」的误读面。
+- **L5｜电池容量单位**：`hardware.ts` 按 `mWh / 1000` 换算为 Wh，界面按 type 分别标注 `Wh` / `W`；此前把电池设计容量（mWh）当瓦特显示，笔记本会出现「45000 W」。
+- **L11｜网络数值健壮性**：ping 丢包率在 PowerShell、awk、JS 解析三处均 clamp 到 0–100，并让 `ok` 与 `loss` 自洽（丢包 100% 即判定不通，不因脚本自称 ok 而翻转）。
+- **L1 / L2 / L10｜前端一致性与无障碍**：
+  - 新增 `src/composables/useFlash.ts`：统一各页操作反馈的**语气判定**（结构化 `tone`，不再靠 `includes('拒绝')` 嗅探）与**定时器生命周期**（`onUnmounted(clear)`），根治「组件卸载后回调仍写 ref」。
+  - `Toolbox.vue` 深浅色按钮改用统一 busy 判定；侧边栏导航项与版本按钮补 `aria-label` / `title`，`nav` 补 `aria-label`。
+- **L3｜未捕获 rejection**：`Settings.vue` / `History.vue` / `UpdateCard.vue` 三处 IPC 调用补 try/catch，失败如实报错，不再产生未处理的 promise rejection。
+- **测试**：新增组件层回归 `src/pages/GameMode.test.ts`（6 项，锁死「切换失败不提示成功、不写历史」）；`gamemode.test.ts` 扩充「还原凭据校验（防注入）」「还原失败保留凭据」等用例，共 28 项。vitest 476 → **498**。
+- **文档同步**：
+  - `docs/code-review-2026-09-16.md` §〇 修复进度表补全至 **H1 / M1–M10 / L1–L12 全 23 项**（此前只列到 L2），并更新「已知限制」与「主要风险」——两处原本过期的表述（启动项禁用不可逆、构建门禁为红）已按修复后实况改写。
+  - `docs/smoke-test-checklist.md` 补 **59 项**新校验（95 → **154** 项，可自动/脚本验证项 84 → **106**）：新增「诚实回执与注入防护」专节，并在监控/进程/网络/优化中心/游戏模式/工具箱/设置各节补入 M4/M6/M7/M8/M9/L1/L2/L5/L8/L11/L12 的可观测验收点；测试数 417 → **498**。HTML 交互版经 `scripts/gen-smoke-html.py` 重新生成。
+  - `README.md` 测试数 417/265 → **498**、冒烟项 121 → **154**，`已知限制` 补 Linux `deb` 不可自更新、启动项隐藏保留语义，并写明「假成功」判定的统一口径供后续开发遵守。
 
 ### 修复
 - **「已是最新版本」永远不会出现、永远误报有新版本**：`autoUpdater.checkForUpdates()` 在「无更新」时**并不返回 null**，而是返回 `{ isUpdateAvailable: false, versionInfo: … }`，且此时 `versionInfo` 装的是仓库里的**最新版**信息。原实现「非 null 即视为有更新」，导致该状态机分支实际不可达。现抽出纯函数 `interpretCheckResult()` 统一解释（并区分 `null`=更新器未启用），补回归单测。

@@ -10,6 +10,7 @@ import * as si from 'systeminformation'
 import type { ExecRunner, Platform } from './shell'
 import { detectPlatform } from './shell'
 import { createSpaceMeter, diffReleasedBytes } from './space'
+import { parseActionOutcome } from './actionResult'
 import { parseCleanupStats } from './optimizer'
 
 // ─────────────────────────────────────────────────────────────
@@ -159,13 +160,20 @@ export function buildDeepCatalog(
           '$p = Join-Path $env:LOCALAPPDATA "Microsoft\\Windows\\Explorer"',
           'Get-Process explorer -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue',
           'Start-Sleep -Seconds 1',
+          // 逐个 try/catch 统计删除失败：原先 Remove-Item -ErrorAction SilentlyContinue 吞掉所有错误，
+          // 末尾又无条件 "OK"，于是缓存被占用删不掉也报成功。
+          '$failed = 0',
           'if (Test-Path -LiteralPath $p) {',
-          '  Get-ChildItem -LiteralPath $p -File -Force -ErrorAction SilentlyContinue |',
-          '    Where-Object { $_.Name -like "thumbcache_*.db" -or $_.Name -like "iconcache_*.db" } |',
-          '    Remove-Item -Force -ErrorAction SilentlyContinue',
+          '  $files = Get-ChildItem -LiteralPath $p -File -Force -ErrorAction SilentlyContinue |',
+          '    Where-Object { $_.Name -like "thumbcache_*.db" -or $_.Name -like "iconcache_*.db" }',
+          '  foreach ($f in $files) {',
+          '    try { Remove-Item -LiteralPath $f.FullName -Force -ErrorAction Stop } catch { $failed++ }',
+          '  }',
           '}',
           // 无论前面是否出错都必须把外壳拉回来，避免用户桌面消失
           'if (-not (Get-Process explorer -ErrorAction SilentlyContinue)) { Start-Process explorer.exe }',
+          // 诚实回执：有缓存删不掉（被占用/无权）就回 ERR: 并不以 0 退出，不再无条件 OK
+          'if ($failed -gt 0) { "ERR:部分缩略图缓存被占用或无权删除，未能完全清理"; exit 1 }',
           '"OK"'
         ].join('\n')
       },
@@ -241,7 +249,13 @@ export function buildDeepCatalog(
         patterns: [],
         needsAdmin: false,
         defaultChecked: false,
-        action: 'command -v brew >/dev/null 2>&1 && brew cleanup -s; echo OK'
+        // 未装 brew 视为「可跳过」（exit 0）；但 brew 已装却 cleanup 失败必须如实报错。
+        // 原先 `… && brew cleanup -s; echo OK` 的 `; echo OK` 使退出码恒 0，失败也报成功。
+        action: [
+          'if ! command -v brew >/dev/null 2>&1; then echo OK; exit 0; fi',
+          'brew cleanup -s || { echo "ERR:brew cleanup 失败"; exit 1; }',
+          'echo OK'
+        ].join('\n')
       }
     ]
   }
@@ -268,7 +282,12 @@ export function buildDeepCatalog(
       patterns: [],
       needsAdmin: true,
       defaultChecked: false,
-      action: 'command -v journalctl >/dev/null 2>&1 && journalctl --vacuum-size=100M; echo OK'
+      // 诚实回执：原先 `… && journalctl …; echo OK` 末尾 echo OK 使退出码恒 0，
+      // 非 root 导致 vacuum 失败仍报成功。现按命令真实退出码收尾，失败回 ERR: 并 exit 1。
+      action: [
+        'command -v journalctl >/dev/null 2>&1 && journalctl --vacuum-size=100M || { echo "ERR:journalctl vacuum 失败（需 root 与 systemd）"; exit 1; }',
+        'echo OK'
+      ].join('\n')
     },
     {
       id: 'linux-apt-clean',
@@ -279,7 +298,11 @@ export function buildDeepCatalog(
       patterns: [],
       needsAdmin: true,
       defaultChecked: false,
-      action: 'command -v apt-get >/dev/null 2>&1 && apt-get clean; echo OK'
+      // 诚实回执：非 root 导致 apt-get clean 失败不得再被 `; echo OK` 吞成成功。
+      action: [
+        'command -v apt-get >/dev/null 2>&1 && apt-get clean || { echo "ERR:apt-get clean 失败（需 root）"; exit 1; }',
+        'echo OK'
+      ].join('\n')
     }
   ]
 }
@@ -567,20 +590,19 @@ export function createDiskService(
     return [...pathPlans, ...actionPlans]
   }
 
-  const runDeepCleanup = async (
-    items: { id: string; kind: DeepCleanupKind; path: string }[]
-  ): Promise<CleanupResult[]> => {
+  const runDeepCleanup = async (ids: string[]): Promise<CleanupResult[]> => {
     // 复用已有的卷信息采集器做「清理前/后」空间实测
     const meter = createSpaceMeter({ fsSize: () => f.fsSize() })
     const results: CleanupResult[] = []
-    for (const item of items) {
-      const entry = catalog.find((e) => e.id === item.id)
+    // 只认服务端权威清单里的 id；去重后逐个解析出真实路径与类型
+    for (const id of [...new Set((ids ?? []).map((v) => String(v)))]) {
+      const entry = catalog.find((e) => e.id === id)
       if (!entry) {
-        results.push({ id: item.id, ok: false, error: '未知清理项，已跳过' })
+        results.push({ id, ok: false, error: '未知清理项，已跳过' })
         continue
       }
       if (entry.kind === 'path' && !isSafeRoot(entry.path)) {
-        results.push({ id: item.id, ok: false, error: '路径不在安全白名单内，已跳过' })
+        results.push({ id, ok: false, error: '路径不在安全白名单内，已跳过' })
         continue
       }
       // action 项没有目录，按系统卷测（win → C:，unix → /）
@@ -593,16 +615,27 @@ export function createDiskService(
       let raw: CleanupResult
       if (entry.kind === 'action') {
         // action 项脚本自带 echo OK / 兜底
-        const ok = code === 0
-        raw = { id: item.id, ok, error: ok ? undefined : stderr.trim() || '执行失败（可能需要管理员权限）' }
+        // action 项多为系统工具（DISM 等），输出不一定是 OK 令牌，故以退出码为准；
+        // 但脚本显式回了 ERR: 时必须如实报错（原先只看退出码会漏报）
+        const explicitErr = /^ERR:/m.test(stdout)
+        const ok = code === 0 && !explicitErr
+        raw = {
+          id,
+          ok,
+          error: ok
+            ? undefined
+            : explicitErr
+              ? parseActionOutcome(stdout, code).message
+              : stderr.trim() || '执行失败（可能需要管理员权限）'
+        }
       } else {
         const stats = parseCleanupStats(stdout)
         if (code !== 0 && !stats) {
-          raw = { id: item.id, ok: false, error: stderr.trim() || '清理失败（可能需要管理员权限）' }
+          raw = { id, ok: false, error: stderr.trim() || '清理失败（可能需要管理员权限）' }
         } else if (stats) {
           const ok = stats.failedCount === 0 || stats.deletedCount > 0
           raw = {
-            id: item.id,
+            id,
             ok,
             error:
               stats.failedCount > 0
@@ -615,8 +648,10 @@ export function createDiskService(
             locked: stats.locked.length ? stats.locked : undefined
           }
         } else {
-          const ok = code === 0 && stdout.includes('OK')
-          raw = { id: item.id, ok, error: ok ? undefined : stderr.trim() || '清理失败' }
+          // 兜底：脚本没回传统计 JSON（旧脚本或异常路径）时按统一令牌判定。
+          // 不可用 stdout.includes('OK') —— 错误信息里含 "OK" 字样会被误判为成功。
+          const outcome = parseActionOutcome(stdout, code)
+          raw = { id, ok: outcome.ok, error: outcome.ok ? undefined : outcome.message }
         }
       }
 

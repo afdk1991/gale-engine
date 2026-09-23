@@ -16,20 +16,20 @@ function makeApi(initial = false): LoginItemApi {
 
 describe('createAutoLaunchService', () => {
   it('reads initial state', () => {
-    expect(createAutoLaunchService(makeApi(true)).get()).toBe(true)
-    expect(createAutoLaunchService(makeApi(false)).get()).toBe(false)
+    expect(createAutoLaunchService(makeApi(true), 'win32').get()).toBe(true)
+    expect(createAutoLaunchService(makeApi(false), 'win32').get()).toBe(false)
   })
 
   it('enables auto-launch and persists it', () => {
     const api = makeApi(false)
-    const svc = createAutoLaunchService(api)
+    const svc = createAutoLaunchService(api, 'win32')
     expect(svc.set(true)).toBe(true)
     expect(api.getLoginItemSettings().openAtLogin).toBe(true)
   })
 
   it('disables auto-launch and persists it', () => {
     const api = makeApi(true)
-    const svc = createAutoLaunchService(api)
+    const svc = createAutoLaunchService(api, 'win32')
     expect(svc.set(false)).toBe(false)
     expect(api.getLoginItemSettings().openAtLogin).toBe(false)
   })

@@ -29,6 +29,11 @@ export interface UpdaterApi {
   checkForUpdates(): Promise<{ isUpdateAvailable: boolean; updateInfo?: { version?: string | number } }>
   /** 退出应用并安装已下载的更新 */
   quitAndInstall(isSilent?: boolean, isForceRunAfter?: boolean): void
+  /**
+   * M6：手动触发下载。autoDownload=false 时，checkUpdate 停在 available 态不会自动下载，
+   * 需要用户点「下载更新」后显式调用它。底层进度经 progress/downloaded 事件推给状态机。
+   */
+  downloadUpdate(): Promise<void>
   /** 订阅底层事件（下载进度 / 完成 / 失败）；不实现表示无事件源 */
   onEvent?(cb: (e: UpdaterEvent) => void): () => void
   /** 把用户偏好下发到底层（自动下载开关等） */
@@ -59,6 +64,8 @@ export interface UpdateService {
   checkUpdate(opts?: { silent?: boolean }): Promise<AppUpdateResult>
   /** 安装已下载的更新（会退出当前进程） */
   installUpdate(): void
+  /** M6：手动下载已发现的更新（仅在 available 态生效，其它态为空操作） */
+  downloadUpdate(): Promise<AppUpdateResult>
   /** 订阅状态变化，返回退订函数 */
   onState(cb: (s: AppUpdateResult) => void): () => void
 }
@@ -203,6 +210,22 @@ export function createUpdateService(
     return emit({ status: 'error', error: lastError, silent })
   }
 
+  const downloadUpdate = async (): Promise<AppUpdateResult> => {
+    if (!cap.canAutoUpdate) {
+      return emit({ status: 'unsupported', reason: cap.reason ?? '当前平台不支持应用内自动更新' })
+    }
+    // 只有「已发现可用更新、尚未开始下载」时才触发；重复点、已在下载/已下载都为空操作，
+    // 避免重复下载或把进度擦掉。
+    if (current.status !== 'available') return { ...current }
+    try {
+      await updater.downloadUpdate()
+    } catch (error) {
+      return emit({ status: 'error', error: error instanceof Error ? error.message : String(error) })
+    }
+    // 底层 progress/downloaded 事件已把状态推到 downloading/downloaded，返回最新快照
+    return { ...current }
+  }
+
   return {
     currentVersion: updater.currentVersion,
     capability: () => ({ ...cap }),
@@ -211,6 +234,7 @@ export function createUpdateService(
     installUpdate(): void {
       updater.quitAndInstall(false, true)
     },
+    downloadUpdate,
     onState: (cb) => {
       listeners.add(cb)
       // 订阅即补发当前状态，避免界面重进后空白；补发同样要隔离订阅方异常

@@ -34,9 +34,23 @@ async function refresh(): Promise<void> {
 }
 
 async function toggleProfile(p: FirewallProfile): Promise<void> {
+  const nextEnable = !p.enabled
+  const isPublic = p.name.trim().toLowerCase() === 'public'
+  // M8：禁用 Public（公用网络）防火墙风险高——在咖啡厅/酒店等不可信网络下会暴露全部入站端口。
+  // 必须用户二次确认后才带 confirmDisablePublic=true 下发；取消则什么都不做（服务端也会兜底拒绝）。
+  if (!nextEnable && isPublic) {
+    const confirmed = window.confirm(
+      '确定要关闭「公用网络」防火墙吗？\n\n在咖啡厅、酒店等不可信网络环境下，关闭防火墙会暴露本机全部入站端口，存在安全风险。\n\n如仍要继续，请点击「确定」。'
+    )
+    if (!confirmed) return
+  }
   busy.value = `profile:${p.name}`
   try {
-    const r = await window.gale.firewall.setProfileEnabled(p.name, !p.enabled)
+    const r = await window.gale.firewall.setProfileEnabled(
+      p.name,
+      nextEnable,
+      !nextEnable && isPublic ? { confirmDisablePublic: true } : undefined
+    )
     flash(`profile:${p.name}`, r.message, r.ok ? 'ok' : 'bad')
     if (r.ok) {
       await window.gale.history.add({

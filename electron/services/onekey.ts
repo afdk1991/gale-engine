@@ -159,7 +159,12 @@ export function createOneKeyService(deps: OneKeyDeps): OneKeyService {
       if (last.status !== 'failed') break
       // 已请求取消 → 不再重试，直接收尾
       if (state?.cancelRequested) break
-      if (i < attempts - 1) await sleep(retryDelayMs)
+      if (i < attempts - 1) {
+        await sleep(retryDelayMs)
+        // L-O1：sleep 期间可能已收到取消请求，醒来后必须先判断再决定是否进入下一轮，
+        // 否则会在本可停止时又多跑一次本可避免的尝试（与底层子进程争抢句柄）。
+        if (state?.cancelRequested) break
+      }
     }
 
     const outcome: OptOutcome = { ...(last as OptOutcome), durationMs, attempts: tried }
@@ -287,6 +292,10 @@ export function createOneKeyService(deps: OneKeyDeps): OneKeyService {
   }
 
   const retryFailed = async (): Promise<OneKeySummary> => {
+    // M2：运行中（含 cancelling）一律拒绝重试。旧实现直接 `state.phase='done'` 后调 start()，
+    // 若上一轮尚未结束（双击重试 / 界面重试与进行中的任务撞车），会把运行态硬改写成 done，
+    // 两轮任务并行、进度互相覆盖。现在先过 isActive() 守卫，运行中直接返回提示。
+    if (isActive()) return rejected(RUNNING_MSG)
     const failedIds = (state?.outcomes ?? []).filter((o) => o.status === 'failed').map((o) => o.id)
     if (failedIds.length === 0) {
       return {
@@ -302,7 +311,8 @@ export function createOneKeyService(deps: OneKeyDeps): OneKeyService {
         error: '没有需要重试的失败项'
       }
     }
-    // 让上一轮结束态退出 running，避免被并发守卫拦下
+    // 让上一轮结束态退出 running（走到这里时 isActive() 必为 false，phase 已是 done/cancelled），
+    // 避免被 start() 的并发守卫拦下
     if (state) state.phase = 'done'
     return start(failedIds)
   }

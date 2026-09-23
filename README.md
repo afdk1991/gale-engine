@@ -2,7 +2,7 @@
 
 跨平台桌面优化加速软件：硬件监控与型号规格、进程管理、垃圾清理、启动项管理、游戏模式、系统服务、计划任务与防火墙管理，集成在一个轻量 Electron 桌面应用里。支持 **Windows 10/11、macOS、Linux**（x64 + arm64）。
 
-当前版本：**v0.1.9**（首页一键优化 + DLL 单项目优化能力库 + 运行时提权通道 + 磁盘空间实测释放修复，417 项测试全绿）
+当前版本：**v0.1.10**（首页一键优化 + DLL 单项目优化能力库 + 运行时提权通道 + 磁盘空间实测释放修复，**498 项测试全绿**；并已完成全量代码审查 H1 / M1–M10 / L1–L12 的全部加固）
 
 - 官网：https://gy.mixm.top
 - 仓库：https://github.com/afdk1991/gale-engine
@@ -17,7 +17,7 @@
 | 方式 | 命令 / 链接 | 适用场景 |
 | --- | --- | --- |
 | **Scoop**（推荐） | `scoop bucket add gale https://github.com/afdk1991/gale-engine` → `scoop install gale-engine` | 命令行用户，自动更新 |
-| **直接下载** | [GitHub Releases](https://github.com/afdk1991/gale-engine/releases/latest) → `gale-engine-0.1.9-x64-setup.exe` / `arm64-setup.exe` | 普通用户，双击安装 |
+| **直接下载** | [GitHub Releases](https://github.com/afdk1991/gale-engine/releases/latest) → `gale-engine-0.1.10-x64-setup.exe` / `arm64-setup.exe` | 普通用户，双击安装 |
 
 > Scoop manifest 位于仓库 `scoop/gale-engine.json`，支持 x64 + arm64，`checkver` + `autoupdate` 已配置，新版本发布后 `scoop update` 即可升级。
 
@@ -26,7 +26,7 @@
 | 方式 | 命令 / 链接 | 适用场景 |
 | --- | --- | --- |
 | **Homebrew**（推荐） | `brew tap afdk1991/gale-engine https://github.com/afdk1991/gale-engine` → `brew install --cask gale-engine` | 命令行用户，自动更新 |
-| **直接下载** | [GitHub Releases](https://github.com/afdk1991/gale-engine/releases/latest) → `gale-engine-0.1.9-x64.dmg` / `arm64.dmg` | 普通用户，拖入 Applications |
+| **直接下载** | [GitHub Releases](https://github.com/afdk1991/gale-engine/releases/latest) → `gale-engine-0.1.10-x64.dmg` / `arm64.dmg` | 普通用户，拖入 Applications |
 
 > Homebrew Cask 位于仓库 `homebrew/gale-engine.rb`，自动按 CPU 架构（Intel / Apple Silicon）选择对应 DMG。应用未签名，首次打开需右键 → 打开。
 
@@ -34,8 +34,8 @@
 
 | 方式 | 命令 / 链接 | 适用场景 |
 | --- | --- | --- |
-| **AppImage**（推荐） | [下载](https://github.com/afdk1991/gale-engine/releases/latest) → `chmod +x gale-engine-0.1.9-x86_64.AppImage` → `./gale-engine-0.1.9-x86_64.AppImage` | 免安装，即下即用 |
-| **deb** | [下载](https://github.com/afdk1991/gale-engine/releases/latest) → `sudo dpkg -i gale-engine-0.1.9-amd64.deb` | Debian / Ubuntu (x64) |
+| **AppImage**（推荐） | [下载](https://github.com/afdk1991/gale-engine/releases/latest) → `chmod +x gale-engine-0.1.10-x86_64.AppImage` → `./gale-engine-0.1.10-x86_64.AppImage` | 免安装，即下即用 |
+| **deb** | [下载](https://github.com/afdk1991/gale-engine/releases/latest) → `sudo dpkg -i gale-engine-0.1.10-amd64.deb` | Debian / Ubuntu (x64) |
 | **直接下载** | [GitHub Releases](https://github.com/afdk1991/gale-engine/releases/latest) | 全部产物 |
 
 > AppImage 同时提供 x64 (`x86_64`) 和 arm64 两个架构。deb 仅支持 x64。
@@ -108,7 +108,7 @@
 npm install              # 安装依赖
 npm run dev              # 启动开发模式（electron-vite dev）
 npm run typecheck        # vue-tsc 类型检查（发布准入）
-npm test                 # vitest 全量单测（当前 265 项全绿）
+npm test                 # vitest 全量单测（当前 498 项全绿）
 ```
 
 ## 打包与发布
@@ -130,7 +130,7 @@ npm run package:linux    # Linux（AppImage+deb，x64+arm64）
 推送 `v*` tag 即触发 `.github/workflows/release.yml`，在 win/macos/linux × x64/arm64 六个矩阵上并行构建：
 
 ```bash
-git tag v0.1.9 && git push origin v0.1.9   # 示例，实际请用当前版本号
+git tag v0.1.10 && git push origin v0.1.10   # 示例，实际请用当前版本号
 ```
 
 - 6 个平台产物汇聚到同一 Release：exe / dmg / zip / AppImage / deb + blockmap + 各平台 `latest*.yml`
@@ -191,8 +191,8 @@ npm run package
 
 ## 验证与验收
 
-- **单测**：`npm test`（**417** 项，覆盖全部 service 纯逻辑 + 跨平台分支 + 主题系统 + 侧边栏组件 + 更新状态机/能力探测 + 能力库安全边界 + DLL 检测）
-- **类型**：`npm run typecheck`
+- **单测**：`npm test`（**498** 项，覆盖全部 service 纯逻辑 + 跨平台分支 + 主题系统 + 侧边栏组件 + 更新状态机/能力探测 + 能力库安全边界 + DLL 检测 + 回执判定与注入防护）
+- **类型**：`npm run typecheck`（**与单测同列为必过项**——测试不覆盖 `preload.ts`，接口脱节只能靠类型门禁发现）
 - **构建**：`npm run build`
 - **核心命令直测**：服务层脚本可在本机直接验证（Win PowerShell / mac-linux bash）
 - **主题持久化 E2E**（真实 GUI，Windows 实机）：
@@ -200,7 +200,8 @@ npm run package
   node scripts/verify-theme-persistence.mjs
   ```
   通过 CDP 驱动真实应用：点击「深色 + 能量橙」→ 关闭 → 重启验证主题保持。
-- **冒烟清单**：`docs/smoke-test-checklist.html`（交互式，**121** 项，含 84 项可自动/脚本验证项）
+- **冒烟清单**：`docs/smoke-test-checklist.html`（交互式，**154** 项，含 106 项可自动/脚本验证项）
+- **代码审查报告**：`docs/code-review-2026-09-16.md`（含 §〇 修复进度表，H1 / M1–M10 / L1–L12 全部为 ✅）
 
 ## 已知限制
 
@@ -210,8 +211,13 @@ npm run package
 - 防火墙规则仅展示前 200 条（按显示名排序），海量规则场景建议使用筛选
 - macOS 应用未配置 Apple Developer 证书时，Gatekeeper 会提示「未验证开发者」，需右键→打开；配置证书后 CI 自动签名+公证
 - Linux 服务/计划任务/防火墙操作依赖 systemd / cron / ufw / iptables，init 系统与无 ufw 的发行版降级为只读
+- Linux **`deb` 安装的实例无法应用内自更新**（electron-updater 上游仅支持 AppImage），界面会明确提示原因并给出手动升级命令；需自更新请改用 AppImage
 - 代码签名未配置（Win）/ 未公证（mac），首次安装会有系统安全提示，属预期
 - 内存条 / 硬盘型号需管理员/root 权限，无权限时返回空（已在 UI 标注）
+- 启动项「禁用」为**隐藏保留**（`Hidden=true` / plist `Disabled`），项仍出现在列表中——这是为换取「可原地再启用」的设计取舍
+
+> 关于「假成功」：本项目已把操作回执统一到严格判定（`ERR:` 优先、`OK` 须独立成行、空输出即失败），
+> 并在游戏模式等页面按结构化 `ok` 决定提示与是否写入记录。新增功能时请沿用该判定，不要再使用 `includes('OK')`。
 
 ## 更新日志
 

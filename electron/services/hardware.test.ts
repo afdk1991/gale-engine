@@ -1,7 +1,16 @@
-import { describe, it, expect } from 'vitest'
-import { createHardwareService } from './hardware'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { createHardwareService, createSystemInformationHardwareFetcher } from './hardware'
 import type { HardwareFetcher } from './hardware'
 import type { HardwareInfo } from '../../shared/types'
+import * as si from 'systeminformation'
+
+// 仅桩掉 si.graphics（显卡与显示器同源采集）。其余导出保持真实；
+// 既有用例都注入 fake fetcher，不会触达真实 si，故不影响它们。
+vi.mock('systeminformation', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('systeminformation')>()
+  return { ...actual, graphics: vi.fn() }
+})
+const graphicsMock = vi.mocked(si.graphics)
 
 function fakeFetcher(overrides: Partial<HardwareFetcher> = {}): HardwareFetcher {
   return {
@@ -134,5 +143,37 @@ describe('createHardwareService', () => {
     // 电源
     expect(info.power).toHaveProperty('type')
     expect(info.power).toHaveProperty('powerW')
+  })
+})
+
+describe('默认采集器：graphics()/displays() 复用同一次 si.graphics()', () => {
+  beforeEach(() => {
+    graphicsMock.mockReset()
+  })
+
+  it('并发调用 graphics() 与 displays() 只触发一次 si.graphics() 枚举', async () => {
+    graphicsMock.mockResolvedValue({
+      controllers: [{ model: 'RTX-4070', vendor: 'NVIDIA', vram: 12288, bus: 'PCIe' }],
+      displays: [
+        { model: 'DELL-U2723QE', vendor: 'Dell', resolutionX: 3840, resolutionY: 2160, sizeX: 597, sizeY: 336 }
+      ]
+    } as unknown as Awaited<ReturnType<typeof si.graphics>>)
+
+    const f = createSystemInformationHardwareFetcher()
+    const [g, d] = await Promise.all([f.graphics(), f.displays()])
+    // 关键：原先二者各调一次 si.graphics()，现在共享一次采集
+    expect(graphicsMock).toHaveBeenCalledTimes(1)
+    expect(g).toHaveLength(1)
+    expect(g[0].model).toBe('RTX-4070')
+    expect(d).toHaveLength(1)
+    expect(d[0].resolutionX).toBe(3840)
+  })
+
+  it('si.graphics() 失败时二者各自降级为空数组，互不影响', async () => {
+    graphicsMock.mockRejectedValue(new Error('WMI 不可用'))
+    const f = createSystemInformationHardwareFetcher()
+    const [g, d] = await Promise.all([f.graphics(), f.displays()])
+    expect(g).toEqual([])
+    expect(d).toEqual([])
   })
 })

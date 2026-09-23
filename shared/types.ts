@@ -209,7 +209,12 @@ export interface GaleApi {
   }
   optimizer: {
     scanCleanup(): Promise<CleanupPlan[]>
-    runCleanup(items: { id: string; path: string; kind: OptimizerTargetKind }[]): Promise<CleanupResult[]>
+    /**
+     * 只接受清理项 id：清理目标路径/类型全部由服务端按 id 重新扫描权威清单解析，
+     * 渲染层连路径都不需要（也不应该）传 —— 早前契约带 path，渲染层可塞
+     * `根\..\..\` 穿越路径绕过白名单。未知/越界 id 一律拒绝，不执行任何删除。
+     */
+    runCleanup(ids: string[]): Promise<CleanupResult[]>
     listStartup(): Promise<StartupItem[]>
     toggleStartup(id: string, enable: boolean, command?: string): Promise<StartupItem[]>
   }
@@ -242,8 +247,14 @@ export interface GaleApi {
     volumes(): Promise<DiskVolume[]>
     /** 扫描可深度释放的空间（更新缓存/系统临时/组件存储等，按平台分发） */
     scanDeepCleanup(): Promise<DeepCleanupPlan[]>
-    /** 按选中的 id 执行深度清理，id 由服务端权威清单解析（客户端无法注入路径） */
-    runDeepCleanup(items: { id: string; kind: DeepCleanupKind; path: string }[]): Promise<CleanupResult[]>
+    /**
+     * 按选中的 id 执行深度清理。
+     *
+     * 只接受 id：清理目标路径、类型、是否需要提权全部由服务端**权威清单**解析，
+     * 客户端连「路径」都不需要（也不应该）传 —— 早前契约里带 `path`，但渲染层
+     * 实际塞的是展示文案 `detail`，语义与命名不符，容易误导后续维护者。
+     */
+    runDeepCleanup(ids: string[]): Promise<CleanupResult[]>
     /** 检查/在线修复指定卷的文件系统错误（Win chkdsk / mac diskutil；linux 诚实降级） */
     checkVolume(mount: string, fix: boolean): Promise<DiskRepairResult>
     /** 修复系统文件与 DLL（Win sfc /scannow 或 DISM RestoreHealth；非 Win 诚实降级） */
@@ -271,8 +282,10 @@ export interface GaleApi {
   }
   gameMode: {
     status(): Promise<GameModeStatus>
-    boost(): Promise<GameModeStatus>
-    restore(): Promise<GameModeStatus>
+    /** 进入游戏模式；失败时 ok=false 且不写入优化记录 */
+    boost(): Promise<GameModeActionResult>
+    /** 退出游戏模式并还原；失败时保留还原凭据以便重试 */
+    restore(): Promise<GameModeActionResult>
   }
   toolbox: {
     flushDns(): Promise<ToolResult>
@@ -283,7 +296,12 @@ export interface GaleApi {
   firewall: {
     profiles(): Promise<FirewallProfile[]>
     listRules(): Promise<FirewallRule[]>
-    setProfileEnabled(profile: string, enable: boolean): Promise<ToolResult>
+    /**
+     * M8：禁用 Public（公用网络）防火墙风险高，服务端要求前端二次确认后
+     * 显式传 { confirmDisablePublic: true } 才放行；未确认时服务端拒绝执行。
+     * 其他 profile 的启用/禁用不受影响。
+     */
+    setProfileEnabled(profile: string, enable: boolean, options?: { confirmDisablePublic?: boolean }): Promise<ToolResult>
     toggleRule(name: string, enable: boolean): Promise<ToolResult>
   }
   tasks: {
@@ -315,6 +333,11 @@ export interface GaleApi {
     setUpdatePrefs(patch: Partial<AppUpdatePrefs>): Promise<AppUpdatePrefs>
     /** 退出并安装已下载的更新 */
     installUpdate(): Promise<void>
+    /**
+     * 在 autoDownload=false 且已处于 available 态时，手动触发下载。
+     * 底层进度经 onUpdateEvent 推送到 downloading/downloaded；非 available 态调用为空操作。
+     */
+    downloadUpdate(): Promise<AppUpdateResult>
     /** 读取开机自启状态 */
     getAutoLaunch(): Promise<boolean>
     /** 设置开机自启，返回设置后的状态 */
@@ -587,7 +610,8 @@ export interface DllRepairResult {
 
 // ---- 一键优化（首页）----
 
-export type OneKeyPhase = 'idle' | 'running' | 'cancelling' | 'done' | 'cancelled'
+// state=null 时 snapshot() 返回 null，从不 emit 'idle'，故该状态不列入联合类型
+export type OneKeyPhase = 'running' | 'cancelling' | 'done' | 'cancelled'
 
 /** 一键优化实时进度（主进程 → 渲染进程推送） */
 export interface OneKeyProgress {
@@ -699,6 +723,22 @@ export interface GameModeStatus {
   boosted: boolean
   /** boost 之前记录的上一计划 GUID，未记录为 null */
   previous: string | null
+}
+
+/**
+ * 游戏模式切换结果。
+ *
+ * `boost` / `restore` 曾经只返回 `GameModeStatus`，界面无从知道是否真的切换成功，
+ * 于是无论成败都提示「已切换到高性能电源计划」并写入优化记录 —— 在 Linux 无 root、
+ * Windows 无管理员权限时属于谎报。现显式回传回执，界面据此决定提示与是否记痕。
+ */
+export interface GameModeActionResult {
+  /** 本次操作是否真的成功 */
+  ok: boolean
+  /** 可直接展示给用户的说明（失败时为原因） */
+  message: string
+  /** 操作后的最新状态 */
+  status: GameModeStatus
 }
 
 // ---- Toolbox（工具箱）----

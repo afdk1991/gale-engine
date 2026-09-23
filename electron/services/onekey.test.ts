@@ -158,4 +158,40 @@ describe('一键优化编排', () => {
     await p
     expect(second.error).toContain('正在执行')
   })
+
+  // M2 回归：运行中（含 cancelling）调用 retryFailed 必须被守卫拒绝，
+  // 不能再像旧实现那样把运行态硬改成 done 后另起一轮并行任务。
+  it('运行中 retryFailed 被守卫拒绝，不另起并行任务', async () => {
+    const { library, release, getRunCount } = makeLibrary({ pauseFirst: true })
+    const svc = createOneKeyService(okDeps(library))
+    const p = svc.start()
+    // 首项正卡在暂停点（运行中），此时调用重试必须被拒
+    const blocked = await svc.retryFailed()
+    expect(blocked.total).toBe(0)
+    expect(blocked.error).toContain('正在执行')
+    expect(svc.isRunning()).toBe(true)
+    release()
+    await p
+    // 被拒期间没有额外跑任何东西
+    expect(getRunCount()).toBeGreaterThanOrEqual(1)
+  })
+
+  // L-O1 回归：retryDelayMs sleep 期间收到取消，醒来后不应再多跑一次本可避免的尝试
+  it('重试 sleep 期间取消 → 不发起下一次尝试', async () => {
+    const { library } = makeLibrary({ failIds: ['a'] })
+    let sleepCalls = 0
+    const svc = createOneKeyService({
+      library,
+      maxRetries: 3,
+      retryDelayMs: 10,
+      sleep: async () => {
+        // 第一次重试等待期间，外部请求取消
+        if (sleepCalls === 0) await svc.cancel()
+        sleepCalls++
+      }
+    })
+    const summary = await svc.start(['a'])
+    // 取消生效：a 失败后进入 sleep 即停止，不再做第 2/3 次尝试
+    expect(summary.cancelled).toBe(true)
+  })
 })

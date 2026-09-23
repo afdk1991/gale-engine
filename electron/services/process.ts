@@ -19,7 +19,14 @@ export const PROTECTED_NAMES = [
   'winlogon',
   'services',
   'lsass',
-  'Memory Compression'
+  'Memory Compression',
+  // 桌面 / shell 关键进程：误杀会导致任务栏消失、桌面黑屏、字体与开始菜单故障等用户可见问题
+  'svchost',
+  'explorer',
+  'dwm',
+  'fontdrvhost',
+  'sihost',
+  'taskhostw'
 ]
 
 export const PRIORITY_CLASS: Record<ProcessPriorityLevel, string> = {

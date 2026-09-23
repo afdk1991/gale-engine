@@ -106,6 +106,21 @@ describe('createWinServicesService (Windows)', () => {
     expect(calls).toHaveLength(0)
   })
 
+  it('M1：受保护关键服务（RpcSs）被 setStartupType 拒绝且不调用执行器', async () => {
+    const { runner, calls } = recordingRunner(() => ok())
+    const res = await createWinServicesService(runner, 'win32').setStartupType('RpcSs', 'disabled')
+    expect(res.ok).toBe(false)
+    expect(res.message).toContain('关键服务')
+    expect(calls).toHaveLength(0)
+  })
+
+  it('M1：受保护关键服务（DcomLaunch）改启动类型同样被拒绝', async () => {
+    const { runner, calls } = recordingRunner(() => ok())
+    const res = await createWinServicesService(runner, 'win32').setStartupType('DcomLaunch', 'manual')
+    expect(res.ok).toBe(false)
+    expect(calls).toHaveLength(0)
+  })
+
   it('非法服务名直接拒绝且不调用执行器', async () => {
     const { runner, calls } = recordingRunner(() => ok())
     const res = await createWinServicesService(runner, 'win32').stop("a';b")

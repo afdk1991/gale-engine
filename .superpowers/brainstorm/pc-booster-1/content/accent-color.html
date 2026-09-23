@@ -1,0 +1,93 @@
+<h2>主色选择：双主题下用哪个品牌主色？</h2>
+<p class="subtitle">主色会贯穿按钮、评分环、选中态、图表曲线等所有交互元素（浅色/深色主题都会自动适配）。点击选择。</p>
+
+<style>
+  .ac-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+  .ac { background: var(--bg-secondary); border: 2px solid var(--border); border-radius: 12px; overflow: hidden; cursor: pointer; transition: all 0.15s ease; }
+  .ac:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+  .ac.selected { border-color: var(--selected-border); }
+  .ac-prev { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 1.4rem 1rem; }
+  .ac-ring { width: 64px; height: 64px; border-radius: 50%; border: 7px solid; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fff; }
+  .ac-ring b { font-size: 18px; }
+  .ac-ring span { font-size: 7px; color: #9ca3af; }
+  .ac-btn { color: #fff; border-radius: 999px; padding: 4px 16px; font-size: 10px; font-weight: 600; }
+  .ac-body { padding: 0.8rem 1rem; border-top: 1px solid var(--border); }
+  .ac-body h3 { font-size: 0.95rem; margin-bottom: 0.15rem; }
+  .ac-body p { color: var(--text-secondary); font-size: 0.8rem; margin: 0; }
+  .ac-dots { display: flex; gap: 4px; margin-top: 0.5rem; }
+  .ac-dot { width: 14px; height: 14px; border-radius: 4px; }
+</style>
+
+<div class="ac-grid">
+  <div class="ac" data-choice="blue" onclick="toggleSelect(this)">
+    <div class="ac-prev">
+      <div class="ac-ring" style="border-color:#3b82f6;border-top-color:#dbeafe"><b style="color:#2563eb">78</b><span>健康评分</span></div>
+      <div class="ac-btn" style="background:#3b82f6">立即加速</div>
+    </div>
+    <div class="ac-body">
+      <h3>科技蓝</h3>
+      <p>经典工具软件安全感，最稳妥不出错</p>
+      <div class="ac-dots"><span class="ac-dot" style="background:#3b82f6"></span><span class="ac-dot" style="background:#1d4ed8"></span><span class="ac-dot" style="background:#60a5fa"></span></div>
+    </div>
+  </div>
+
+  <div class="ac" data-choice="cyan" onclick="toggleSelect(this)">
+    <div class="ac-prev">
+      <div class="ac-ring" style="border-color:#06b6d4;border-top-color:#cffafe"><b style="color:#0891b2">78</b><span>健康评分</span></div>
+      <div class="ac-btn" style="background:linear-gradient(90deg,#06b6d4,#3b82f6)">立即加速</div>
+    </div>
+    <div class="ac-body">
+      <h3>极客青</h3>
+      <p>性能监控氛围强，进阶硬件工具感</p>
+      <div class="ac-dots"><span class="ac-dot" style="background:#06b6d4"></span><span class="ac-dot" style="background:#0e7490"></span><span class="ac-dot" style="background:#67e8f9"></span></div>
+    </div>
+  </div>
+
+  <div class="ac" data-choice="violet" onclick="toggleSelect(this)">
+    <div class="ac-prev">
+      <div class="ac-ring" style="border-color:#8b5cf6;border-top-color:#ede9fe"><b style="color:#7c3aed">78</b><span>健康评分</span></div>
+      <div class="ac-btn" style="background:#8b5cf6">立即加速</div>
+    </div>
+    <div class="ac-body">
+      <h3>活力紫</h3>
+      <p>年轻现代，与常见工具软件形成差异</p>
+      <div class="ac-dots"><span class="ac-dot" style="background:#8b5cf6"></span><span class="ac-dot" style="background:#6d28d9"></span><span class="ac-dot" style="background:#c4b5fd"></span></div>
+    </div>
+  </div>
+
+  <div class="ac" data-choice="green" onclick="toggleSelect(this)">
+    <div class="ac-prev">
+      <div class="ac-ring" style="border-color:#10b981;border-top-color:#d1fae5"><b style="color:#059669">78</b><span>健康评分</span></div>
+      <div class="ac-btn" style="background:#10b981">立即加速</div>
+    </div>
+    <div class="ac-body">
+      <h3>健康绿</h3>
+      <p>优化清理类软件的经典色，暗示"变干净"</p>
+      <div class="ac-dots"><span class="ac-dot" style="background:#10b981"></span><span class="ac-dot" style="background:#047857"></span><span class="ac-dot" style="background:#6ee7b7"></span></div>
+    </div>
+  </div>
+
+  <div class="ac" data-choice="orange" onclick="toggleSelect(this)">
+    <div class="ac-prev">
+      <div class="ac-ring" style="border-color:#f97316;border-top-color:#ffedd5"><b style="color:#ea580c">78</b><span>健康评分</span></div>
+      <div class="ac-btn" style="background:#f97316">立即加速</div>
+    </div>
+    <div class="ac-body">
+      <h3>能量橙</h3>
+      <p>"加速"的动感联想，醒目有活力</p>
+      <div class="ac-dots"><span class="ac-dot" style="background:#f97316"></span><span class="ac-dot" style="background:#c2410c"></span><span class="ac-dot" style="background:#fdba74"></span></div>
+    </div>
+  </div>
+
+  <div class="ac" data-choice="auto" onclick="toggleSelect(this)">
+    <div class="ac-prev">
+      <div class="ac-ring" style="border-color:linear-gradient(#3b82f6,#8b5cf6);border-top-color:#dbeafe"><b style="background:linear-gradient(90deg,#2563eb,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent">78</b><span>健康评分</span></div>
+      <div class="ac-btn" style="background:linear-gradient(90deg,#2563eb,#7c3aed)">立即加速</div>
+    </div>
+    <div class="ac-body">
+      <h3>渐变蓝紫</h3>
+      <p>现代 SaaS 气质，渐变用于按钮与强调元素</p>
+      <div class="ac-dots"><span class="ac-dot" style="background:linear-gradient(90deg,#2563eb,#7c3aed)"></span><span class="ac-dot" style="background:#2563eb"></span><span class="ac-dot" style="background:#7c3aed"></span></div>
+    </div>
+  </div>
+</div>
