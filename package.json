@@ -28,12 +28,12 @@
     "@vitejs/plugin-vue": "^5.2.1",
     "@vue/test-utils": "^2.4.6",
     "7zip-bin": "^5.2.0",
-    "electron": "^33.2.1",
-    "electron-builder": "^25.1.8",
+    "electron": "^39.8.10",
+    "electron-builder": "^26.15.3",
     "electron-vite": "^3.1.0",
     "jsdom": "^26.0.0",
     "typescript": "^5.7.2",
-    "vitest": "^3.0.0",
+    "vitest": "^5.0.1",
     "vue-tsc": "^2.1.10"
   }
 }
