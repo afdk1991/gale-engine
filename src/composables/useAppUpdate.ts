@@ -168,7 +168,9 @@ export function useAppUpdate(): UseAppUpdate {
       case 'up-to-date':
         return '当前已是最新版本'
       case 'available':
-        return `发现新版本 v${s.version ?? '—'}，正在下载…`
+        // available 态尚未开始下载（autoDownload=false 时由用户点「下载更新」手动触发），
+        // 不能写「正在下载…」——那是 downloading 态的文案，否则与「下载更新」按钮自相矛盾。
+        return `发现新版本 v${s.version ?? '—'}，可下载更新`
       case 'downloading':
         return `正在下载 v${s.version ?? ''} ${percent.value ?? 0}%`
       case 'downloaded':

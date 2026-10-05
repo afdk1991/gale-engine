@@ -7,6 +7,7 @@ import {
   buildRelaunchElevatedScript,
   macAppPath,
   createElevator,
+  ELEVATED_OUTER_TIMEOUT_MS,
   type TempIo
 } from './elevate'
 
@@ -126,6 +127,25 @@ describe('createElevator', () => {
     const res = await e.runElevated('anything')
     expect(res.code).toBe(1)
     expect(res.stderr).toContain('UAC')
+  })
+
+  it('N-H1 回归：提权外层脚本带 30 分钟超时，不被普通 30s 超时误杀', async () => {
+    // SFC/DISM/StartComponentCleanup/winget 都是数分钟级长任务，
+    // runElevated 调用 deps.runner.run(outer) 时必须单次覆盖硬超时。
+    const optsSeen: Array<{ timeoutMs?: number } | undefined> = []
+    const optsRunner: ExecRunner = {
+      run: (script: string, opts?: { timeoutMs?: number }) => {
+        optsSeen.push(opts)
+        return Promise.resolve(ok('', 0))
+      }
+    }
+    const { io } = memoryIo()
+    const e = createElevator({ runner: optsRunner, platform: 'win32', io, tmpDir: '/tmp', newId: () => 'id-to' })
+    await e.runElevated('Write-Host hi')
+    // 只调了一次 runner.run（外层提权脚本），且第二参带 30 分钟超时
+    expect(optsSeen).toHaveLength(1)
+    expect(optsSeen[0]?.timeoutMs).toBe(1_800_000)
+    expect(ELEVATED_OUTER_TIMEOUT_MS).toBe(1_800_000)
   })
 
   it('restartElevated 已提权时无需重启', async () => {

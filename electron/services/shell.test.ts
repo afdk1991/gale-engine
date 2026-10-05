@@ -75,3 +75,40 @@ describe('createBashRunner', () => {
     }
   )
 })
+
+describe('run(script, opts) 单次超时覆盖', () => {
+  // N-H1：opts.timeoutMs 用于 SFC/DISM/winget 等数分钟级长任务。
+  // 这里用「构造默认 30s + 单次 500ms 覆盖」跑必然阻塞的脚本：
+  // 若覆盖生效，脚本会在 ~500ms 被 kill（快速判失败），而不是等满 30s。
+
+  it.skipIf(process.platform !== 'win32')(
+    'PowerShell：opts.timeoutMs 覆盖构造默认 30s，长脚本被快速判失败',
+    async () => {
+      const runner = createPowershellRunner() // 构造默认 30s
+      const t0 = Date.now()
+      const r = await runner.run('Start-Sleep -Seconds 60; Write-Output "x"', { timeoutMs: 500 })
+      expect(r.code).not.toBe(0)
+      expect(Date.now() - t0).toBeLessThan(15_000)
+    }
+  )
+
+  it.skipIf(process.platform === 'win32')(
+    'bash：opts.timeoutMs 覆盖构造默认 30s，长脚本被快速判失败',
+    async () => {
+      const runner = createBashRunner() // 构造默认 30s
+      const t0 = Date.now()
+      const r = await runner.run('sleep 60; echo x', { timeoutMs: 500 })
+      expect(r.code).not.toBe(0)
+      expect(Date.now() - t0).toBeLessThan(15_000)
+    }
+  )
+
+  it.skipIf(process.platform !== 'win32')(
+    'PowerShell：不传 opts 时沿用构造超时（800ms 快速失败，证明默认链路未变）',
+    async () => {
+      const runner = createPowershellRunner(800)
+      const r = await runner.run('Start-Sleep -Seconds 60; Write-Output "x"')
+      expect(r.code).not.toBe(0)
+    }
+  )
+})
