@@ -26,7 +26,7 @@ function psSingleQuote(s: string): string {
 
 /** shell 单引号转义：' → '\'' */
 function shq(s: string): string {
-  return `'${String(s).replace(/'/g, `'\\''`)}'`
+  return `'${String(s).replace(/'/g, `'\''`)}'`
 }
 
 /** 读写临时文件的抽象，便于测试注入（不依赖真实磁盘） */
@@ -42,6 +42,18 @@ export interface TempIo {
 
 /** 提权临时文件的统一前缀 */
 export const TMP_PREFIX = 'gale-elev-'
+
+/**
+ * 提权外层脚本的硬超时（毫秒）。
+ *
+ * 外层脚本是 `Start-Process -Verb RunAs -Wait`（unix 为 pkexec/sudo），会一直阻塞到
+ * 提权子进程跑完才返回。经此通道执行的 SFC /scannow、DISM /RestoreHealth、
+ * DISM StartComponentCleanup、winget 安装 VC++ 运行库都是**数分钟级**长任务——
+ * 若沿用普通命令的 30s 默认超时（shell.ts EXEC_TIMEOUT_MS），Node 会在子进程
+ * 还在正常跑时 kill 掉外层 PowerShell，UI 报「修复未完成」假失败。故提权外层
+ * 单独放宽到 30 分钟。
+ */
+export const ELEVATED_OUTER_TIMEOUT_MS = 30 * 60 * 1000
 
 /** 超过该时长未改动，视为上一轮异常退出留下的残留（默认 1 小时） */
 export const STALE_TEMP_MS = 60 * 60 * 1000
@@ -273,7 +285,9 @@ export function createElevator(deps: ElevatorDeps): Elevator {
 
     try {
       const outer = buildElevatedRunScript({ scriptPath, outPath, errPath, platform })
-      const res = await deps.runner.run(outer)
+      // 提权外层会 -Wait 阻塞到子进程（SFC/DISM/winget 等数分钟级）结束，
+      // 必须单次放宽硬超时，否则 30s 默认超时会把外层连同等待一起误杀。
+      const res = await deps.runner.run(outer, { timeoutMs: ELEVATED_OUTER_TIMEOUT_MS })
 
       if (platform === 'win32') {
         let stdout = ''
