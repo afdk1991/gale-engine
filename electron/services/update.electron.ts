@@ -58,9 +58,16 @@ export function createElectronUpdaterApi(): UpdaterApi {
       bytesPerSecond: p?.bytesPerSecond ?? 0
     })
   )
-  autoUpdater.on('update-downloaded', (info) =>
+  autoUpdater.on('update-downloaded', (info) => {
     emit({ type: 'downloaded', version: String(info?.version ?? '') })
-  )
+    // 全自动升级：下载完成后延迟 3 秒自动退出并安装重启
+    // 仅打包应用生效（dev 模式不重启）；3 秒缓冲让用户看到"已下载即将重启"
+    if (app.isPackaged) {
+      setTimeout(() => {
+        autoUpdater.quitAndInstall(false, true)
+      }, 3000)
+    }
+  })
   autoUpdater.on('error', (err) =>
     emit({
       type: 'error',
