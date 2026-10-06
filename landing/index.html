@@ -311,17 +311,17 @@
     <section class="section section-alt" id="tech">
       <div class="wrap">
         <h2>技术架构</h2>
-        <p class="sub">Electron 33 + Vue 3 + TypeScript，electron-vite 多进程构建，全跨平台原生命令分发</p>
+        <p class="sub">Electron 39 + Vue 3 + TypeScript，electron-vite 多进程构建，全跨平台原生命令分发</p>
         <div class="grid">
           <div class="card reveal in">
             <div class="ico" aria-hidden="true">⚡</div>
             <h3>渲染层</h3>
-            <p>Vue 3 + TypeScript，13 个页面组件，左侧自适应导航（720px 以下收窄为图标栏），主题令牌系统（3 外观 × 6 强调色）。</p>
+            <p>Vue 3 + TypeScript，15 个页面组件，左侧自适应导航（720px 以下收窄为图标栏），主题令牌系统（3 外观 × 6 强调色）。</p>
           </div>
           <div class="card reveal in">
             <div class="ico" aria-hidden="true">🔌</div>
             <h3>主进程</h3>
-            <p>55 个 IPC handler，preload 桥接为 <code>window.gale</code>（contextIsolation: true），服务层全可注入依赖，纯逻辑可单测。</p>
+            <p>68 个 IPC handler，preload 桥接为 <code>window.gale</code>（contextIsolation: true），服务层全可注入依赖，纯逻辑可单测。</p>
           </div>
           <div class="card reveal in">
             <div class="ico" aria-hidden="true"> shell</div>
@@ -341,7 +341,7 @@
           <div class="card reveal in">
             <div class="ico" aria-hidden="true">📦</div>
             <h3>CI / CD</h3>
-            <p>GitHub Actions 6 矩阵并行构建（win/macos/linux × x64/arm64），推送 <code>v*</code> tag 自动构建发布，498 项自动化测试把关。</p>
+            <p>GitHub Actions 6 矩阵并行构建（win/macos/linux × x64/arm64），推送 <code>v*</code> tag 自动构建发布，558 项自动化测试把关。</p>
           </div>
         </div>
       </div>
@@ -542,7 +542,7 @@ brew install --cask gale-engine</code></pre>
               </div>
               <div class="step">
                 <h4>逐项核验</h4>
-                <p>按 <code>docs/smoke-test-checklist.html</code> 核验全部模块功能（72 项，含 44 项实机 GUI 冒烟）。</p>
+                <p>按 <code>docs/smoke-test-checklist.html</code> 核验全部模块功能（154 项，含 106 项可脚本验证）。</p>
               </div>
               <div class="step">
                 <h4>开始优化</h4>
