@@ -3,7 +3,6 @@ import { computed } from 'vue'
 import { useAppUpdate } from '../composables/useAppUpdate'
 
 const props = defineProps<{
-  /** compact=true 用于首页内嵌（不展示偏好开关与包格式细节） */
   compact?: boolean
 }>()
 
@@ -28,7 +27,6 @@ const releasesUrl = 'https://github.com/afdk1991/gale-engine/releases/latest'
 
 const showPrefs = computed(() => props.compact !== true && supported.value)
 
-/** 平台/安装方式的可读文案（让用户明白为什么能不能自更新） */
 const packageLabel = computed<string>(() => {
   const c = capability.value
   if (!c) return '检测中…'
@@ -45,17 +43,13 @@ const packageLabel = computed<string>(() => {
 async function openReleases(): Promise<void> {
   try {
     await window.gale.app.openExternal(releasesUrl)
-  } catch {
-    // 外链打开失败不该影响卡片其余状态；主进程侧已有 host 白名单，这里只兜住 rejection
-  }
+  } catch {}
 }
 
 async function toggle(key: 'autoCheck' | 'autoDownload' | 'autoInstallOnQuit', ev?: Event): Promise<void> {
   const el = ev?.target as HTMLInputElement | undefined
   const next = !(prefs.value?.[key] ?? true)
   await setPrefs({ [key]: next })
-  // 写入失败时 prefs 未变，Vue 不一定会重渲——显式把勾选状态拨回真实值，
-  // 避免出现「界面上是开的、实际没生效」的假成功
   if (el && prefs.value?.[key] !== next) el.checked = prefs.value?.[key] ?? false
 }
 </script>
@@ -73,7 +67,6 @@ async function toggle(key: 'autoCheck' | 'autoDownload' | 'autoInstallOnQuit', e
       <span class="dot" aria-hidden="true"></span>{{ label }}
     </p>
 
-    <!-- 下载进度：把「自动下载」的进展如实展示出来，而不是只转圈 -->
     <div v-if="percent !== null" class="bar" role="progressbar" :aria-valuenow="percent" aria-valuemin="0" aria-valuemax="100">
       <span :style="{ width: percent + '%' }"></span>
     </div>
@@ -82,18 +75,16 @@ async function toggle(key: 'autoCheck' | 'autoDownload' | 'autoInstallOnQuit', e
       <button class="btn primary" :disabled="!canCheck" @click="check">
         {{ busy ? '处理中…' : state.status === 'error' ? '重试' : '检查更新' }}
       </button>
-      <!-- M6：autoDownload=false 时 available 态不会自动下载，给一个手动下载出口 -->
       <button v-if="state.status === 'available'" class="btn primary" :disabled="busy" @click="downloadUpdate">
         下载更新
       </button>
-      <button v-if="ready" class="btn primary" @click="install">立即安装并重启</button>
+      <button v-if="ready" class="btn primary" @click="install">立即重启</button>
       <button class="btn" @click="openReleases">手动下载</button>
     </div>
 
-    <!-- 平台不支持自更新时，明确告知原因与替代方式，不留「点了没反应」的坑 -->
     <p v-if="state.status === 'unsupported'" class="hint warn">{{ state.reason }}</p>
     <p v-else-if="state.status === 'error'" class="hint bad">{{ state.error }}</p>
-    <p v-else-if="ready" class="hint ok">下载已完成，点「立即安装并重启」即可完成升级。</p>
+    <p v-else-if="ready" class="hint ok">下载完成，即将自动重启以完成升级。也可点「立即重启」跳过等待。</p>
     <p v-else class="hint">检测到新版本后会自动下载；也可随时到 Releases 页手动下载安装包。</p>
 
     <div v-if="showPrefs" class="prefs">
