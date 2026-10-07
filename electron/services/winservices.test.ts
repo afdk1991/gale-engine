@@ -99,6 +99,18 @@ describe('createWinServicesService (Windows)', () => {
     expect(calls[0]).toContain('-StartupType Disabled')
   })
 
+  it('setStartupType 原型链成员不得绕过启动类型白名单（回归）', async () => {
+    // 回归：旧实现 `STARTUP_TYPE_MAP[startType]` 直接下标取值，
+    // 'constructor'/'toString' 等原型链成员会取到 JS 原生函数（truthy），
+    // 绕过 `if (!mapped)` 守卫后被拼进 PowerShell 命令。
+    for (const bad of ['constructor', 'toString', 'valueOf', '__proto__'] as never[]) {
+      const { runner, calls } = recordingRunner(() => ok())
+      const res = await createWinServicesService(runner, 'win32').setStartupType('wuauserv', bad)
+      expect(res.ok).toBe(false)
+      expect(calls).toHaveLength(0)
+    }
+  })
+
   it('setStartupType 非法类型直接拒绝且不调用执行器', async () => {
     const { runner, calls } = recordingRunner(() => ok())
     const res = await createWinServicesService(runner, 'win32').setStartupType('wuauserv', 'boot' as never)

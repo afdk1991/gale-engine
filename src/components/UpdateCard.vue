@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useAppUpdate } from '../composables/useAppUpdate'
 
 const props = defineProps<{
@@ -40,10 +40,18 @@ const packageLabel = computed<string>(() => {
   return `${c.platform} · ${names[c.packageKind] ?? c.packageKind}`
 })
 
+const linkError = ref<string | null>(null)
+
 async function openReleases(): Promise<void> {
+  linkError.value = null
   try {
-    await window.gale.app.openExternal(releasesUrl)
-  } catch {}
+    // 主进程对不在白名单内的 URL 会返回 { ok: false, message }，
+    // 此前这里丢弃返回值，用户点外链「没反应」且无从排查。
+    const r = await window.gale.app.openExternal(releasesUrl)
+    if (!r.ok) linkError.value = r.message || '打开链接失败'
+  } catch (e) {
+    linkError.value = e instanceof Error ? e.message : String(e)
+  }
 }
 
 async function toggle(key: 'autoCheck' | 'autoDownload' | 'autoInstallOnQuit', ev?: Event): Promise<void> {
@@ -102,6 +110,7 @@ async function toggle(key: 'autoCheck' | 'autoDownload' | 'autoInstallOnQuit', e
       </label>
       <p v-if="prefError" class="hint bad">偏好保存失败：{{ prefError }}</p>
     </div>
+    <p v-if="linkError" class="hint bad">{{ linkError }}</p>
   </div>
 </template>
 

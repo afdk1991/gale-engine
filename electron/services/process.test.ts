@@ -142,6 +142,59 @@ describe('createProcessService', () => {
     expect(calls).toHaveLength(0)
   })
 
+  it('priority 原型链成员（constructor/toString）不得绕过白名单（回归）', async () => {
+    // 回归：旧实现 `PRIORITY_CLASS[level]` 直接下标取值，原型链成员会取到 JS 原生函数，
+    // truthy 从而通过 `if (!cls)` 守卫，被插值成 `function Object() { [native code] }` 拼进命令。
+    for (const bad of ['constructor', 'toString', 'valueOf', '__proto__'] as never[]) {
+      const { runner, calls } = recordingRunner(() => ok())
+      const res = await createProcessService(runner, 'win32').priority(333, bad)
+      expect(res.ok).toBe(false)
+      expect(calls).toHaveLength(0)
+    }
+  })
+
+  it('priority 原型链成员在 unix 分支同样被拒（回归：PRIORITY_NICE 同类问题）', async () => {
+    const { runner, calls } = recordingRunner(() => ok())
+    const res = await createProcessService(runner, 'linux').priority(333, 'toString' as never)
+    expect(res.ok).toBe(false)
+    expect(calls).toHaveLength(0)
+  })
+
+  it('parseProcessList 解析 Windows PriorityClass 为统一等级', () => {
+    const raw = [
+      { pid: 1, name: 'a', cpu: 1, mem: 2, status: 'running', protected: false, prio: 'High' },
+      { pid: 2, name: 'b', cpu: 1, mem: 2, status: 'running', protected: false, prio: 'Idle' }
+    ]
+    const list = parseProcessList(JSON.stringify(raw))
+    expect(list[0].priority).toBe('high')
+    expect(list[1].priority).toBe('low')
+  })
+
+  it('parseProcessList 解析 unix nice 为统一等级（非标准值取最近档）', () => {
+    const raw = [
+      { pid: 1, name: 'a', cpu: 1, mem: 2, status: 'running', protected: false, ni: 0 },
+      { pid: 2, name: 'b', cpu: 1, mem: 2, status: 'running', protected: false, ni: -7 }
+    ]
+    const list = parseProcessList(JSON.stringify(raw))
+    expect(list[0].priority).toBe('normal')
+    expect(list[1].priority).toBe('aboveNormal')
+  })
+
+  it('parseProcessList 读不到优先级时不谎报 normal（字段缺失）', () => {
+    const raw = [{ pid: 1, name: 'a', cpu: 1, mem: 2, status: 'running', protected: false }]
+    const list = parseProcessList(JSON.stringify(raw))
+    expect(list[0].priority).toBeUndefined()
+  })
+
+  it('unix 采集脚本带 trap 清理临时文件（回归：超时被杀时残留）', async () => {
+    const { runner, calls } = recordingRunner(() => ({ ...ok(), stdout: '[]' }))
+    await createProcessService(runner, 'linux').list()
+    // 回归：脚本含 sleep + 两次 ps，被上层超时 kill 时末尾 rm 不会执行；
+    // 没有 trap 会永久残留 /tmp/gale-ps1.<pid>（文件名还带本机 pid）。
+    expect(calls[0]).toContain('trap ')
+    expect(calls[0]).toContain('rm -f "$t1" "$t2"')
+  })
+
   it('list 返回按 sort 排序的结果', async () => {
     const raw = [
       { pid: 1, name: 'a', cpu: 10, mem: 5 },

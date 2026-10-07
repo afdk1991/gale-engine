@@ -44,6 +44,23 @@ describe('createHistoryService', () => {
     expect(svc.list().map((e) => e.id)).toEqual(['id-2', 'id-1'])
   })
 
+  it('add 拒绝非法入参（回归：曾静默写入后被 list 过滤掉）', () => {
+    // 回归：旧实现直接落库并返回成功，但 read() 的 normalizeEntry 又把它过滤掉，
+    // 表现为「写入成功、列表里凭空消失」的脏数据。
+    const svc = createHistoryService(memoryStorage())
+    expect(() => svc.add({ type: 'nope' as never, label: 'x' })).toThrow(/参数不合法/)
+    expect(() => svc.add({ type: 'cleanup', label: '   ' })).toThrow(/参数不合法/)
+    expect(() => svc.add({} as never)).toThrow(/参数不合法/)
+    // 拒绝后不应留下任何记录
+    expect(svc.list()).toHaveLength(0)
+  })
+
+  it('add 忽略非字符串的 detail，不写入脏字段', () => {
+    const svc = createHistoryService(memoryStorage())
+    const e = svc.add({ type: 'cleanup', label: '清理', detail: 123 as never })
+    expect(e.detail).toBeUndefined()
+  })
+
   it('持久化到 storage', () => {
     const storage = memoryStorage()
     const svc = createHistoryService(storage)

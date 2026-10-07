@@ -94,6 +94,7 @@ Get-Process -ErrorAction SilentlyContinue | ForEach-Object {
     mem = [math]::Round([double]$_.WorkingSet64 / 1MB, 1)
     status = if ($_.Responding -eq $false) { 'suspended' } else { 'running' }
     protected = [bool]$prot
+    prio = [string]$_.PriorityClass
   }
 }
 $items | ConvertTo-Json -Compress
@@ -138,9 +139,12 @@ cores=$(getconf _NPROCESSORS_ONLN 2>/dev/null)
 case "$cores" in ''|*[!0-9]*) cores=1 ;; esac
 t1=$(mktemp 2>/dev/null) || t1=/tmp/gale-ps1.$$
 t2=$(mktemp 2>/dev/null) || t2=/tmp/gale-ps2.$$
-ps -axo pid=,comm=,time=,rss=,stat= 2>/dev/null > "$t1"
+# 脚本含 sleep 0.6 + 两次 ps，高负载机器上容易被上层超时 kill；
+# 没有 trap 时末尾的 rm 不会执行，临时文件会永久残留（文件名还带本机 pid）。
+trap 'rm -f "$t1" "$t2"' EXIT INT TERM
+ps -axo pid=,comm=,time=,rss=,stat=,ni= 2>/dev/null > "$t1"
 sleep 0.6
-ps -axo pid=,comm=,time=,rss=,stat= 2>/dev/null > "$t2"
+ps -axo pid=,comm=,time=,rss=,stat=,ni= 2>/dev/null > "$t2"
 awk -v cores="$cores" '
 function tsec(t,   a,b,h,m,s,n) {
   n = split(t, a, ":")
@@ -156,7 +160,7 @@ NR == FNR {
   next
 }
 {
-  pid = $1; comm = esc($2); cur = tsec($3); rss = $4; st = $5
+  pid = $1; comm = esc($2); cur = tsec($3); rss = $4; st = $5; ni = $6 + 0
   prev = (pid in t1) ? t1[pid] : cur
   delta = cur - prev; if (delta < 0) delta = 0
   cpu = delta / 0.6 / cores * 100
@@ -164,7 +168,7 @@ NR == FNR {
   mem = rss / 1024
   status = (st ~ /[Tt]/) ? "suspended" : "running"
   prot = (pid <= 1 || comm == "kernel_task" || comm == "launchd" || comm == "systemd" || comm == "init" || comm == "kthreadd" || comm == "swapper")
-  printf "%s{\\"pid\\":%d,\\"name\\":\\"%s\\",\\"cpu\\":%.1f,\\"mem\\":%.1f,\\"status\\":\\"%s\\",\\"protected\\":%s}", (n ? "," : ""), pid, comm, cpu, mem, status, (prot ? "true" : "false")
+  printf "%s{\\"pid\\":%d,\\"name\\":\\"%s\\",\\"cpu\\":%.1f,\\"mem\\":%.1f,\\"status\\":\\"%s\\",\\"protected\\":%s,\\"ni\\":%d}", (n ? "," : ""), pid, comm, cpu, mem, status, (prot ? "true" : "false"), ni
   n = 1
 }
 END { print "" }
@@ -214,8 +218,12 @@ export function buildPriorityScript(
   level: ProcessPriorityLevel,
   platform: Platform = detectPlatform()
 ): string {
-  const cls = PRIORITY_CLASS[level]
-  const nice = PRIORITY_NICE[level]
+  // 必须用 hasOwnProperty 判定：直接下标取值时，`level` 若是原型链成员
+  // （'constructor' / 'toString' / 'valueOf' …）会取到 JS 原生函数，truthy 从而绕过
+  // 下面的 `if (!cls)` 守卫，被模板插值成 `function Object() { [native code] }` 拼进命令。
+  const hasLevel = Object.prototype.hasOwnProperty.call(PRIORITY_CLASS, level)
+  const cls = hasLevel ? PRIORITY_CLASS[level] : undefined
+  const nice = hasLevel ? PRIORITY_NICE[level] : undefined
   if (platform === 'win32') {
     if (!cls) return ''
     return `${buildGuardWin(pid)}\ntry { (Get-Process -Id ${pid} -ErrorAction Stop).PriorityClass = "${cls}"; "OK" } catch { "ERR:$($_.Exception.Message)" }`
@@ -240,17 +248,56 @@ export function parseProcessList(stdout: string): ProcessInfo[] {
   return raw.map((r) => toProcessInfo(r as Record<string, unknown>))
 }
 
+/** Windows PriorityClass 名称 → 统一等级（与 PRIORITY_CLASS 互逆） */
+const PRIORITY_CLASS_TO_LEVEL: Record<string, ProcessPriorityLevel> = {
+  Idle: 'low',
+  BelowNormal: 'belowNormal',
+  Normal: 'normal',
+  AboveNormal: 'aboveNormal',
+  High: 'high'
+}
+
+/**
+ * unix nice 值 → 统一等级。nice 是连续值（如 -7），按与 PRIORITY_NICE 各档的距离取最近的一档，
+ * 避免用户手动 renice 出非标准值时界面显示成空白。
+ */
+export function niceToPriorityLevel(nice: number): ProcessPriorityLevel {
+  if (!Number.isFinite(nice)) return 'normal'
+  let best: ProcessPriorityLevel = 'normal'
+  let bestDist = Infinity
+  for (const lv of Object.keys(PRIORITY_NICE) as ProcessPriorityLevel[]) {
+    const d = Math.abs(PRIORITY_NICE[lv] - nice)
+    if (d < bestDist) {
+      bestDist = d
+      best = lv
+    }
+  }
+  return best
+}
+
+/** 归一化优先级：Windows 走名称、unix 走 nice 值，读不到则返回 undefined（不谎报为 normal） */
+function normalizePriority(raw: Record<string, unknown>): ProcessPriorityLevel | undefined {
+  const cls = typeof raw.prio === 'string' ? raw.prio.trim() : ''
+  if (cls && Object.prototype.hasOwnProperty.call(PRIORITY_CLASS_TO_LEVEL, cls)) {
+    return PRIORITY_CLASS_TO_LEVEL[cls]
+  }
+  const ni = Number(raw.ni)
+  return Number.isFinite(ni) ? niceToPriorityLevel(ni) : undefined
+}
+
 function toProcessInfo(raw: Record<string, unknown>): ProcessInfo {
   const pid = Number(raw.pid)
   const mem = Number(raw.mem)
   const cpu = Number(raw.cpu)
+  const priority = normalizePriority(raw)
   return {
     pid: Number.isFinite(pid) ? Math.trunc(pid) : 0,
     name: String(raw.name ?? ''),
     cpuPercent: Number.isFinite(cpu) ? cpu : 0,
     memMB: Number.isFinite(mem) ? mem : 0,
     status: raw.status === 'suspended' ? 'suspended' : 'running',
-    protected: raw.protected === true || raw.protected === 'True'
+    protected: raw.protected === true || raw.protected === 'True',
+    ...(priority ? { priority } : {})
   }
 }
 

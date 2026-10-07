@@ -833,6 +833,11 @@ export interface ProcessInfo {
   status: 'running' | 'suspended'
   /** 是否系统关键进程（拒绝结束 / 挂起） */
   protected: boolean
+  /**
+   * 当前优先级。可选：个别平台/进程读不到（权限不足或字段缺失）时为 undefined，
+   * 此时界面下拉回落到占位项，不谎报成 normal。
+   */
+  priority?: ProcessPriorityLevel
 }
 
 export interface ProcessActionResult {

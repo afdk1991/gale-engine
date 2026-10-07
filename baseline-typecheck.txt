@@ -1,4 +1,0 @@
-﻿
-> gale-engine@0.1.10 typecheck
-> vue-tsc --noEmit
-

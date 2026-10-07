@@ -82,8 +82,16 @@ async function runRepairAndRescan(kind: DllRepairKind): Promise<void> {
   if (repairResult.value?.ok) await runScan()
 }
 
-function openExternal(url: string): void {
-  void window.gale.app.openExternal(url)
+async function openExternal(url: string): Promise<void> {
+  error.value = null
+  try {
+    // 主进程对不在白名单内的链接会返回 { ok: false, message }；
+    // 此前这里丢弃返回值，点了没反应也看不出原因。
+    const r = await window.gale.app.openExternal(url)
+    if (!r.ok) error.value = r.message || '打开链接失败'
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : String(e)
+  }
 }
 </script>
 

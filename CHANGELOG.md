@@ -5,6 +5,46 @@
 
 ---
 
+## v0.1.13 — 2026-10-08
+
+本版是一次**全仓缺陷审计的集中修复**，来源为对 22 个主进程服务、15 个页面与 IPC 契约的逐行复核（审计结论见 `docs/code-audit-2026-10-08.md`）。共修 1 项严重缺陷、4 项逻辑错误、3 项健壮性问题，并清理了误入库的构建产物。
+
+### 修复
+
+- 🔴 **更新下载完成后不再无条件强杀重启**（`electron/services/update.electron.ts`）：
+  - 旧实现在 `update-downloaded` 里写了**无条件**的 `setTimeout(quitAndInstall, 3000)`，完全不读用户偏好。后果：① 在设置里关掉「下载完成后退出应用时自动安装」也照杀不误，开关形同虚设；② 下载完成瞬间强杀进程，正在进行的任务（如一键优化的 PowerShell 子进程）被中断，可能留下半成品状态且用户毫无防备；③ 与界面「立即重启」按钮同时触发两次 `quitAndInstall`。
+  - 现在改为：**仅当** `prefs.autoInstallOnQuit === true` 且处于打包环境才安排自动重启；定时器句柄被保存，用户点「立即重启」或把开关关掉时会 `clearTimeout`，保证任何时刻只真正执行一次。
+  - 同时删除构造期写死的 `autoDownload = true` / `autoInstallOnAppQuit = true`——它们是用户可配置项，写死会让设置页失去约束力，改由 `configure()` 统一赋予。
+- 🟠 **macOS / Linux 清空回收站不再假报成功**（`electron/services/optimizer.ts`）：
+  - 旧脚本形如 `A || B; echo "OK"`。shell 里 `;` 之后的 `echo` 恒成功，导致 `parseActionOutcome` 必然判定 `ok`，**清理失败也报「成功」并写入历史**，而磁盘空间纹丝不动。Windows 分支此前已修好，unix 两条分支漏改。
+  - 现在改为 `if / elif / else` 三段式，两条路径都失败才回 `ERR:清空回收站失败`。
+- 🟠 **macOS 启用启动项不再销毁原始 plist**（`electron/services/optimizer.ts`）：
+  - 旧脚本先 `mv .disabled` 还原原始 plist，**紧接着无条件 `cat >` 覆盖**，用只含 `Label` + 单个 `ProgramArguments` + `RunAtLoad` 的最小版本替换掉原始定义，`KeepAlive`、`EnvironmentVariables`、多参数、资源限制等原生配置永久丢失且不可撤销。
+  - 现在分三种情况：有 `.disabled` 副本 → 只 `mv` 还原；plist 已存在 → 已是启用态，不动；两者都不存在 → 才写入新 plist。
+- 🟠 **原型链成员不再能绕过白名单**（`electron/services/process.ts`、`electron/services/winservices.ts`）：
+  - 旧写法 `MAP[key]` 直接下标取值，`key` 为 `'constructor'` / `'toString'` / `'valueOf'` 时会取到 JS 原生函数（truthy），从而通过 `if (!value)` 守卫，被模板插值成 `function Object() { [native code] }` 拼进 PowerShell / bash 命令。
+  - 两处均改用 `Object.prototype.hasOwnProperty.call(...)` 判定，与 `capabilityFeed.ts` 既有防线保持一致。
+- 🟠 **进程优先级下拉不再谎报「正常」**（`src/pages/Process.vue`、`electron/services/process.ts`、`shared/types.ts`）：
+  - 旧写法 `:value="'normal'"` 写死，既与占位项 `<option value="">` 互斥（占位项永不显示），也不反映进程真实优先级。
+  - 现在补齐真实优先级采集：Windows 读 `Get-Process.PriorityClass`、unix 读 `ps` 的 `ni`（nice）并取最近档映射；`ProcessInfo` 新增可选 `priority` 字段，**读不到时为 `undefined` 而非谎报 normal**。
+
+### 改进
+
+- 历史记录写入前校验（`electron/services/history.ts`）：旧实现把非法 `type` / 空 `label` 直接落库并返回成功，但读取时又被 `normalizeEntry` 过滤掉，表现为「写入成功、列表里凭空消失」的静默脏数据。现在非法入参直接抛错拒绝。
+- unix 进程采集脚本加 `trap 'rm -f "$t1" "$t2"' EXIT INT TERM`：`sleep` + 两次 `ps` 在高负载机器上易被上层超时 kill，此前末尾的 `rm` 不执行，`/tmp/gale-ps1.<pid>` 会永久残留（文件名还带本机 pid）。
+- 外链打开失败不再静默（`src/components/UpdateCard.vue`、`src/pages/DllRepair.vue`）：主进程对不在白名单的 URL 返回 `{ ok: false, message }`，此前返回值被丢弃，用户「点了没反应」且无从排查。现在失败原因会显示在界面上。
+
+### 清理
+
+- 删除误入库的产物：`after-*.txt` / `baseline-*.txt`（命令输出快照，含本机绝对路径 `D:/网站全栈项目/项目002`）、`sync.ps1`（指向不存在路径 `D:\网站全栈项目\scripts\sync-to-github.ps1` 的失效脚本）、`.superpowers/`（头脑风暴临时状态，项目计划文档本就将其列为应忽略项）。
+- `.gitignore` 补对应规则防止复发。
+
+### 质量门禁
+
+- `vue-tsc --noEmit` **0 错误**；`vitest run` **570 passed / 3 skipped**（较 v0.1.12 的 558 新增 12 项针对本次修复的回归测试）；`electron-vite build` **exit 0**。
+
+---
+
 ## v0.1.12 — 2026-10-06
 
 本版是 v0.1.11「全自动升级」的 UI 收尾：下载完成后主进程已会自动退出并安装重启，**界面文案仍停留在旧的需要手动点安装的语义**，会误导用户以为还要再点一次。本版把三处状态文案与实际行为对齐。

@@ -322,6 +322,23 @@ describe('optimizer unix 分支', () => {
     expect(s).toContain('com.gale.test')
   })
 
+  it('toggleStartup(launchd) enable 不覆盖已存在的原始 plist（回归：曾无条件 cat > 覆盖）', async () => {
+    const { runner, calls } = recordingRunner(() => ok('OK'))
+    await createOptimizerService(runner, 'darwin').toggleStartup('launchd:com.gale.test', true, '/usr/bin/app')
+    const s = calls[0].script
+    // 回归：旧脚本先 mv .disabled 还原、紧接着无条件 cat > 覆盖，
+    // 会把原始 plist 的 KeepAlive / 环境变量 / 多参数全部抹掉，且不可撤销。
+    // 现在必须在 .disabled 存在或 plist 已存在时直接返回，不再写新内容。
+    expect(s).toContain('if [ -f')
+    expect(s).toContain('.disabled ]')
+    expect(s).toContain('elif [ -f')
+    // 写入分支必须在 else 里，且前面不能被无条件执行
+    const writeIdx = s.indexOf('GALE_PLIST_EOF')
+    const elseIdx = s.lastIndexOf('else', writeIdx)
+    expect(elseIdx).toBeGreaterThan(-1)
+    expect(elseIdx).toBeLessThan(writeIdx)
+  })
+
   it('toggleStartup(autostart) disable 写 Hidden=true 而非删文件（保证可再启用）', async () => {
     const { runner, calls } = recordingRunner(() => ok('OK'))
     await createOptimizerService(runner, 'linux').toggleStartup('autostart:myapp', false)
@@ -358,6 +375,36 @@ describe('optimizer unix 分支', () => {
     const badRes = await svc.runCleanup(['C:\\Windows\\Temp'])
     expect(badRes[0].ok).toBe(false)
     expect(badRes[0].error).toContain('未知清理项')
+  })
+
+  it('回收站脚本(darwin/linux) 失败时必须回 ERR 而非无条件 OK（回归：`; echo "OK"`）', async () => {
+    // 回归：旧写法 `A || B; echo "OK"` —— shell 中 `;` 之后的 echo 恒成功，
+    // parseActionOutcome 必然判定 ok，清理失败也报「成功」并写入历史。
+    const svc = createOptimizerService(recordingRunner(() => ok('')).runner, 'darwin')
+    const plans = [{ id: 'recycle', kind: 'recycle', label: 'Trash', path: '/x', size: 1, safe: true }]
+    const { runner, calls } = recordingRunner((s) =>
+      s.includes('empty trash') ? ok('') : { ...ok(), stdout: JSON.stringify(plans) }
+    )
+    void svc
+    const res = await createOptimizerService(runner, 'darwin').runCleanup(['recycle'])
+    const script = calls.find((c) => c.script.includes('empty trash'))?.script ?? ''
+    expect(script).toContain('ERR:清空回收站失败')
+    // 关键：`echo "OK"` 不能出现在无条件执行的位置（必须包在 if/elif 分支里）
+    expect(script).not.toMatch(/; *echo "OK"/)
+    // 空输出走严格判定 → 如实报失败
+    expect(res[0].ok).toBe(false)
+  })
+
+  it('回收站脚本(linux) 走 XDG Trash 且失败回 ERR', async () => {
+    const plans = [{ id: 'recycle', kind: 'recycle', label: 'Trash', path: '/x', size: 1, safe: true }]
+    // 扫描脚本与清理脚本都含 .local/share/Trash，无法用内容筛选 ——
+    // 改按调用序区分：第 1 次是扫描（回清单），之后是清理（回空输出＝失败）。
+    let n = 0
+    const { runner, calls } = recordingRunner(() => (n++ === 0 ? { ...ok(), stdout: JSON.stringify(plans) } : ok('')))
+    await createOptimizerService(runner, 'linux').runCleanup(['recycle'])
+    const script = calls.find((c) => c.script.includes('Trash/files/"*'))?.script ?? ''
+    expect(script).toContain('ERR:清空回收站失败')
+    expect(script).not.toMatch(/; *echo "OK"/)
   })
 
   it('解析 launchd/autostart location 的 StartupItem', async () => {

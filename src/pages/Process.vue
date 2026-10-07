@@ -19,6 +19,14 @@ const priorityLevels: { value: ProcessPriorityLevel; label: string }[] = [
   { value: 'high', label: '高' }
 ]
 
+const priorityLabels: Record<ProcessPriorityLevel, string> = {
+  low: '低',
+  belowNormal: '低于正常',
+  normal: '正常',
+  aboveNormal: '高于正常',
+  high: '高'
+}
+
 async function refresh(): Promise<void> {
   loading.value = true
   error.value = null
@@ -130,11 +138,11 @@ onMounted(() => void refresh())
                   >{{ p.status === 'suspended' ? '恢复' : '挂起' }}</button>
                   <select
                     class="prio"
-                    :value="'normal'"
+                    :value="p.priority ?? ''"
                     :disabled="p.protected || busy === p.pid"
                     @change="setPriority(p, $event)"
                   >
-                    <option value="">优先级</option>
+                    <option value="">{{ p.priority ? priorityLabels[p.priority] : '优先级' }}</option>
                     <option v-for="l in priorityLevels" :key="l.value" :value="l.value">{{ l.label }}</option>
                   </select>
                 </template>

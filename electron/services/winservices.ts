@@ -300,7 +300,11 @@ export function createWinServicesService(runner: ExecRunner, platform: Platform 
       // 不仅不能停，也不能被设为 Disabled（重启后 RPC/COM/WMI 等基础能力全失）。
       // unix 分支已有 isProtectedUnixUnit 守卫，win32 此处补齐。
       if (PROTECTED_SERVICES.includes(name)) return { ok: false, message: '系统关键服务，已拒绝修改启动类型' }
-      const mapped = STARTUP_TYPE_MAP[startType]
+      // hasOwnProperty 判定而非直接下标取值：否则 startType 为 'constructor'/'toString'
+      // 等原型链成员时会取到原生函数（truthy），绕过 `if (!mapped)` 后被拼进 PowerShell。
+      const mapped = Object.prototype.hasOwnProperty.call(STARTUP_TYPE_MAP, startType)
+        ? STARTUP_TYPE_MAP[startType]
+        : undefined
       if (!mapped) return { ok: false, message: '无效的启动类型' }
       const script = `$s = Get-Service -Name '${name}' -ErrorAction SilentlyContinue\nif (-not $s) { "ERR:服务不存在"; exit }\ntry { Set-Service -Name '${name}' -StartupType ${mapped} -ErrorAction Stop; "OK" } catch { "ERR:$($_.Exception.Message)" }`
       const { stdout } = await runner.run(script)

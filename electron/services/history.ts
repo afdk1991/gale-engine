@@ -27,6 +27,21 @@ export interface HistoryInput {
   detail?: string
 }
 
+/**
+ * 入参合法性校验。
+ *
+ * 修复前 add() 直接把 input.type / input.label 落成 HistoryEntry 并返回成功，
+ * 但 read() 里的 normalizeEntry 又会把这条非法记录过滤掉 —— 结果是「写入成功、返回成功、
+ * 下次列表里凭空消失」，属于静默的脏数据写入。这里改为写入前显式拒绝。
+ */
+export function isValidHistoryInput(input: unknown): input is HistoryInput {
+  if (typeof input !== 'object' || input === null) return false
+  const o = input as Record<string, unknown>
+  if (!TYPES.includes(o.type as HistoryType)) return false
+  if (typeof o.label !== 'string' || o.label.trim() === '') return false
+  return true
+}
+
 export function createHistoryService(
   storage: StorageAdapter,
   makeId: () => string = defaultId
@@ -44,11 +59,16 @@ export function createHistoryService(
   const list = (): HistoryEntry[] => read().sort((a, b) => b.at - a.at)
 
   const add = (input: HistoryInput): HistoryEntry => {
+    if (!isValidHistoryInput(input)) {
+      throw new Error(
+        `历史记录参数不合法：type 需为 ${TYPES.join('/')} 之一，label 需为非空字符串`
+      )
+    }
     const entry: HistoryEntry = {
       id: makeId(),
       type: input.type,
       label: input.label,
-      detail: input.detail,
+      detail: typeof input.detail === 'string' ? input.detail : undefined,
       at: Date.now()
     }
     const next = [entry, ...read()].slice(0, MAX_ENTRIES)

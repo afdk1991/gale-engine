@@ -285,9 +285,29 @@ export function buildRecycleCleanupScript(platform: Platform = detectPlatform())
         'if ($failed.Count -gt 0) { "ERR:部分回收站未能清空（" + ($failed -join "；") + "）" } else { "OK" }'
       ].join('\n')
     case 'darwin':
-      return `osascript -e 'tell application "Finder" to empty trash' >/dev/null 2>&1 || rm -rf "$HOME/.Trash/"* 2>/dev/null; echo "OK"`
+      // 优先让 Finder 清（保留系统原生的清空行为与提示），失败再退回手动 rm。
+      // 两条路都失败才回 ERR —— 修复前是无条件的 `...; echo "OK"`，
+      // shell 里 `;` 之后的 echo 永远成功，导致清理失败也报「成功」并写入历史。
+      return [
+        'if osascript -e \'tell application "Finder" to empty trash\' >/dev/null 2>&1; then',
+        '  echo "OK"',
+        'elif rm -rf "$HOME/.Trash/"* 2>/dev/null; then',
+        '  echo "OK"',
+        'else',
+        '  echo "ERR:清空回收站失败"',
+        'fi'
+      ].join('\n')
     default:
-      return `rm -rf "$HOME/.local/share/Trash/files/"* "$HOME/.local/share/Trash/files/".[!.]* 2>/dev/null; echo "OK"`
+      // Linux/XDG：清 files/ 下的常规文件与隐藏文件（.[!.]* 避免匹配到 . 与 ..）。
+      return [
+        'if [ ! -d "$HOME/.local/share/Trash/files" ]; then',
+        '  echo "OK"',
+        'elif rm -rf "$HOME/.local/share/Trash/files/"* "$HOME/.local/share/Trash/files/".[!.]* 2>/dev/null; then',
+        '  echo "OK"',
+        'else',
+        '  echo "ERR:清空回收站失败"',
+        'fi'
+      ].join('\n')
   }
 }
 
@@ -427,13 +447,26 @@ export function buildToggleStartupScript(
     // 名称已过白名单（不含引号/`$`/反引号），可直接嵌入双引号路径
     const plist = `"$HOME/Library/LaunchAgents/${name}.plist"`
     if (enable) {
+      // 分三种情况，绝不在已有原始定义时覆盖它：
+      //   1) 存在 .disabled 副本 → 说明是本工具此前禁用的，mv 还原即可，原始定义完整保留；
+      //   2) plist 已存在（未被禁用）→ 本来就是启用态，无需动作；
+      //   3) 两者都不存在 → 全新条目，才写入我们生成的最小 plist。
+      //
+      // 修复前是「先 mv 还原、紧接着无条件 cat > 覆盖」：还原出来的原始 plist 立刻被
+      // 只含 Label + 单个 ProgramArguments + RunAtLoad 的最小版本替换掉，
+      // KeepAlive / EnvironmentVariables / 多参数 / 资源限制等原生配置永久丢失且不可撤销。
       const content = buildPlistContent(name, command ?? '')
       return `mkdir -p "$HOME/Library/LaunchAgents"
-mv -f ${plist}.disabled ${plist} 2>/dev/null
-cat > ${plist} <<'GALE_PLIST_EOF'
+if [ -f ${plist}.disabled ]; then
+  mv -f ${plist}.disabled ${plist} 2>/dev/null && echo "OK" || echo "ERR:启用启动项失败"
+elif [ -f ${plist} ]; then
+  echo "OK"
+else
+  cat > ${plist} <<'GALE_PLIST_EOF'
 ${content}
 GALE_PLIST_EOF
-[ -f ${plist} ] && echo "OK" || echo "ERR:写入启动项失败"`
+  [ -f ${plist} ] && echo "OK" || echo "ERR:写入启动项失败"
+fi`
     }
     return `mv -f ${plist} ${plist}.disabled 2>/dev/null && echo "OK" || echo "ERR:禁用启动项失败"`
   }
