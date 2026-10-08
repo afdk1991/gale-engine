@@ -1,6 +1,6 @@
 {
   "name": "gale-engine",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "description": "疾风引擎 - 跨平台系统优化加速软件（Windows/macOS/Linux）",
   "main": "out/main/index.js",
   "author": "GaleEngine",
@@ -28,7 +28,7 @@
     "@vitejs/plugin-vue": "^5.2.1",
     "@vue/test-utils": "^2.4.6",
     "7zip-bin": "^5.2.0",
-    "electron": "^39.8.10",
+    "electron": "^44.7.0",
     "electron-builder": "^26.15.3",
     "electron-vite": "^3.1.0",
     "jsdom": "^26.0.0",

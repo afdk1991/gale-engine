@@ -57,6 +57,26 @@
 - **`build/icon.icns` 缺失不是缺陷**：`scripts/generate-icon.mjs:177-179` 明确说明输出 1024px `icon.png` 就是为了满足 electron-builder 自动生成 icns 的 ≥512px 要求，不提交 `.icns` 是设计选择。
 - 以下类别本轮逐条复核后**确认无新增问题**：IPC 参数与 `ipcMain.handle` 签名不匹配、裸 `setInterval`/`setTimeout` 泄漏（全仓仅 `usePolling.ts` / `useFlash.ts` 两处且均已随组件卸载清理）、解构可能 undefined 的返回值、除零 / NaN 展示。
 
+### 修复（第三轮 · 依赖安全与平台注入统一）
+
+来源：全仓重新读取后的依赖审计（`npm audit --json` 实测）与服务层平台注入核查。
+
+- 🔴 **Electron 39 → 44.7.0，清零 4 项 high 漏洞**（`package.json`）：
+  - 实测漏洞为 **10 项（2 high + 8 moderate）**，与 GitHub 面板显示的「14 项」不符，以 `npm audit` 实测为准。
+  - 其中 4 项 high 全部指向 `electron` 直接依赖，均为**运行时**安全问题：沙箱弹出窗口继承限制被绕过（`<41.10.4`）、沙箱文档打开的窗口不继承沙箱限制、`<webview>` 可在 Web Worker 中启用 Node 集成、文件与 HTTP 协议处理器跨源读取（三项 `<41.10.6`）。修复版为 **44.7.0**。
+  - 升级后经实测：`vue-tsc` 0 错误、`vitest` 575 passed / 3 skipped、`electron-vite build` exit 0，**high 漏洞归零**（10 → 8，high 2 → 0）。
+- 🟠 **游戏模式服务不再依赖平台探测回落**（`electron/main.ts`）：
+  - `createGameModeService(runner, storage?, platform = detectPlatform())` 的 `platform` 是第三个参数，而 `main.ts` 只传了前两个，是全仓**唯一**真实回落点。运行时结果正确（Electron 宿主即真实平台），但单测一旦漏传 platform 就会静默走宿主分支，与项目「服务必须显式接收 platform」的约定相悖。
+  - 现在显式注入 `platform`，与其余 11 个服务同口径。
+  - 复核确认：`createDllService` 的 deps 对象**已**显式传 `platform`（此前一度被误列为回落点，已撤回）；`settings` / `appPrefs` / `monitor` / `hardware` / `history` / `update` / `capabilityFeed` / `oneKey` 八个服务签名本就不含 platform 参数，非回落。
+
+### 已知未修（需人工决策，勿盲目 `audit fix --force`）
+
+- **8 项 moderate 残留**，全部来自 `electron-builder` 依赖链（`app-builder-lib` / `dmg-builder` / `electron-builder-squirrel-windows` / `sprintf-js` / `roarr` / `global-agent` / `@electron/get`），当前 `^26.15.3` 落在 `26.6.0 – 27.0.0-alpha.2` 漏洞区间。
+- `npm audit fix`（非破坏性）实测**一个也修不掉**——npm 给出的唯一修复版本是 `electron-builder@26.5.0`，属 semver-major 降级，自动修复不会执行。
+- **稳定通道目前无解**：`latest` = 26.15.3、`v26` = 26.17.0 均在漏洞区间内，唯一越界版本是 `27.0.0-alpha.9`（alpha，不建议用于生产打包）。
+- 这 8 项属**构建期**漏洞（相关包只在打包阶段运行，不进入分发给终端用户的产物），且降级 10 个 minor 的打包兼容性未经 CI 六矩阵验证。因此本版**保持 `^26.15.3` 不动**，待 `27.0.0` 正式版发布后再单独迁移（届时走独立提交 + CI 打包验证，不与其它改动混做）。
+
 ### 改进
 
 - 历史记录写入前校验（`electron/services/history.ts`）：旧实现把非法 `type` / 空 `label` 直接落库并返回成功，但读取时又被 `normalizeEntry` 过滤掉，表现为「写入成功、列表里凭空消失」的静默脏数据。现在非法入参直接抛错拒绝。
