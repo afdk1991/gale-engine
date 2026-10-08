@@ -136,4 +136,41 @@ describe('createThemeController', () => {
     media.trigger()
     expect(doc.documentElement.dataset.theme).toBe('light')
   })
+
+  // ── 持久化失败的回滚（旧实现：先改内存再 await 保存，失败即留下不一致且无提示）──
+  it('setAppearance 持久化失败时回滚内存值并抛出', async () => {
+    const doc = fakeDoc()
+    // media.matches=false → system 解析为 light，便于观察回滚
+    const controller = createThemeController({
+      loadSettings: async () => defaults,
+      saveSettings: async () => {
+        throw new Error('store write failed')
+      },
+      media: fakeMedia(false),
+      doc
+    })
+    await controller.init()
+    expect(controller.appearance.value).toBe('system')
+    await expect(controller.setAppearance('dark')).rejects.toThrow('store write failed')
+    // 界面所见必须与「已持久化」一致：内存值与 DOM 都回到 system
+    expect(controller.appearance.value).toBe('system')
+    expect(doc.documentElement.dataset.theme).toBe('light')
+  })
+
+  it('setAccent 持久化失败时回滚内存值并抛出', async () => {
+    const doc = fakeDoc()
+    const controller = createThemeController({
+      loadSettings: async () => defaults,
+      saveSettings: async () => {
+        throw new Error('store write failed')
+      },
+      media: fakeMedia(false),
+      doc
+    })
+    await controller.init()
+    const before = doc.documentElement.style.getPropertyValue('--accent')
+    await expect(controller.setAccent('orange')).rejects.toThrow('store write failed')
+    expect(controller.accent.value).toBe('blue')
+    expect(doc.documentElement.style.getPropertyValue('--accent')).toBe(before)
+  })
 })

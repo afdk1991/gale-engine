@@ -52,8 +52,13 @@ async function apply(): Promise<void> {
   busy.value = true
   message.value = null
   try {
-    state.value = await window.gale.optlib.applyLibrary()
-    message.value = '能力库已生效（无需重启应用，一键优化中即可选用新能力）'
+    const next = await window.gale.optlib.applyLibrary()
+    state.value = next
+    // 与 check() 同口径：apply 在没有待生效更新（pending 为空）时会回带 lastError，
+    // 旧实现无条件报「已生效」，等于把失败包装成成功。
+    message.value = next.lastError
+      ? `生效失败：${next.lastError}`
+      : '能力库已生效（无需重启应用，一键优化中即可选用新能力）'
   } catch (e) {
     message.value = e instanceof Error ? e.message : String(e)
   } finally {
@@ -65,8 +70,9 @@ async function reset(): Promise<void> {
   busy.value = true
   message.value = null
   try {
-    state.value = await window.gale.optlib.resetLibrary()
-    message.value = '已回退到内置能力库'
+    const next = await window.gale.optlib.resetLibrary()
+    state.value = next
+    message.value = next.lastError ? `回退失败：${next.lastError}` : '已回退到内置能力库'
   } catch (e) {
     message.value = e instanceof Error ? e.message : String(e)
   } finally {

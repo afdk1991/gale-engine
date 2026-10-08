@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import type { ServiceStartupType, WinService } from '../../shared/types'
 import { useFlash } from '../composables/useFlash'
+import { writeHistory } from '../composables/useHistory'
 
 const list = ref<WinService[]>([])
 const filter = ref('')
@@ -49,7 +50,7 @@ async function act(s: WinService, label: string, fn: () => Promise<{ ok: boolean
     const r = await fn()
     flash(s.name, r.message, r.ok ? 'ok' : 'bad')
     if (r.ok) {
-      await window.gale.history.add({ type: 'optimize', label: `${label}服务`, detail: s.name })
+      await writeHistory({ type: 'optimize', label: `${label}服务`, detail: s.name })
     }
     await refresh()
   } catch (e) {

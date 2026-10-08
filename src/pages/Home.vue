@@ -39,7 +39,11 @@ const scoreLabel = computed<string>(() => {
 })
 
 const scoreClass = computed<string>(() => {
-  const s = score.value ?? 0
+  const s = score.value
+  // 无快照（初始态 / 采集失败）时与 scoreLabel 的「—」对齐：返回空类名，
+  // 走 .hero 基础样式（中性渐变）。旧实现 `score.value ?? 0` 会把空态算成 0 分
+  // 并渲染成红色「偏重」，monitor.snapshot() 失败时红块会一直挂着。
+  if (s === null) return ''
   if (s >= 80) return 'good'
   if (s >= 60) return 'ok'
   if (s >= 40) return 'warn'

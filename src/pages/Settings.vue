@@ -14,6 +14,10 @@ const autoLaunch = ref(false)
 const autoLaunchMsg = ref('')
 const elevated = ref(false)
 const elevateMsg = ref('')
+/** 提权结果的结构化成败（决定提示样式，不再靠文案匹配） */
+const elevateOk = ref(false)
+/** 主题持久化失败提示 */
+const themeMsg = ref('')
 
 onMounted(async () => {
   try {
@@ -30,9 +34,36 @@ async function restartElevated(): Promise<void> {
   try {
     const r = await window.gale.app.restartElevated()
     elevateMsg.value = r.message
+    // 用结构化 ok 决定样式：Linux 分支返回 ok:false 但文案是「请手动以 root 启动」，
+    // 不含「失败」二字，旧实现 `elevateMsg.includes('失败')` 会把失败显示成中性色。
+    elevateOk.value = r.ok
     if (r.ok) elevated.value = true
   } catch (e) {
     elevateMsg.value = e instanceof Error ? e.message : String(e)
+    elevateOk.value = false
+  }
+}
+
+/**
+ * 主题切换：useTheme 的 setAppearance/setAccent 在持久化失败时会回滚并抛错，
+ * 这里必须捕获并上屏——否则模板直接 @click 调用异步函数会产生未捕获 rejection，
+ * 且用户看不到「界面改了但没保存」。
+ */
+async function changeAppearance(mode: (typeof appearances)[number]['value']): Promise<void> {
+  themeMsg.value = ''
+  try {
+    await themeController.setAppearance(mode)
+  } catch (e) {
+    themeMsg.value = `外观设置保存失败：${e instanceof Error ? e.message : String(e)}`
+  }
+}
+
+async function changeAccent(key: (typeof ACCENT_ORDER)[number]): Promise<void> {
+  themeMsg.value = ''
+  try {
+    await themeController.setAccent(key)
+  } catch (e) {
+    themeMsg.value = `主题色保存失败：${e instanceof Error ? e.message : String(e)}`
   }
 }
 
@@ -66,7 +97,7 @@ async function toggleAutoLaunch(): Promise<void> {
           class="seg-btn"
           :class="{ on: themeController.appearance.value === a.value }"
           :aria-pressed="themeController.appearance.value === a.value"
-          @click="themeController.setAppearance(a.value)"
+          @click="changeAppearance(a.value)"
         >
           {{ a.label }}
         </button>
@@ -82,7 +113,7 @@ async function toggleAutoLaunch(): Promise<void> {
           class="color"
           :class="{ on: themeController.accent.value === key }"
           :aria-pressed="themeController.accent.value === key"
-          @click="themeController.setAccent(key)"
+          @click="changeAccent(key)"
         >
           <span class="swatch" aria-hidden="true" :style="{ background: ACCENTS[key].bg }">
             {{ themeController.accent.value === key ? '✓' : '' }}
@@ -90,6 +121,7 @@ async function toggleAutoLaunch(): Promise<void> {
           <span class="name">{{ ACCENTS[key].label }}</span>
         </button>
       </div>
+      <p v-if="themeMsg" class="hint bad">{{ themeMsg }}</p>
     </div>
 
     <!-- 关于与更新：与首页/侧边栏共用同一份更新状态（composable 单例） -->
@@ -112,7 +144,7 @@ async function toggleAutoLaunch(): Promise<void> {
           {{ elevated ? '已具备管理员权限' : '以管理员身份重启' }}
         </button>
       </div>
-      <p v-if="elevateMsg" class="hint" :class="{ bad: elevateMsg.includes('失败') }">{{ elevateMsg }}</p>
+      <p v-if="elevateMsg" class="hint" :class="{ bad: !elevateOk }">{{ elevateMsg }}</p>
     </div>
 
     <div class="card">

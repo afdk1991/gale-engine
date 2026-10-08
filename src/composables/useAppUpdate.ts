@@ -45,7 +45,11 @@ async function check(): Promise<AppUpdateResult> {
     state.value = res
     return res
   } catch (e) {
+    // 仅补丁状态字段，保留已加载的 currentVersion / capability：
+    // 旧实现用字面量整体覆盖 state，检查失败一次后「当前版本」会退化成 v—，
+    // 与首页 Hero 上仍正常显示的版本号自相矛盾。
     const failed: AppUpdateResult = {
+      ...state.value,
       status: 'error',
       error: e instanceof Error ? e.message : String(e)
     }
@@ -60,7 +64,7 @@ async function install(): Promise<void> {
   try {
     await app()?.installUpdate()
   } catch (e) {
-    state.value = { status: 'error', error: e instanceof Error ? e.message : String(e) }
+    state.value = { ...state.value, status: 'error', error: e instanceof Error ? e.message : String(e) }
   }
 }
 
@@ -69,7 +73,7 @@ async function downloadUpdate(): Promise<void> {
     const res = await app()?.downloadUpdate()
     if (res) state.value = res
   } catch (e) {
-    state.value = { status: 'error', error: e instanceof Error ? e.message : String(e) }
+    state.value = { ...state.value, status: 'error', error: e instanceof Error ? e.message : String(e) }
   }
 }
 

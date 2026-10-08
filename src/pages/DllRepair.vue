@@ -50,10 +50,17 @@ const vcText = computed(() => {
 /** 无问题时展示的检查项数量（默认折叠，避免一眼看到 60+ 行） */
 const healthyItems = computed(() => scanResult.value?.items.filter((i) => i.present && !i.partial) ?? [])
 
+/**
+ * 复扫**不**清除修复回执。
+ *
+ * 旧实现在开头无条件 `repairResult.value = null`，而 runRepairAndRescan 会在修复
+ * 成功后立刻调用本函数——刚跑完的 SFC / DISM / VC++ 结果（summary、nextSteps、
+ * 原始 output）随即被清空，用户看不到刚刚那次修复的结论。
+ * 清空职责改由 runRepair 在发起新修复时承担。
+ */
 async function runScan(): Promise<void> {
   scanning.value = true
   error.value = null
-  repairResult.value = null
   try {
     scanResult.value = await window.gale.dll.scan()
     advice.value = await window.gale.dll.advice()
@@ -67,6 +74,8 @@ async function runScan(): Promise<void> {
 async function runRepair(kind: DllRepairKind): Promise<void> {
   repairRunning.value = kind
   error.value = null
+  // 发起新修复时清掉上一次的回执（复扫 runScan 不再清，见其注释）
+  repairResult.value = null
   try {
     repairResult.value = await window.gale.dll.repair(kind)
   } catch (e) {
@@ -233,8 +242,17 @@ async function openExternal(url: string): Promise<void> {
     <!-- ── 修复结果 ── -->
     <div v-if="repairResult" class="card">
       <h2 class="card-title">修复结果 · {{ repairResult.label }}</h2>
-      <p class="result-line" :class="repairResult.repaired ? 'ok' : 'bad'">
-        {{ repairResult.repaired ? '✓ ' : '✗ ' }}{{ repairResult.summary }}
+      <!--
+        成败以 ok（命令是否成功执行）为准；repaired 只表示「是否真发生了修复动作」。
+        SFC 扫描通过、无损坏时 ok=true 而 repaired=false，旧实现按 repaired 判定，
+        会把「系统文件完整，未发现损坏」的成功结果渲染成红色 ✗ 失败。
+        unsupported 是当前平台不支持的诚实降级（未执行任何命令），用中性色区分。
+      -->
+      <p
+        class="result-line"
+        :class="repairResult.ok ? 'ok' : repairResult.unsupported ? 'warn' : 'bad'"
+      >
+        {{ repairResult.ok ? '✓ ' : repairResult.unsupported ? '! ' : '✗ ' }}{{ repairResult.summary }}
       </p>
       <ul v-if="repairResult.nextSteps.length" class="next-steps">
         <li v-for="(s, i) in repairResult.nextSteps" :key="i">
@@ -297,6 +315,7 @@ async function openExternal(url: string): Promise<void> {
 .ok-line { font-size: 13px; color: #059669; }
 .result-line { font-size: 13px; line-height: 1.7; }
 .result-line.ok { color: #059669; }
+.result-line.warn { color: #d97706; }
 .result-line.bad { color: #ef4444; }
 .next-steps { font-size: 12.5px; color: var(--text-secondary); padding-left: 20px; margin: 8px 0; }
 .next-steps li { list-style: disc; line-height: 1.8; }

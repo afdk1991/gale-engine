@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { ToolResult } from '../../shared/types'
+import { writeHistory } from '../composables/useHistory'
 
 const busy = ref<string | null>(null)
 const error = ref<string | null>(null)
@@ -19,7 +20,7 @@ async function run(key: string, fn: () => Promise<ToolResult>, label: string): P
     const r = await fn()
     results.value = { ...results.value, [key]: r }
     if (r.ok) {
-      await window.gale.history.add({ type: 'toolbox', label, detail: r.message })
+      await writeHistory({ type: 'toolbox', label, detail: r.message })
     }
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e)

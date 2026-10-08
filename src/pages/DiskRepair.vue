@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import type { DiskVolume, DeepCleanupPlan, CleanupResult, DiskRepairResult, SystemRepairKind } from '../../shared/types'
+import { writeHistory } from '../composables/useHistory'
 
 // Electron 渲染层可通过 navigator.platform 判断宿主系统
 const isWindows = /win/i.test(navigator.platform)
@@ -95,10 +96,11 @@ async function runDeep(): Promise<void> {
     deepResult.value =
       `已完成 ${okCount}/${results.length} 项` +
       (fail.length ? `；失败 ${fail.length} 项（可能需要管理员权限）` : '')
-    await window.gale.history.add({
+    // 同 Optimizer：留痕需含失败项，避免部分失败在记录里显示为全成功
+    await writeHistory({
       type: 'cleanup',
-      label: `磁盘深度释放 ${okCount} 项`,
-      detail: ids.join('、')
+      label: `磁盘深度释放 ${okCount} 项${fail.length ? `（失败 ${fail.length} 项）` : ''}`,
+      detail: ids.join('、') + (fail.length ? `；失败 ${fail.length} 项` : '')
     })
     await Promise.all([loadVolumes(), scanDeep()])
   } catch (e) {
@@ -116,7 +118,7 @@ async function checkVolume(fix: boolean): Promise<void> {
   try {
     const res = await window.gale.disk.checkVolume(selectedMount.value, fix)
     checkResult.value = res
-    await window.gale.history.add({
+    await writeHistory({
       type: 'toolbox',
       label: `${fix ? '在线修复' : '检查'}卷 ${selectedMount.value}`,
       detail: res.summary
@@ -135,7 +137,7 @@ async function repairSys(kind: SystemRepairKind): Promise<void> {
   error.value = null
   try {
     sysResult.value = await window.gale.disk.repairSystemFiles(kind)
-    await window.gale.history.add({
+    await writeHistory({
       type: 'toolbox',
       label: kind === 'sfc' ? 'SFC 系统文件修复' : 'DISM 组件存储修复',
       detail: sysResult.value.summary

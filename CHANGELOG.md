@@ -7,7 +7,7 @@
 
 ## v0.1.13 — 2026-10-08
 
-本版是一次**全仓缺陷审计的集中修复**，来源为对 22 个主进程服务、15 个页面与 IPC 契约的逐行复核（审计结论见 `docs/code-audit-2026-10-08.md`）。共修 1 项严重缺陷、4 项逻辑错误、3 项健壮性问题，并清理了误入库的构建产物。
+本版是一次**全仓缺陷审计的集中修复**，来源为对 22 个主进程服务、15 个页面与 IPC 契约的逐行复核（审计结论见 `docs/code-audit-2026-10-08.md`）。第一轮修 1 项严重缺陷、4 项逻辑错误、3 项健壮性问题并清理误入库产物；第二轮针对渲染层（页面 / 组件 / composable）再修 9 项，集中在**回执判定口径、状态丢失、展示健壮性**三类。
 
 ### 修复
 
@@ -28,6 +28,35 @@
   - 旧写法 `:value="'normal'"` 写死，既与占位项 `<option value="">` 互斥（占位项永不显示），也不反映进程真实优先级。
   - 现在补齐真实优先级采集：Windows 读 `Get-Process.PriorityClass`、unix 读 `ps` 的 `ni`（nice）并取最近档映射；`ProcessInfo` 新增可选 `priority` 字段，**读不到时为 `undefined` 而非谎报 normal**。
 
+### 修复（第二轮 · 渲染层审计）
+
+来源：对 15 个页面 / 组件与 composable 的逐行复核，并与 `electron/main.ts` 的 IPC 契约逐条交叉核对。
+
+- 🟠 **DLL 修复结果不再把成功报成失败**（`src/pages/DllRepair.vue`）：
+  - 旧实现用 `repaired`（是否真发生了修复动作）决定 ✓/✗ 与红绿。SFC 扫描通过、无损坏时 `ok=true` 而 `repaired=false`，界面于是渲染成红色 ✗「系统文件完整，未发现损坏」。
+  - 现在以 `ok`（命令是否成功执行）为主判据、`unsupported`（平台不支持的诚实降级）为次级，与 `DiskRepair.vue` 既有口径一致；降级态新增中性色 `.result-line.warn`。
+- 🟠 **刚完成的修复回执不再被复扫清空**（`src/pages/DllRepair.vue`）：
+  - `runScan()` 开头无条件 `repairResult.value = null`，而 `runRepairAndRescan()` 在修复成功后立刻调用它——刚跑完的 SFC / DISM / VC++ 结论（summary、nextSteps、原始 output）随即被清空，用户看不到刚那次修复的结果。
+  - 清空职责改由 `runRepair()` 在发起新修复时承担。
+- 🟠 **主题持久化失败不再留下不一致且静默**（`src/theme/useTheme.ts`、`src/pages/Settings.vue`）：
+  - 旧实现先乐观改内存再 `await saveSettings`，且该 await 无 try/catch：保存失败时既产生未捕获 rejection，又留下「界面已切换、重启后却回滚」的不一致，且界面零提示。
+  - 现在保存失败即回滚内存值并重新应用，保证「界面所见」与「已持久化」一致；`Settings.vue` 捕获后上屏提示。
+- 🟠 **能力库「生效 / 回退」不再把失败报成成功**（`src/components/CapabilityLibraryPanel.vue`）：
+  - `apply()` / `reset()` 无条件写成功文案，完全不读返回的 `state.lastError`；而 `capabilityFeed.apply()` 在没有待生效更新时会回带 `lastError`。同文件的 `check()` 是读的，三处口径不一致。
+  - 现在与 `check()` 同口径，失败时展示 `生效失败：…` / `回退失败：…`。
+- 🟠 **写历史失败不再覆盖真实回执、不再跳过刷新**（新增 `src/composables/useHistory.ts`，应用于 7 个页面共 11 处）：
+  - `historyService.add` 在入参不合法或写盘失败时会抛错，而它与真正的操作、随后的 `refresh()` 同处一个 `try`。一旦抛出：① 用「历史记录参数不合法…」覆盖刚拿到的真实操作回执（把成功报成失败）；② 跳过 `await refresh()`，列表停在旧状态，UI 与系统实际状态不一致。
+  - 统一改用 `writeHistory()`（内部吞掉异常），与 `GameMode.vue` 的 `record()`、`useOneKey.ts` 的 `writeHistory()` 同范式。
+- 🟡 **提权提示改用结构化 `ok` 判定**（`src/pages/Settings.vue`）：旧实现 `elevateMsg.includes('失败')` 决定是否标红，而 Linux 分支返回 `ok:false` 但文案是「请手动以 root 启动」，不含「失败」二字 → 失败提示不标红。现在记录 `r.ok` 并以它定样式。
+- 🟡 **首页健康分空态不再渲染成红色**（`src/pages/Home.vue`）：`scoreClass` 用 `score.value ?? 0`，而 `score` 在无快照时为 `null`——此时 `scoreLabel` 显示 `—`、Hero 整块却渲染成红色「偏重」，`monitor.snapshot()` 失败时红块会一直挂着。现在空态返回空类名，走中性基础样式。
+- 🟡 **更新检查失败不再抹掉已加载的版本信息**（`src/composables/useAppUpdate.ts`）：三处 catch 用字面量 `{ status:'error', error }` 整体覆盖 `state`，把 `currentVersion` / `capability` 抹成 `v—`，与首页 Hero 仍正常显示的版本号自相矛盾。现在改为 `{ ...state.value, status:'error', … }` 仅补丁字段。
+- 🟡 **优化记录如实记录失败项**（`src/pages/Optimizer.vue`、`src/pages/DiskRepair.vue`）：历史只写成功项数，部分失败在「优化记录」页看起来像全成功。现在 label / detail 带上失败项数与名称。
+
+### 排除项（经复核确认不成立，勿重复排查）
+
+- **`build/icon.icns` 缺失不是缺陷**：`scripts/generate-icon.mjs:177-179` 明确说明输出 1024px `icon.png` 就是为了满足 electron-builder 自动生成 icns 的 ≥512px 要求，不提交 `.icns` 是设计选择。
+- 以下类别本轮逐条复核后**确认无新增问题**：IPC 参数与 `ipcMain.handle` 签名不匹配、裸 `setInterval`/`setTimeout` 泄漏（全仓仅 `usePolling.ts` / `useFlash.ts` 两处且均已随组件卸载清理）、解构可能 undefined 的返回值、除零 / NaN 展示。
+
 ### 改进
 
 - 历史记录写入前校验（`electron/services/history.ts`）：旧实现把非法 `type` / 空 `label` 直接落库并返回成功，但读取时又被 `normalizeEntry` 过滤掉，表现为「写入成功、列表里凭空消失」的静默脏数据。现在非法入参直接抛错拒绝。
@@ -41,7 +70,7 @@
 
 ### 质量门禁
 
-- `vue-tsc --noEmit` **0 错误**；`vitest run` **570 passed / 3 skipped**（较 v0.1.12 的 558 新增 12 项针对本次修复的回归测试）；`electron-vite build` **exit 0**。
+- `vue-tsc --noEmit` **0 错误**；`vitest run` **575 passed / 3 skipped / 32 文件**（较 v0.1.12 的 558 新增 17 项针对本次修复的回归测试，其中第二轮渲染层修复占 5 项）；`electron-vite build` **exit 0**。
 
 ---
 

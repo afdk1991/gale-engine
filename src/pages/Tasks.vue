@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import type { ScheduledTask } from '../../shared/types'
 import { useFlash } from '../composables/useFlash'
+import { writeHistory } from '../composables/useHistory'
 
 const list = ref<ScheduledTask[]>([])
 const filter = ref('')
@@ -51,7 +52,7 @@ async function act(t: ScheduledTask, label: string, fn: () => Promise<{ ok: bool
     const r = await fn()
     flash(key, r.message, r.ok ? 'ok' : 'bad')
     if (r.ok) {
-      await window.gale.history.add({ type: 'optimize', label: `${label}计划任务`, detail: `${t.path}${t.name}` })
+      await writeHistory({ type: 'optimize', label: `${label}计划任务`, detail: `${t.path}${t.name}` })
     }
     await refresh()
   } catch (e) {

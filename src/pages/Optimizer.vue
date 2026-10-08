@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import type { CleanupPlan, CleanupResult, StartupItem } from '../../shared/types'
 import CapabilityLibraryPanel from '../components/CapabilityLibraryPanel.vue'
+import { writeHistory } from '../composables/useHistory'
 
 const plans = ref<CleanupPlan[]>([])
 const selected = ref<Set<string>>(new Set())
@@ -63,10 +64,13 @@ async function runCleanup(): Promise<void> {
     lastResult.value =
       `已清理 ${okCount}/${results.length} 项` +
       (failNames.length ? `；跳过：${failNames.join('、')}` : '')
-    await window.gale.history.add({
+    // 留痕要如实：只写成功数会让「部分失败」在优化记录里看起来像全成功
+    await writeHistory({
       type: 'cleanup',
-      label: `清理 ${okCount} 项垃圾`,
-      detail: picked.map((p) => p.kind).join('、')
+      label: `清理 ${okCount} 项垃圾${failNames.length ? `（失败 ${failNames.length} 项）` : ''}`,
+      detail:
+        picked.map((p) => p.kind).join('、') +
+        (failNames.length ? `；失败：${failNames.join('、')}` : '')
     })
     await scan()
   } catch (e) {
@@ -96,7 +100,7 @@ async function toggleStartup(item: StartupItem): Promise<void> {
       item.enabled ? undefined : item.command
     )
     startupItems.value = next
-    await window.gale.history.add({
+    await writeHistory({
       type: 'startup',
       label: `${!item.enabled ? '启用' : '禁用'}启动项：${item.name}`,
       detail: item.command

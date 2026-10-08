@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import type { FirewallProfile, FirewallRule } from '../../shared/types'
 import { useFlash } from '../composables/useFlash'
+import { writeHistory } from '../composables/useHistory'
 
 const profiles = ref<FirewallProfile[]>([])
 const rules = ref<FirewallRule[]>([])
@@ -53,7 +54,7 @@ async function toggleProfile(p: FirewallProfile): Promise<void> {
     )
     flash(`profile:${p.name}`, r.message, r.ok ? 'ok' : 'bad')
     if (r.ok) {
-      await window.gale.history.add({
+      await writeHistory({
         type: 'toolbox',
         label: `${p.enabled ? '关闭' : '开启'}防火墙`,
         detail: p.name
@@ -73,7 +74,7 @@ async function toggleRule(r: FirewallRule): Promise<void> {
     const res = await window.gale.firewall.toggleRule(r.name, !r.enabled)
     flash(r.name, res.message, res.ok ? 'ok' : 'bad')
     if (res.ok) {
-      await window.gale.history.add({
+      await writeHistory({
         type: 'toolbox',
         label: `${r.enabled ? '禁用' : '启用'}防火墙规则`,
         detail: r.displayName || r.name

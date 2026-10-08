@@ -54,16 +54,38 @@ export function createThemeController(opts: {
     media.addEventListener('change', onMediaChange)
   }
 
+  /**
+   * 切换外观并持久化；**失败时回滚内存值再抛出**。
+   *
+   * 为什么必须回滚：旧实现先乐观改内存再 `await saveSettings`，且 await 无 try/catch——
+   * 保存失败（IPC/store 异常）时既产生未捕获 rejection，又留下「界面已切换、
+   * 重启后却回滚」的不一致，且界面零提示。现在保存失败就还原内存值并重新应用，
+   * 保证「界面所见」与「已持久化」始终一致；是否提示交由调用方决定。
+   */
   async function setAppearance(mode: AppearanceMode): Promise<void> {
+    const prev = appearance.value
     appearance.value = mode
     applyResolved()
-    await opts.saveSettings({ appearance: mode })
+    try {
+      await opts.saveSettings({ appearance: mode })
+    } catch (error) {
+      appearance.value = prev
+      applyResolved()
+      throw error
+    }
   }
 
   async function setAccent(key: AccentKey): Promise<void> {
+    const prev = accent.value
     accent.value = key
     applyResolved()
-    await opts.saveSettings({ accent: key })
+    try {
+      await opts.saveSettings({ accent: key })
+    } catch (error) {
+      accent.value = prev
+      applyResolved()
+      throw error
+    }
   }
 
   function dispose(): void {

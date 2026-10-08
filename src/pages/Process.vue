@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import type { ProcessActionResult, ProcessInfo, ProcessPriorityLevel, ProcessSortKey } from '../../shared/types'
 import { useFlash } from '../composables/useFlash'
+import { writeHistory } from '../composables/useHistory'
 
 const list = ref<ProcessInfo[]>([])
 const sort = ref<ProcessSortKey>('cpu')
@@ -50,7 +51,7 @@ async function act(
     const r = await fn()
     flash(pid, r.message, r.ok ? 'ok' : 'bad')
     if (r.ok) {
-      await window.gale.history.add({ type: 'optimize', label: historyLabel, detail: `PID ${pid} ${label}` })
+      await writeHistory({ type: 'optimize', label: historyLabel, detail: `PID ${pid} ${label}` })
     }
     await refresh()
   } catch (e) {
